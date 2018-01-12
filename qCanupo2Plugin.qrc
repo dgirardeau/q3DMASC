@@ -1,0 +1,5 @@
+<RCC>
+  <qresource prefix="/CC/plugin/qCanupo2" >
+    <file>icon.png</file>
+  </qresource>
+</RCC>
