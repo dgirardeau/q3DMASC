@@ -19,7 +19,7 @@
 #define QCANUPO2_PLUGIN_HEADER
 
 //qCC
-#include "../ccStdPluginInterface.h"
+#include <ccStdPluginInterface.h>
 
 //! New classification plugin (Dimitri Lague / OSUR)
 class qCanupo2Plugin : public QObject, public ccStdPluginInterface

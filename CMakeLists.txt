@@ -12,7 +12,7 @@ project( QCANUPO2_PLUGIN_DLL )
 
 	#As we are going to re-use several components of the main qCC project
 	#we define its sources path relatively to the plugin's dir
-	set(CloudCompare_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../qCC)
+	set(CloudCompare_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../../qCC)
 
 	#include the whole CC directory (easier)
 	include_directories( ${CloudCompare_SOURCE_DIR} )
@@ -24,7 +24,7 @@ project( QCANUPO2_PLUGIN_DLL )
 	#don't forget associated widgets(.ui)
 	set( CC_PLUGIN_CUSTOM_UI_LIST	${CloudCompare_SOURCE_DIR}/ui_templates/roleChoiceDlg.ui )
 
-	include( ../CMakePluginTpl.cmake )
+	include( ../../CMakePluginTpl.cmake )
 	
 	target_link_libraries( ${PROJECT_NAME} ${OpenCV_LIBS} )
 
