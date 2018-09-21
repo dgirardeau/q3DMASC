@@ -32,7 +32,7 @@ void qCanupo2Plugin::onNewSelection(const ccHObject::Container& selectedEntities
 	//	m_action->setEnabled(!selectedEntities.empty());
 }
 
-void qCanupo2Plugin::getActions(QActionGroup& group)
+QList<QAction*> qCanupo2Plugin::getActions()
 {
 	if (!m_action)
 	{
@@ -43,7 +43,7 @@ void qCanupo2Plugin::getActions(QActionGroup& group)
 		connect(m_action, SIGNAL(triggered()), this, SLOT(doAction()));
 	}
 
-	group.addAction(m_action);
+	return QList<QAction*>{m_action};
 }
 
 void qCanupo2Plugin::doAction()
