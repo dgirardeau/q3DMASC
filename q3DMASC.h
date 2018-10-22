@@ -1,57 +1,62 @@
 //##########################################################################
 //#                                                                        #
-//#                     CLOUDCOMPARE PLUGIN: qCanupo2                      #
+//#                     CLOUDCOMPARE PLUGIN: q3DMASC                       #
 //#                                                                        #
 //#  This program is free software; you can redistribute it and/or modify  #
 //#  it under the terms of the GNU General Public License as published by  #
-//#  the Free Software Foundation; version 2 of the License.               #
+//#  the Free Software Foundation; version 2 or later of the License.      #
 //#                                                                        #
 //#  This program is distributed in the hope that it will be useful,       #
 //#  but WITHOUT ANY WARRANTY; without even the implied warranty of        #
-//#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         #
+//#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the          #
 //#  GNU General Public License for more details.                          #
 //#                                                                        #
-//#                          COPYRIGHT: OSUR                               #
+//#                 COPYRIGHT: Dimitri Lague / CNRS / UEB                  #
 //#                                                                        #
 //##########################################################################
 
-#ifndef QCANUPO2_PLUGIN_HEADER
-#define QCANUPO2_PLUGIN_HEADER
+#ifndef Q_3DMASC_PLUGIN_HEADER
+#define Q_3DMASC_PLUGIN_HEADER
 
 //qCC
 #include <ccStdPluginInterface.h>
 
-//! New classification plugin (Dimitri Lague / OSUR)
-class qCanupo2Plugin : public QObject, public ccStdPluginInterface
+//qCC_db
+#include <ccHObject.h>
+
+//! 3DMASC plugin
+/** 3D Multi-cloud, multi-Attribute, multi-Scale, multi-Class classification
+**/
+class q3DMASCPlugin : public QObject, public ccStdPluginInterface
 {
 	Q_OBJECT
 	Q_INTERFACES(ccStdPluginInterface)
-	//replace qDummy by the plugin name (IID should be unique - let's hope your plugin name is unique ;)
-	Q_PLUGIN_METADATA(IID "cccorp.cloudcompare.plugin.qCanupo2")
+	Q_PLUGIN_METADATA(IID "cccorp.cloudcompare.plugin.q3DMASC" FILE "info.json")
 
 public:
 
 	//! Default constructor
-	explicit qCanupo2Plugin(QObject* parent = 0);
-
-	//inherited from ccPluginInterface
-	virtual QString getName() const override { return "CANUPO V2"; }
-	virtual QString getDescription() const override { return "CANUPO V2 Classification (D. Lague, A. le Guennec)"; }
-	virtual QIcon getIcon() const override;
+	q3DMASCPlugin(QObject* parent = nullptr);
 
 	//inherited from ccStdPluginInterface
 	void onNewSelection(const ccHObject::Container& selectedEntities) override;
 	virtual QList<QAction*> getActions() override;
+	virtual void registerCommands(ccCommandLineInterface* cmd) override;
 
 protected slots:
 
-	void doAction();
+	void doClassifyAction();
+	void doTrainAction();
 
 protected:
 
-	//! Default action
-	QAction* m_action;
+	//! Calssift action
+	QAction* m_classifyAction;
+	//! Train action
+	QAction* m_trainAction;
+
+	//! Currently selected entities
+	ccHObject::Container m_selectedEntities;
 };
 
-#endif //QCANUPO2_PLUGIN_HEADER
-
+#endif //Q_3DMASC_PLUGIN_HEADER

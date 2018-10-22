@@ -1,11 +1,11 @@
 cmake_minimum_required(VERSION 2.8)
 
-option( INSTALL_QCANUPO2_PLUGIN "Check to install qCanupo2 plugin" OFF )
+option( INSTALL_Q3DMASC_PLUGIN "Check to install q3DMASC plugin" OFF )
 
-if (INSTALL_QCANUPO2_PLUGIN)
+if (INSTALL_Q3DMASC_PLUGIN)
 
 #New classification plugin (Dimitri Lague/OSUR)
-project( QCANUPO2_PLUGIN_DLL )
+project( Q3DMASC_PLUGIN_DLL )
 
 	#need OpenCV
 	find_package( OpenCV REQUIRED )
@@ -16,6 +16,7 @@ project( QCANUPO2_PLUGIN_DLL )
 
 	#include the whole CC directory (easier)
 	include_directories( ${CloudCompare_SOURCE_DIR} )
+	#include_directories( ${OpenCV_INCLUDE_DIR} )
 	
 	#we need the "order choice" dialog
 	file( GLOB CC_PLUGIN_CUSTOM_HEADER_LIST ${CloudCompare_SOURCE_DIR}/ccOrderChoiceDlg*.h )
