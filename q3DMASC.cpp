@@ -184,8 +184,16 @@ void q3DMASCPlugin::doClassifyAction()
 		const bool calcVarImportance = true; //Must be true
 		int activeVarCount = 0; //USE 0 as the default parameter (works best)
 		int maxTreeCount = 100; //Left as a parameter of the training plugin (default: 100)
+		
+		float testDataRatio = 0.2; //percentage of test data
 	};
 	RTParams params;
+
+	if (params.testDataRatio < 0 || params.testDataRatio > 0.99f)
+	{
+		m_app->dispToConsole("Invalid test data ratio", ccMainAppInterface::ERR_CONSOLE_MESSAGE);
+		return;
+	}
 
 	struct Feature
 	{
@@ -208,16 +216,49 @@ void q3DMASCPlugin::doClassifyAction()
 	features.push_back(Feature(Feature::ScalarField, "Intensity"));
 	features.push_back(Feature(Feature::ScalarField, "Intensity"));
 
-	int sampleCount = static_cast<int>(cloud->size());
+	int totalSampleCount = static_cast<int>(cloud->size());
+	int testSampleCount = static_cast<int>(floor(totalSampleCount * params.testDataRatio));
+	int sampleCount = totalSampleCount - sampleCount;
 	int attributesPerSample = static_cast<int>(features.size());
+
+	m_app->dispToConsole(QString("[3DMASC] Training data: %1 samples with %2 feature(s) / %3 test samples").arg(sampleCount).arg(attributesPerSample).arg(testSampleCount), ccMainAppInterface::STD_CONSOLE_MESSAGE);
+
+	//choose the sample indexes
+	std::vector<bool> isSample;
+	{
+		try
+		{
+			isSample.resize(totalSampleCount, true);
+		}
+		catch (const std::bad_alloc&)
+		{
+			m_app->dispToConsole("Not enough memory", ccMainAppInterface::STD_CONSOLE_MESSAGE);
+			return;
+		}
+
+		unsigned randomCount = 0;
+		while (randomCount < testSampleCount)
+		{
+			int randIndex = (std::rand() % totalSampleCount);
+			if (isSample[randIndex])
+			{
+				isSample[randIndex] = false;
+				++randomCount;
+			}
+		}
+	}
 
 	//NUMBER_OF_TRAINING_SAMPLES = number of points
 	//ATTRIBUTES_PER_SAMPLE = number of scalar fields
 	cv::Mat training_data, train_labels;
+	cv::Mat test_data, test_labels;
 	try
 	{
 		training_data.create(sampleCount, attributesPerSample, CV_32FC1);
-		train_labels.create(attributesPerSample, 1, CV_8U);
+		train_labels.create(sampleCount, 1, CV_8U);
+
+		test_data.create(testSampleCount, attributesPerSample, CV_32FC1);
+		test_labels.create(testSampleCount, 1, CV_8U);
 	}
 	catch (const cv::Exception& cvex)
 	{
@@ -227,6 +268,8 @@ void q3DMASCPlugin::doClassifyAction()
 
 	//fill the classification labels vector
 	{
+		unsigned sampleIndex = 0;
+		unsigned testSampleIndex = 0;
 		for (unsigned i = 0; i < cloud->size(); ++i)
 		{
 			ScalarType pointClass = classifSF->getValue(i);
@@ -236,8 +279,17 @@ void q3DMASCPlugin::doClassifyAction()
 				m_app->dispToConsole("Classification values out of range (0-255)", ccMainAppInterface::ERR_CONSOLE_MESSAGE);
 				return;
 			}
-			train_labels.at<unsigned char>(i) = static_cast<unsigned char>(iClass);
+
+			if (isSample[i])
+			{
+				train_labels.at<unsigned char>(sampleIndex++) = static_cast<unsigned char>(iClass);
+			}
+			else
+			{
+				test_labels.at<unsigned char>(testSampleIndex++) = static_cast<unsigned char>(iClass);
+			}
 		}
+		assert(testSampleIndex + testSampleIndex == totalSampleCount);
 	}
 
 
@@ -291,11 +343,21 @@ void q3DMASCPlugin::doClassifyAction()
 			ccLog::Error(QString("Internal error: invalid source '%1'").arg(f.name));
 		}
 
+		unsigned sampleIndex = 0;
+		unsigned testSampleIndex = 0;
 		for (unsigned i = 0; i < cloud->size(); ++i)
 		{
 			double value = source->pointValue(i);
-			training_data.at<float>(i, fIndex) = static_cast<float>(value);
+			if (isSample[i])
+			{
+				training_data.at<float>(sampleIndex++, fIndex) = static_cast<float>(value);
+			}
+			else
+			{
+				test_data.at<float>(testSampleIndex++, fIndex) = static_cast<float>(value);
+			}
 		}
+		assert(testSampleIndex + testSampleIndex == totalSampleCount);
 	}
 
 	cv::Ptr<cv::ml::RTrees> rtrees;
@@ -313,6 +375,28 @@ void q3DMASCPlugin::doClassifyAction()
 	//rtrees->setPriors(cv::Mat());
 
 	rtrees->train(training_data, cv::ml::ROW_SAMPLE, train_labels);
+
+	if (!rtrees->isTrained())
+	{
+		//an error occurred?
+		return;
+	}
+
+	//estimate the efficiency of the classiier
+	{
+		int goodGuessCount = 0;
+		for (int j = 0; j < testSampleCount; ++j)
+		{
+			if (rtrees->predict(test_data.row(j)) == test_labels.at<int>(j))
+			{
+				++goodGuessCount;
+			}
+		}
+
+		float acc = static_cast<float>(goodGuessCount) / testSampleCount;
+
+		m_app->dispToConsole(QString("Correct = %1 / %2 --> Accuracy = %3").arg(goodGuessCount).arg(testSampleCount).arg(acc), ccMainAppInterface::STD_CONSOLE_MESSAGE);
+	}
 
 }
 
