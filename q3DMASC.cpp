@@ -81,6 +81,65 @@ QList<QAction*> q3DMASCPlugin::getActions()
 
 #include <opencv2/ml.hpp>
 
+class IScalarFieldWrapper
+{
+public:
+	virtual double pointValue(unsigned index) const = 0;
+	virtual bool isValid() const = 0;
+};
+
+class ScalarFieldWrapper : public IScalarFieldWrapper
+{
+public:
+	ScalarFieldWrapper(CCLib::ScalarField* sf)
+		: m_sf(sf)
+	{}
+
+	virtual inline double pointValue(unsigned index) const override { return m_sf->at(index); }
+	virtual inline bool isValid() const { return m_sf != nullptr; }
+
+protected:
+	CCLib::ScalarField* m_sf;
+};
+
+class DimScalarFieldWrapper : public IScalarFieldWrapper
+{
+public:
+	enum Dim { DimX = 0, DimY = 1, DimZ = 2 };
+	
+	DimScalarFieldWrapper(ccPointCloud* cloud, Dim dim)
+		: m_cloud(cloud)
+		, m_dim(dim)
+	{}
+
+	virtual inline double pointValue(unsigned index) const override { return m_cloud->getPoint(index)->u[m_dim]; }
+	virtual inline bool isValid() const { return m_cloud != nullptr; }
+
+protected:
+	ccPointCloud* m_cloud;
+	Dim m_dim;
+};
+
+class ColorScalarFieldWrapper : public IScalarFieldWrapper
+{
+public:
+	enum Band { Red = 0, Green = 1, Blue = 2 };
+
+	ColorScalarFieldWrapper(ccPointCloud* cloud, Band band)
+		: m_cloud(cloud)
+		, m_band(band)
+	{}
+
+	virtual inline double pointValue(unsigned index) const override { return m_cloud->getPointColor(index).rgb[m_band]; }
+	virtual inline bool isValid() const { return m_cloud != nullptr && m_cloud->hasColors(); }
+
+protected:
+	ccPointCloud* m_cloud;
+	Band m_band;
+};
+
+#include <LASFields.h>
+
 void q3DMASCPlugin::doClassifyAction()
 {
 	if (!m_app)
@@ -103,6 +162,20 @@ void q3DMASCPlugin::doClassifyAction()
 
 	ccPointCloud* cloud = static_cast<ccPointCloud*>(m_selectedEntities.front());
 
+	//look for the classification field
+	int classifSFIdx = cloud->getScalarFieldIndexByName(LAS_FIELD_NAMES[LAS_CLASSIFICATION]); //LAS_FIELD_NAMES[LAS_CLASSIFICATION] = "Classification"
+	if (!classifSFIdx)
+	{
+		m_app->dispToConsole("Missing 'Classification' field", ccMainAppInterface::ERR_CONSOLE_MESSAGE);
+		return;
+	}
+	CCLib::ScalarField* classifSF = cloud->getScalarField(classifSFIdx);
+	if (!classifSF || classifSF->size() < cloud->size())
+	{
+		assert(false);
+		return;
+	}
+
 	struct RTParams
 	{
 		int maxDepth = 25; //To be left as a parameter of the training plugin (default 25)
@@ -114,13 +187,116 @@ void q3DMASCPlugin::doClassifyAction()
 	};
 	RTParams params;
 
-	unsigned sampleCount = cloud->size();
-	unsigned attributesPerSample = cloud->getNumberOfScalarFields();
+	struct Feature
+	{
+		enum Source
+		{
+			ScalarField, DimX, DimY, DimZ, Red, Green, Blue
+		};
+
+		Feature(Source p_source, QString p_name)
+			: source(p_source)
+			, name(p_name)
+		{}
+
+		Source source;
+		QString name; //especially for scalar fields
+	};
+
+	std::vector<Feature> features;
+	features.push_back(Feature(Feature::DimZ, "Z"));
+	features.push_back(Feature(Feature::ScalarField, "Intensity"));
+	features.push_back(Feature(Feature::ScalarField, "Intensity"));
+
+	int sampleCount = static_cast<int>(cloud->size());
+	int attributesPerSample = static_cast<int>(features.size());
 
 	//NUMBER_OF_TRAINING_SAMPLES = number of points
 	//ATTRIBUTES_PER_SAMPLE = number of scalar fields
-	cv::Mat training_data = cv::Mat(sampleCount, attributesPerSample, CV_32FC1);
-	cv::Mat train_labels = cv::Mat(attributesPerSample, 1, CV_32FC1);
+	cv::Mat training_data, train_labels;
+	try
+	{
+		training_data.create(sampleCount, attributesPerSample, CV_32FC1);
+		train_labels.create(attributesPerSample, 1, CV_8U);
+	}
+	catch (const cv::Exception& cvex)
+	{
+		ccLog::Error(cvex.msg.c_str());
+		return;
+	}
+
+	//fill the classification labels vector
+	{
+		for (unsigned i = 0; i < cloud->size(); ++i)
+		{
+			ScalarType pointClass = classifSF->getValue(i);
+			int iClass = static_cast<int>(pointClass);
+			if (iClass < 0 || iClass > 255)
+			{
+				m_app->dispToConsole("Classification values out of range (0-255)", ccMainAppInterface::ERR_CONSOLE_MESSAGE);
+				return;
+			}
+			train_labels.at<unsigned char>(i) = static_cast<unsigned char>(iClass);
+		}
+	}
+
+
+	//fill the training data matrix
+	for (int fIndex = 0; fIndex < attributesPerSample; ++fIndex)
+	{
+		QScopedPointer<IScalarFieldWrapper> source(nullptr);
+
+		const Feature& f = features[fIndex];
+		switch (f.source)
+		{
+		case Feature::ScalarField:
+		{
+			int sfIdx = cloud->getScalarFieldIndexByName(qPrintable(f.name));
+			if (sfIdx >= 0)
+			{
+				source.reset(new ScalarFieldWrapper(cloud->getScalarField(sfIdx)));
+			}
+			else
+			{
+				ccLog::Error(QString("Internal error: unknwon scalar field '%1'").arg(f.name));
+				return;
+			}
+		}
+		break;
+
+		case Feature::DimX:
+			source.reset(new DimScalarFieldWrapper(cloud, DimScalarFieldWrapper::DimX));
+			break;
+		case Feature::DimY:
+			source.reset(new DimScalarFieldWrapper(cloud, DimScalarFieldWrapper::DimY));
+			break;
+		case Feature::DimZ:
+			source.reset(new DimScalarFieldWrapper(cloud, DimScalarFieldWrapper::DimZ));
+			break;
+
+		case Feature::Red:
+			source.reset(new ColorScalarFieldWrapper(cloud, ColorScalarFieldWrapper::Red));
+			break;
+		case Feature::Green:
+			source.reset(new ColorScalarFieldWrapper(cloud, ColorScalarFieldWrapper::Green));
+			break;
+		case Feature::Blue:
+			source.reset(new ColorScalarFieldWrapper(cloud, ColorScalarFieldWrapper::Blue));
+			break;
+		}
+
+		if (!source || !source->isValid())
+		{
+			assert(false);
+			ccLog::Error(QString("Internal error: invalid source '%1'").arg(f.name));
+		}
+
+		for (unsigned i = 0; i < cloud->size(); ++i)
+		{
+			double value = source->pointValue(i);
+			training_data.at<float>(i, fIndex) = static_cast<float>(value);
+		}
+	}
 
 	cv::Ptr<cv::ml::RTrees> rtrees;
 	rtrees = cv::ml::RTrees::create();
