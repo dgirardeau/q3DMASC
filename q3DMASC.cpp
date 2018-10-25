@@ -19,9 +19,13 @@
 
 //local
 #include "q3DMASCDisclaimerDialog.h"
+#include "Features.h"
 
 //qCC_db
 #include <ccPointCloud.h>
+
+//qCC_io
+#include <LASFields.h>
 
 //Qt
 #include <QtGui>
@@ -29,6 +33,9 @@
 #include <QApplication>
 #include <QMessageBox>
 #include <QStringList>
+
+//OpenCV
+#include <opencv2/ml.hpp>
 
 q3DMASCPlugin::q3DMASCPlugin(QObject* parent/*=0*/)
 	: QObject(parent)
@@ -79,67 +86,6 @@ QList<QAction*> q3DMASCPlugin::getActions()
 	return group;
 }
 
-#include <opencv2/ml.hpp>
-
-class IScalarFieldWrapper
-{
-public:
-	virtual double pointValue(unsigned index) const = 0;
-	virtual bool isValid() const = 0;
-};
-
-class ScalarFieldWrapper : public IScalarFieldWrapper
-{
-public:
-	ScalarFieldWrapper(CCLib::ScalarField* sf)
-		: m_sf(sf)
-	{}
-
-	virtual inline double pointValue(unsigned index) const override { return m_sf->at(index); }
-	virtual inline bool isValid() const { return m_sf != nullptr; }
-
-protected:
-	CCLib::ScalarField* m_sf;
-};
-
-class DimScalarFieldWrapper : public IScalarFieldWrapper
-{
-public:
-	enum Dim { DimX = 0, DimY = 1, DimZ = 2 };
-	
-	DimScalarFieldWrapper(ccPointCloud* cloud, Dim dim)
-		: m_cloud(cloud)
-		, m_dim(dim)
-	{}
-
-	virtual inline double pointValue(unsigned index) const override { return m_cloud->getPoint(index)->u[m_dim]; }
-	virtual inline bool isValid() const { return m_cloud != nullptr; }
-
-protected:
-	ccPointCloud* m_cloud;
-	Dim m_dim;
-};
-
-class ColorScalarFieldWrapper : public IScalarFieldWrapper
-{
-public:
-	enum Band { Red = 0, Green = 1, Blue = 2 };
-
-	ColorScalarFieldWrapper(ccPointCloud* cloud, Band band)
-		: m_cloud(cloud)
-		, m_band(band)
-	{}
-
-	virtual inline double pointValue(unsigned index) const override { return m_cloud->getPointColor(index).rgb[m_band]; }
-	virtual inline bool isValid() const { return m_cloud != nullptr && m_cloud->hasColors(); }
-
-protected:
-	ccPointCloud* m_cloud;
-	Band m_band;
-};
-
-#include <LASFields.h>
-
 void q3DMASCPlugin::doClassifyAction()
 {
 	if (!m_app)
@@ -176,40 +122,12 @@ void q3DMASCPlugin::doClassifyAction()
 		return;
 	}
 
-	struct RTParams
-	{
-		int maxDepth = 25; //To be left as a parameter of the training plugin (default 25)
-		int minSampleCount = 1; //To be left as a parameter of the training plugin (default 1)
-		int maxCategories = 0; //Normally not important as there’s no categorical variable
-		const bool calcVarImportance = true; //Must be true
-		int activeVarCount = 0; //USE 0 as the default parameter (works best)
-		int maxTreeCount = 100; //Left as a parameter of the training plugin (default: 100)
-		
-		float testDataRatio = 0.2; //percentage of test data
-	};
 	RTParams params;
-
 	if (params.testDataRatio < 0 || params.testDataRatio > 0.99f)
 	{
 		m_app->dispToConsole("Invalid test data ratio", ccMainAppInterface::ERR_CONSOLE_MESSAGE);
 		return;
 	}
-
-	struct Feature
-	{
-		enum Source
-		{
-			ScalarField, DimX, DimY, DimZ, Red, Green, Blue
-		};
-
-		Feature(Source p_source, QString p_name)
-			: source(p_source)
-			, name(p_name)
-		{}
-
-		Source source;
-		QString name; //especially for scalar fields
-	};
 
 	std::vector<Feature> features;
 	features.push_back(Feature(Feature::DimZ, "Z"));
@@ -218,7 +136,7 @@ void q3DMASCPlugin::doClassifyAction()
 
 	int totalSampleCount = static_cast<int>(cloud->size());
 	int testSampleCount = static_cast<int>(floor(totalSampleCount * params.testDataRatio));
-	int sampleCount = totalSampleCount - sampleCount;
+	int sampleCount = totalSampleCount - testSampleCount;
 	int attributesPerSample = static_cast<int>(features.size());
 
 	m_app->dispToConsole(QString("[3DMASC] Training data: %1 samples with %2 feature(s) / %3 test samples").arg(sampleCount).arg(attributesPerSample).arg(testSampleCount), ccMainAppInterface::STD_CONSOLE_MESSAGE);
@@ -236,7 +154,7 @@ void q3DMASCPlugin::doClassifyAction()
 			return;
 		}
 
-		unsigned randomCount = 0;
+		int randomCount = 0;
 		while (randomCount < testSampleCount)
 		{
 			int randIndex = (std::rand() % totalSampleCount);
