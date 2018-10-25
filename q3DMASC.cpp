@@ -129,10 +129,9 @@ void q3DMASCPlugin::doClassifyAction()
 		return;
 	}
 
-	std::vector<Feature> features;
-	features.push_back(Feature(Feature::DimZ, "Z"));
-	features.push_back(Feature(Feature::ScalarField, "Intensity"));
-	features.push_back(Feature(Feature::ScalarField, "Intensity"));
+	std::vector<Feature::Shared> features;
+	features.push_back(Feature::Shared(new PointFeature(cloud, PointFeature::Z, Feature::DimZ, "Z")));
+	features.push_back(Feature::Shared(new PointFeature(cloud, PointFeature::Intensity, Feature::ScalarField, "Intensity")));
 
 	int totalSampleCount = static_cast<int>(cloud->size());
 	int testSampleCount = static_cast<int>(floor(totalSampleCount * params.testDataRatio));
@@ -221,14 +220,14 @@ void q3DMASCPlugin::doClassifyAction()
 		{
 		case Feature::ScalarField:
 		{
-			int sfIdx = cloud->getScalarFieldIndexByName(qPrintable(f.name));
+			int sfIdx = cloud->getScalarFieldIndexByName(qPrintable(f.sourceName));
 			if (sfIdx >= 0)
 			{
 				source.reset(new ScalarFieldWrapper(cloud->getScalarField(sfIdx)));
 			}
 			else
 			{
-				ccLog::Error(QString("Internal error: unknwon scalar field '%1'").arg(f.name));
+				ccLog::Error(QString("Internal error: unknwon scalar field '%1'").arg(f.sourceName));
 				return;
 			}
 		}
@@ -258,7 +257,7 @@ void q3DMASCPlugin::doClassifyAction()
 		if (!source || !source->isValid())
 		{
 			assert(false);
-			ccLog::Error(QString("Internal error: invalid source '%1'").arg(f.name));
+			ccLog::Error(QString("Internal error: invalid source '%1'").arg(f.sourceName));
 		}
 
 		unsigned sampleIndex = 0;
