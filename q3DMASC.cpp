@@ -215,19 +215,19 @@ void q3DMASCPlugin::doClassifyAction()
 	{
 		QScopedPointer<IScalarFieldWrapper> source(nullptr);
 
-		const Feature& f = features[fIndex];
-		switch (f.source)
+		const Feature::Shared &f = features[fIndex];
+		switch (f->source)
 		{
 		case Feature::ScalarField:
 		{
-			int sfIdx = cloud->getScalarFieldIndexByName(qPrintable(f.sourceName));
+			int sfIdx = cloud->getScalarFieldIndexByName(qPrintable(f->sourceName));
 			if (sfIdx >= 0)
 			{
 				source.reset(new ScalarFieldWrapper(cloud->getScalarField(sfIdx)));
 			}
 			else
 			{
-				ccLog::Error(QString("Internal error: unknwon scalar field '%1'").arg(f.sourceName));
+				ccLog::Error(QString("Internal error: unknwon scalar field '%1'").arg(f->sourceName));
 				return;
 			}
 		}
@@ -257,7 +257,7 @@ void q3DMASCPlugin::doClassifyAction()
 		if (!source || !source->isValid())
 		{
 			assert(false);
-			ccLog::Error(QString("Internal error: invalid source '%1'").arg(f.sourceName));
+			ccLog::Error(QString("Internal error: invalid source '%1'").arg(f->sourceName));
 		}
 
 		unsigned sampleIndex = 0;
