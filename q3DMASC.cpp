@@ -154,9 +154,10 @@ void q3DMASCPlugin::doClassifyAction()
 		}
 
 		int randomCount = 0;
+		int randIndex = 0;
 		while (randomCount < testSampleCount)
 		{
-			int randIndex = (std::rand() % totalSampleCount);
+			randIndex = ((randIndex + std::rand()) % totalSampleCount);
 			if (isSample[randIndex])
 			{
 				isSample[randIndex] = false;
@@ -172,10 +173,10 @@ void q3DMASCPlugin::doClassifyAction()
 	try
 	{
 		training_data.create(sampleCount, attributesPerSample, CV_32FC1);
-		train_labels.create(sampleCount, 1, CV_8U);
+		train_labels.create(sampleCount, 1, CV_32FC1);
 
 		test_data.create(testSampleCount, attributesPerSample, CV_32FC1);
-		test_labels.create(testSampleCount, 1, CV_8U);
+		test_labels.create(testSampleCount, 1, CV_32FC1);
 	}
 	catch (const cv::Exception& cvex)
 	{
@@ -199,14 +200,14 @@ void q3DMASCPlugin::doClassifyAction()
 
 			if (isSample[i])
 			{
-				train_labels.at<unsigned char>(sampleIndex++) = static_cast<unsigned char>(iClass);
+				train_labels.at<float>(sampleIndex++) = static_cast<unsigned char>(iClass);
 			}
 			else
 			{
-				test_labels.at<unsigned char>(testSampleIndex++) = static_cast<unsigned char>(iClass);
+				test_labels.at<float>(testSampleIndex++) = static_cast<unsigned char>(iClass);
 			}
 		}
-		assert(testSampleIndex + testSampleIndex == totalSampleCount);
+		assert(sampleIndex + testSampleIndex == totalSampleCount);
 	}
 
 
@@ -267,14 +268,16 @@ void q3DMASCPlugin::doClassifyAction()
 			double value = source->pointValue(i);
 			if (isSample[i])
 			{
+				assert(sampleIndex < sampleCount);
 				training_data.at<float>(sampleIndex++, fIndex) = static_cast<float>(value);
 			}
 			else
 			{
+				assert(testSampleIndex< testSampleCount);
 				test_data.at<float>(testSampleIndex++, fIndex) = static_cast<float>(value);
 			}
 		}
-		assert(testSampleIndex + testSampleIndex == totalSampleCount);
+		assert(sampleIndex + testSampleIndex == totalSampleCount);
 	}
 
 	cv::Ptr<cv::ml::RTrees> rtrees;
@@ -290,8 +293,25 @@ void q3DMASCPlugin::doClassifyAction()
 	//rtrees->setUseSurrogates(false);
 	//rtrees->setMaxCategories(params.maxCategories); //not important?
 	//rtrees->setPriors(cv::Mat());
-
-	rtrees->train(training_data, cv::ml::ROW_SAMPLE, train_labels);
+	try
+	{
+		rtrees->train(training_data, cv::ml::ROW_SAMPLE, train_labels);
+	}
+	catch (const cv::Exception& cvex)
+	{
+		ccLog::Error(cvex.msg.c_str());
+		return;
+	}
+	catch (const std::exception& stdex)
+	{
+		ccLog::Error(stdex.what());
+		return;
+	}
+	catch (...)
+	{
+		ccLog::Error("Unknown error");
+		return;
+	}
 
 	if (!rtrees->isTrained())
 	{
@@ -304,7 +324,7 @@ void q3DMASCPlugin::doClassifyAction()
 		int goodGuessCount = 0;
 		for (int j = 0; j < testSampleCount; ++j)
 		{
-			if (rtrees->predict(test_data.row(j)) == test_labels.at<int>(j))
+			if (rtrees->predict(test_data.row(j)) == test_labels.at<float>(j))
 			{
 				++goodGuessCount;
 			}
@@ -314,6 +334,11 @@ void q3DMASCPlugin::doClassifyAction()
 
 		m_app->dispToConsole(QString("Correct = %1 / %2 --> Accuracy = %3").arg(goodGuessCount).arg(testSampleCount).arg(acc), ccMainAppInterface::STD_CONSOLE_MESSAGE);
 	}
+
+	//save the classifier
+	QString outputFilename = QCoreApplication::applicationDirPath() + "/classifier.yaml";
+	ccLog::Print("Classifier file saved to: " + outputFilename);
+	rtrees->save(outputFilename.toStdString());
 
 }
 

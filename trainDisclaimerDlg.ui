@@ -32,7 +32,7 @@
         <string/>
        </property>
        <property name="pixmap">
-        <pixmap resource="q3DMASC.qrc">:/CC/plugin/q3DMASC/Logo_cnrs_eub_eec.png</pixmap>
+        <pixmap resource="q3DMASC.qrc">:/CC/plugin/q3DMASCPlugin/Logo_cnrs_eub_eec.png</pixmap>
        </property>
        <property name="scaledContents">
         <bool>true</bool>
