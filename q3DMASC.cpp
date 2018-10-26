@@ -19,23 +19,16 @@
 
 //local
 #include "q3DMASCDisclaimerDialog.h"
+#include "q3DMASCClassifier.h"
 #include "Features.h"
 
 //qCC_db
 #include <ccPointCloud.h>
 
-//qCC_io
-#include <LASFields.h>
-
 //Qt
 #include <QtGui>
 #include <QtCore>
 #include <QApplication>
-#include <QMessageBox>
-#include <QStringList>
-
-//OpenCV
-#include <opencv2/ml.hpp>
 
 q3DMASCPlugin::q3DMASCPlugin(QObject* parent/*=0*/)
 	: QObject(parent)
@@ -100,249 +93,8 @@ void q3DMASCPlugin::doClassifyAction()
 		return;
 	}
 
-	if (m_selectedEntities.empty() || !m_selectedEntities.front()->isA(CC_TYPES::POINT_CLOUD))
-	{
-		m_app->dispToConsole("Select one and only one point cloud!", ccMainAppInterface::ERR_CONSOLE_MESSAGE);
-		return;
-	}
-
-	ccPointCloud* cloud = static_cast<ccPointCloud*>(m_selectedEntities.front());
-
-	//look for the classification field
-	int classifSFIdx = cloud->getScalarFieldIndexByName(LAS_FIELD_NAMES[LAS_CLASSIFICATION]); //LAS_FIELD_NAMES[LAS_CLASSIFICATION] = "Classification"
-	if (!classifSFIdx)
-	{
-		m_app->dispToConsole("Missing 'Classification' field", ccMainAppInterface::ERR_CONSOLE_MESSAGE);
-		return;
-	}
-	CCLib::ScalarField* classifSF = cloud->getScalarField(classifSFIdx);
-	if (!classifSF || classifSF->size() < cloud->size())
-	{
-		assert(false);
-		return;
-	}
-
-	RTParams params;
-	if (params.testDataRatio < 0 || params.testDataRatio > 0.99f)
-	{
-		m_app->dispToConsole("Invalid test data ratio", ccMainAppInterface::ERR_CONSOLE_MESSAGE);
-		return;
-	}
-
-	std::vector<Feature::Shared> features;
-	features.push_back(Feature::Shared(new PointFeature(cloud, PointFeature::Z, Feature::DimZ, "Z")));
-	features.push_back(Feature::Shared(new PointFeature(cloud, PointFeature::Intensity, Feature::ScalarField, "Intensity")));
-
-	int totalSampleCount = static_cast<int>(cloud->size());
-	int testSampleCount = static_cast<int>(floor(totalSampleCount * params.testDataRatio));
-	int sampleCount = totalSampleCount - testSampleCount;
-	int attributesPerSample = static_cast<int>(features.size());
-
-	m_app->dispToConsole(QString("[3DMASC] Training data: %1 samples with %2 feature(s) / %3 test samples").arg(sampleCount).arg(attributesPerSample).arg(testSampleCount), ccMainAppInterface::STD_CONSOLE_MESSAGE);
-
-	//choose the sample indexes
-	std::vector<bool> isSample;
-	{
-		try
-		{
-			isSample.resize(totalSampleCount, true);
-		}
-		catch (const std::bad_alloc&)
-		{
-			m_app->dispToConsole("Not enough memory", ccMainAppInterface::STD_CONSOLE_MESSAGE);
-			return;
-		}
-
-		int randomCount = 0;
-		int randIndex = 0;
-		while (randomCount < testSampleCount)
-		{
-			randIndex = ((randIndex + std::rand()) % totalSampleCount);
-			if (isSample[randIndex])
-			{
-				isSample[randIndex] = false;
-				++randomCount;
-			}
-		}
-	}
-
-	//NUMBER_OF_TRAINING_SAMPLES = number of points
-	//ATTRIBUTES_PER_SAMPLE = number of scalar fields
-	cv::Mat training_data, train_labels;
-	cv::Mat test_data, test_labels;
-	try
-	{
-		training_data.create(sampleCount, attributesPerSample, CV_32FC1);
-		train_labels.create(sampleCount, 1, CV_32FC1);
-
-		test_data.create(testSampleCount, attributesPerSample, CV_32FC1);
-		test_labels.create(testSampleCount, 1, CV_32FC1);
-	}
-	catch (const cv::Exception& cvex)
-	{
-		ccLog::Error(cvex.msg.c_str());
-		return;
-	}
-
-	//fill the classification labels vector
-	{
-		unsigned sampleIndex = 0;
-		unsigned testSampleIndex = 0;
-		for (unsigned i = 0; i < cloud->size(); ++i)
-		{
-			ScalarType pointClass = classifSF->getValue(i);
-			int iClass = static_cast<int>(pointClass);
-			if (iClass < 0 || iClass > 255)
-			{
-				m_app->dispToConsole("Classification values out of range (0-255)", ccMainAppInterface::ERR_CONSOLE_MESSAGE);
-				return;
-			}
-
-			if (isSample[i])
-			{
-				train_labels.at<float>(sampleIndex++) = static_cast<unsigned char>(iClass);
-			}
-			else
-			{
-				test_labels.at<float>(testSampleIndex++) = static_cast<unsigned char>(iClass);
-			}
-		}
-		assert(sampleIndex + testSampleIndex == totalSampleCount);
-	}
-
-
-	//fill the training data matrix
-	for (int fIndex = 0; fIndex < attributesPerSample; ++fIndex)
-	{
-		QScopedPointer<IScalarFieldWrapper> source(nullptr);
-
-		const Feature::Shared &f = features[fIndex];
-		switch (f->source)
-		{
-		case Feature::ScalarField:
-		{
-			int sfIdx = cloud->getScalarFieldIndexByName(qPrintable(f->sourceName));
-			if (sfIdx >= 0)
-			{
-				source.reset(new ScalarFieldWrapper(cloud->getScalarField(sfIdx)));
-			}
-			else
-			{
-				ccLog::Error(QString("Internal error: unknwon scalar field '%1'").arg(f->sourceName));
-				return;
-			}
-		}
-		break;
-
-		case Feature::DimX:
-			source.reset(new DimScalarFieldWrapper(cloud, DimScalarFieldWrapper::DimX));
-			break;
-		case Feature::DimY:
-			source.reset(new DimScalarFieldWrapper(cloud, DimScalarFieldWrapper::DimY));
-			break;
-		case Feature::DimZ:
-			source.reset(new DimScalarFieldWrapper(cloud, DimScalarFieldWrapper::DimZ));
-			break;
-
-		case Feature::Red:
-			source.reset(new ColorScalarFieldWrapper(cloud, ColorScalarFieldWrapper::Red));
-			break;
-		case Feature::Green:
-			source.reset(new ColorScalarFieldWrapper(cloud, ColorScalarFieldWrapper::Green));
-			break;
-		case Feature::Blue:
-			source.reset(new ColorScalarFieldWrapper(cloud, ColorScalarFieldWrapper::Blue));
-			break;
-		}
-
-		if (!source || !source->isValid())
-		{
-			assert(false);
-			ccLog::Error(QString("Internal error: invalid source '%1'").arg(f->sourceName));
-		}
-
-		unsigned sampleIndex = 0;
-		unsigned testSampleIndex = 0;
-		for (unsigned i = 0; i < cloud->size(); ++i)
-		{
-			double value = source->pointValue(i);
-			if (isSample[i])
-			{
-				assert(sampleIndex < sampleCount);
-				training_data.at<float>(sampleIndex++, fIndex) = static_cast<float>(value);
-			}
-			else
-			{
-				assert(testSampleIndex< testSampleCount);
-				test_data.at<float>(testSampleIndex++, fIndex) = static_cast<float>(value);
-			}
-		}
-		assert(sampleIndex + testSampleIndex == totalSampleCount);
-	}
-
-	cv::Ptr<cv::ml::RTrees> rtrees;
-	rtrees = cv::ml::RTrees::create();
-	rtrees->setMaxDepth(params.maxDepth);
-	rtrees->setMinSampleCount(params.minSampleCount);
-	rtrees->setCalculateVarImportance(params.calcVarImportance);
-	rtrees->setActiveVarCount(params.activeVarCount);
-	cv::TermCriteria terminationCriteria(cv::TermCriteria::MAX_ITER, params.maxTreeCount, std::numeric_limits<double>::epsilon());
-	rtrees->setTermCriteria(terminationCriteria);
-	
-	//rtrees->setRegressionAccuracy(0);
-	//rtrees->setUseSurrogates(false);
-	//rtrees->setMaxCategories(params.maxCategories); //not important?
-	//rtrees->setPriors(cv::Mat());
-	try
-	{
-		rtrees->train(training_data, cv::ml::ROW_SAMPLE, train_labels);
-	}
-	catch (const cv::Exception& cvex)
-	{
-		ccLog::Error(cvex.msg.c_str());
-		return;
-	}
-	catch (const std::exception& stdex)
-	{
-		ccLog::Error(stdex.what());
-		return;
-	}
-	catch (...)
-	{
-		ccLog::Error("Unknown error");
-		return;
-	}
-
-	if (!rtrees->isTrained())
-	{
-		//an error occurred?
-		return;
-	}
-
-	//estimate the efficiency of the classiier
-	{
-		int goodGuessCount = 0;
-		for (int j = 0; j < testSampleCount; ++j)
-		{
-			if (rtrees->predict(test_data.row(j)) == test_labels.at<float>(j))
-			{
-				++goodGuessCount;
-			}
-		}
-
-		float acc = static_cast<float>(goodGuessCount) / testSampleCount;
-
-		m_app->dispToConsole(QString("Correct = %1 / %2 --> Accuracy = %3").arg(goodGuessCount).arg(testSampleCount).arg(acc), ccMainAppInterface::STD_CONSOLE_MESSAGE);
-	}
-
-	//save the classifier
-	QString outputFilename = QCoreApplication::applicationDirPath() + "/classifier.yaml";
-	ccLog::Print("Classifier file saved to: " + outputFilename);
-	rtrees->save(outputFilename.toStdString());
-
+	//TODO
 }
-
-//OpenCV
 
 void q3DMASCPlugin::doTrainAction()
 {
@@ -360,6 +112,39 @@ void q3DMASCPlugin::doTrainAction()
 	//
 	//ccPointCloud* cloud1 = static_cast<ccPointCloud*>(m_selectedEntities[0]);
 	//ccPointCloud* cloud2 = static_cast<ccPointCloud*>(m_selectedEntities[1]);
+
+	if (m_selectedEntities.empty() || !m_selectedEntities.front()->isA(CC_TYPES::POINT_CLOUD))
+	{
+		m_app->dispToConsole("Select one and only one point cloud!", ccMainAppInterface::ERR_CONSOLE_MESSAGE);
+		return;
+	}
+
+	ccPointCloud* cloud = static_cast<ccPointCloud*>(m_selectedEntities.front());
+
+	masc::TrainParameters params;
+	if (params.testDataRatio < 0 || params.testDataRatio > 0.99f)
+	{
+		m_app->dispToConsole("Invalid test data ratio", ccMainAppInterface::ERR_CONSOLE_MESSAGE);
+		return;
+	}
+
+	Feature::Set features;
+	{
+		features.push_back(Feature::Shared(new PointFeature(cloud, PointFeature::Z, Feature::DimZ, "Z")));
+		features.push_back(Feature::Shared(new PointFeature(cloud, PointFeature::Intensity, Feature::ScalarField, "Intensity")));
+	}
+
+	masc::Classifier classifier;
+	QString errorMessage;
+	if (!classifier.train(params, features, errorMessage, m_app->getMainWindow()))
+	{
+		m_app->dispToConsole(errorMessage);
+		return;
+	}
+
+	//save the classifier
+	QString outputFilename = QCoreApplication::applicationDirPath() + "/classifier.yaml";
+	classifier.toFile(outputFilename, m_app->getMainWindow());
 }
 
 void q3DMASCPlugin::registerCommands(ccCommandLineInterface* cmd)
