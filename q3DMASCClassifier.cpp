@@ -328,7 +328,7 @@ bool Classifier::fromFile(QString filename, QWidget* parentWidget/*=nullptr*/)
 	//load the classifier
 	QProgressDialog pDlg(parentWidget);
 	pDlg.setRange(0, 0); //infinite loop
-	pDlg.setLabelText(QObject::tr("Saving classifier"));
+	pDlg.setLabelText(QObject::tr("Loading classifier"));
 	pDlg.show();
 	QCoreApplication::processEvents();
 

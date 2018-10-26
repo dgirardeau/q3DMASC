@@ -134,17 +134,31 @@ void q3DMASCPlugin::doTrainAction()
 		features.push_back(Feature::Shared(new PointFeature(cloud, PointFeature::Intensity, Feature::ScalarField, "Intensity")));
 	}
 
-	masc::Classifier classifier;
-	QString errorMessage;
-	if (!classifier.train(params, features, errorMessage, m_app->getMainWindow()))
-	{
-		m_app->dispToConsole(errorMessage);
-		return;
-	}
-
-	//save the classifier
 	QString outputFilename = QCoreApplication::applicationDirPath() + "/classifier.yaml";
-	classifier.toFile(outputFilename, m_app->getMainWindow());
+
+	masc::Classifier classifier;
+	if (QFile(outputFilename).exists())
+	{
+		if (!classifier.fromFile(outputFilename, m_app->getMainWindow()))
+		{
+			m_app->dispToConsole("Failed to load previous classifier file", ccMainAppInterface::ERR_CONSOLE_MESSAGE);
+			return;
+		}
+		m_app->dispToConsole("Previous classifier loaded", ccMainAppInterface::WRN_CONSOLE_MESSAGE);
+	}
+	else
+	{
+		QString errorMessage;
+		if (!classifier.train(params, features, errorMessage, m_app->getMainWindow()))
+		{
+			m_app->dispToConsole(errorMessage, ccMainAppInterface::ERR_CONSOLE_MESSAGE);
+			return;
+		}
+
+		//save the classifier
+		classifier.toFile(outputFilename, m_app->getMainWindow());
+		m_app->dispToConsole("Classifier succesfully created", ccMainAppInterface::WRN_CONSOLE_MESSAGE);
+	}
 }
 
 void q3DMASCPlugin::registerCommands(ccCommandLineInterface* cmd)
