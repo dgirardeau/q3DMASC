@@ -47,6 +47,9 @@ struct Feature
 	//! Returns the type (must be reimplemented by child struct)
 	virtual Type getType() = 0;
 
+	//! Returns the formatted description
+	virtual QString toString() const = 0;
+		
 	//! Sources of values for this feature
 	enum Source
 	{

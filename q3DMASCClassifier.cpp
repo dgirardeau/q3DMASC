@@ -42,20 +42,82 @@ bool Classifier::isValid() const
 	return (m_rtrees && m_rtrees->isTrained());
 }
 
-
-bool Classifier::train(const TrainParameters& params, const Feature::Set& features, QString& errorMessage, QWidget* parentWidget/*=nullptr*/)
+static QSharedPointer<IScalarFieldWrapper> GetSource(const Feature::Shared& f, ccPointCloud* cloud)
 {
+	QSharedPointer<IScalarFieldWrapper> source(nullptr);
+	if (!f)
+	{
+		assert(false);
+		ccLog::Warning(QObject::tr("Internal error: invalid feature (nullptr)"));
+	}
+
+	switch (f->source)
+	{
+	case Feature::ScalarField:
+	{
+		int sfIdx = cloud->getScalarFieldIndexByName(qPrintable(f->sourceName));
+		if (sfIdx >= 0)
+		{
+			source.reset(new ScalarFieldWrapper(cloud->getScalarField(sfIdx)));
+		}
+		else
+		{
+			ccLog::Warning(QObject::tr("Internal error: unknwon scalar field '%1'").arg(f->sourceName));
+		}
+	}
+	break;
+
+	case Feature::DimX:
+		source.reset(new DimScalarFieldWrapper(cloud, DimScalarFieldWrapper::DimX));
+		break;
+	case Feature::DimY:
+		source.reset(new DimScalarFieldWrapper(cloud, DimScalarFieldWrapper::DimY));
+		break;
+	case Feature::DimZ:
+		source.reset(new DimScalarFieldWrapper(cloud, DimScalarFieldWrapper::DimZ));
+		break;
+
+	case Feature::Red:
+		source.reset(new ColorScalarFieldWrapper(cloud, ColorScalarFieldWrapper::Red));
+		break;
+	case Feature::Green:
+		source.reset(new ColorScalarFieldWrapper(cloud, ColorScalarFieldWrapper::Green));
+		break;
+	case Feature::Blue:
+		source.reset(new ColorScalarFieldWrapper(cloud, ColorScalarFieldWrapper::Blue));
+		break;
+	}
+
+	return source;
+}
+
+bool Classifier::evaluate(const Feature::Set& features, CCLib::ReferenceCloud* testSubset, AccuracyMetrics& metrics, QString& errorMessage, QWidget* parentWidget/*=nullptr*/)
+{
+	metrics.sampleCount = metrics.goodGuess = 0;
+	metrics.ratio = 0.0f;
+
+	if (!m_rtrees || !m_rtrees->isTrained())
+	{
+		errorMessage = QObject::tr("Classifier hasn't been trained yet");
+		return false;
+	}
+
 	if (features.empty())
 	{
 		errorMessage = QObject::tr("Training method called without any feature?!");
 		return false;
 	}
-	if (!features.front() || !features.front()->cloud)
+	if (!testSubset)
 	{
-		errorMessage = QObject::tr("Invalid feature (no associated point cloud");
+		errorMessage = QObject::tr("No test subset provided");
 		return false;
 	}
-	ccPointCloud* cloud = features.front()->cloud;
+	ccPointCloud* cloud = dynamic_cast<ccPointCloud*>(testSubset->getAssociatedCloud());
+	if (!cloud)
+	{
+		errorMessage = QObject::tr("Invalid test subset (associated point cloud is not a ccPointCloud)");
+		return false;
+	}
 
 	//look for the classification field
 	int classifSFIdx = cloud->getScalarFieldIndexByName(LAS_FIELD_NAMES[LAS_CLASSIFICATION]); //LAS_FIELD_NAMES[LAS_CLASSIFICATION] = "Classification"
@@ -72,61 +134,123 @@ bool Classifier::train(const TrainParameters& params, const Feature::Set& featur
 		return false;
 	}
 
-	if (params.testDataRatio < 0 || params.testDataRatio > 0.99f)
+	int testSampleCount = static_cast<int>(testSubset->size());
+	int attributesPerSample = static_cast<int>(features.size());
+
+	ccLog::Print(QObject::tr("[3DMASC] Testing data: %1 samples with %2 feature(s)").arg(testSampleCount).arg(attributesPerSample));
+
+	//allocate the data matrix
+	cv::Mat test_data;
+	try
 	{
-		errorMessage = QObject::tr("Invalid parameter (test data ratio)");
+		test_data.create(testSampleCount, attributesPerSample, CV_32FC1);
+	}
+	catch (const cv::Exception& cvex)
+	{
+		errorMessage = cvex.msg.c_str();
 		return false;
 	}
 
-	//std::vector<Feature::Shared> features;
-	//features.push_back(Feature::Shared(new PointFeature(cloud, PointFeature::Z, Feature::DimZ, "Z")));
-	//features.push_back(Feature::Shared(new PointFeature(cloud, PointFeature::Intensity, Feature::ScalarField, "Intensity")));
-
-	int totalSampleCount = static_cast<int>(cloud->size());
-	int testSampleCount = static_cast<int>(floor(totalSampleCount * params.testDataRatio));
-	int sampleCount = totalSampleCount - testSampleCount;
-	int attributesPerSample = static_cast<int>(features.size());
-
-	ccLog::Print(QString("[3DMASC] Training data: %1 samples with %2 feature(s) / %3 test samples").arg(sampleCount).arg(attributesPerSample).arg(testSampleCount));
-
-	//randomly choose the sample indexes
-	std::vector<bool> isSample;
-	if (testSampleCount > 0)
+	//fill the data matrix
+	for (int fIndex = 0; fIndex < attributesPerSample; ++fIndex)
 	{
-		try
+		const Feature::Shared &f = features[fIndex];
+		if (!f)
 		{
-			isSample.resize(totalSampleCount, true);
-		}
-		catch (const std::bad_alloc&)
-		{
-			errorMessage = QObject::tr("Not enough memory");
+			assert(false);
 			return false;
 		}
 
-		int randomCount = 0;
-		int randIndex = 0;
-		while (randomCount < testSampleCount)
+		QSharedPointer<IScalarFieldWrapper> source = GetSource(f, cloud);
+		if (!source || !source->isValid())
 		{
-			randIndex = ((randIndex + std::rand()) % totalSampleCount);
-			if (isSample[randIndex])
-			{
-				isSample[randIndex] = false;
-				++randomCount;
-			}
+			assert(false);
+			errorMessage = QObject::tr("Internal error: invalid source '%1'").arg(f->sourceName);
+			return false;
+		}
+
+		for (unsigned i = 0; i < testSubset->size(); ++i)
+		{
+			unsigned pointIndex = testSubset->getPointGlobalIndex(i);
+			double value = source->pointValue(pointIndex);
+			test_data.at<float>(i, fIndex) = static_cast<float>(value);
 		}
 	}
 
-	//NUMBER_OF_TRAINING_SAMPLES = number of points
-	//ATTRIBUTES_PER_SAMPLE = number of scalar fields
+	//estimate the efficiency of the classiier
+	{
+		metrics.sampleCount = testSubset->size();
+		metrics.goodGuess = 0;
+
+		for (unsigned i = 0; i < testSubset->size(); ++i)
+		{
+			unsigned pointIndex = testSubset->getPointGlobalIndex(i);
+			ScalarType pointClass = classifSF->getValue(pointIndex);
+			int iClass = static_cast<int>(pointClass);
+			//if (iClass < 0 || iClass > 255)
+			//{
+			//	errorMessage = QObject::tr("Classification values out of range (0-255)");
+			//	return false;
+			//}
+
+			float predictedClass = m_rtrees->predict(test_data.row(i));
+			if (static_cast<int>(predictedClass) == iClass)
+			{
+				++metrics.goodGuess;
+			}
+		}
+
+		metrics.ratio = static_cast<float>(metrics.goodGuess) / metrics.sampleCount;
+	}
+
+	return true;
+}
+
+bool Classifier::train(const RandomTreesParams& params, const Feature::Set& features, QString& errorMessage, CCLib::ReferenceCloud* trainSubset/*=nullptr*/, QWidget* parentWidget/*=nullptr*/)
+{
+	if (features.empty())
+	{
+		errorMessage = QObject::tr("Training method called without any feature?!");
+		return false;
+	}
+	if (!features.front() || !features.front()->cloud)
+	{
+		errorMessage = QObject::tr("Invalid feature (no associated point cloud)");
+		return false;
+	}
+	ccPointCloud* cloud = features.front()->cloud;
+
+	if (trainSubset && trainSubset->getAssociatedCloud() != cloud)
+	{
+		errorMessage = QObject::tr("Invalid train subset (associated point cloud is different)");
+		return false;
+	}
+
+	//look for the classification field
+	int classifSFIdx = cloud->getScalarFieldIndexByName(LAS_FIELD_NAMES[LAS_CLASSIFICATION]); //LAS_FIELD_NAMES[LAS_CLASSIFICATION] = "Classification"
+	if (!classifSFIdx)
+	{
+		errorMessage = QObject::tr("Missing 'Classification' field on input cloud");
+		return false;
+	}
+	CCLib::ScalarField* classifSF = cloud->getScalarField(classifSFIdx);
+	if (!classifSF || classifSF->size() < cloud->size())
+	{
+		assert(false);
+		errorMessage = QObject::tr("Invalid 'Classification' field on input cloud");
+		return false;
+	}
+
+	int sampleCount = static_cast<int>(trainSubset ? trainSubset->size() : cloud->size());
+	int attributesPerSample = static_cast<int>(features.size());
+
+	ccLog::Print(QString("[3DMASC] Training data: %1 samples with %2 feature(s)").arg(sampleCount).arg(attributesPerSample));
+
 	cv::Mat training_data, train_labels;
-	cv::Mat test_data, test_labels;
 	try
 	{
 		training_data.create(sampleCount, attributesPerSample, CV_32FC1);
 		train_labels.create(sampleCount, 1, CV_32FC1);
-
-		test_data.create(testSampleCount, attributesPerSample, CV_32FC1);
-		test_labels.create(testSampleCount, 1, CV_32FC1);
 	}
 	catch (const cv::Exception& cvex)
 	{
@@ -136,75 +260,32 @@ bool Classifier::train(const TrainParameters& params, const Feature::Set& featur
 
 	//fill the classification labels vector
 	{
-		unsigned sampleIndex = 0;
-		unsigned testSampleIndex = 0;
-		for (unsigned i = 0; i < cloud->size(); ++i)
+		for (int i = 0; i < sampleCount; ++i)
 		{
-			ScalarType pointClass = classifSF->getValue(i);
+			int pointIndex = (trainSubset ? static_cast<int>(trainSubset->getPointGlobalIndex(i)) : i);
+			ScalarType pointClass = classifSF->getValue(pointIndex);
 			int iClass = static_cast<int>(pointClass);
-			if (iClass < 0 || iClass > 255)
-			{
-				errorMessage = QObject::tr("Classification values out of range (0-255)");
-				return false;
-			}
+			//if (iClass < 0 || iClass > 255)
+			//{
+			//	errorMessage = QObject::tr("Classification values out of range (0-255)");
+			//	return false;
+			//}
 
-			if (isSample[i])
-			{
-				train_labels.at<float>(sampleIndex++) = static_cast<unsigned char>(iClass);
-			}
-			else
-			{
-				test_labels.at<float>(testSampleIndex++) = static_cast<unsigned char>(iClass);
-			}
+			train_labels.at<float>(i) = static_cast<unsigned char>(iClass);
 		}
-		assert(sampleIndex + testSampleIndex == totalSampleCount);
 	}
-
 
 	//fill the training data matrix
 	for (int fIndex = 0; fIndex < attributesPerSample; ++fIndex)
 	{
-		QScopedPointer<IScalarFieldWrapper> source(nullptr);
-
 		const Feature::Shared &f = features[fIndex];
-		switch (f->source)
+		if (f->cloud != cloud)
 		{
-		case Feature::ScalarField:
-		{
-			int sfIdx = cloud->getScalarFieldIndexByName(qPrintable(f->sourceName));
-			if (sfIdx >= 0)
-			{
-				source.reset(new ScalarFieldWrapper(cloud->getScalarField(sfIdx)));
-			}
-			else
-			{
-				errorMessage = QObject::tr("Internal error: unknwon scalar field '%1'").arg(f->sourceName);
-				return false;
-			}
-		}
-		break;
-
-		case Feature::DimX:
-			source.reset(new DimScalarFieldWrapper(cloud, DimScalarFieldWrapper::DimX));
-			break;
-		case Feature::DimY:
-			source.reset(new DimScalarFieldWrapper(cloud, DimScalarFieldWrapper::DimY));
-			break;
-		case Feature::DimZ:
-			source.reset(new DimScalarFieldWrapper(cloud, DimScalarFieldWrapper::DimZ));
-			break;
-
-		case Feature::Red:
-			source.reset(new ColorScalarFieldWrapper(cloud, ColorScalarFieldWrapper::Red));
-			break;
-		case Feature::Green:
-			source.reset(new ColorScalarFieldWrapper(cloud, ColorScalarFieldWrapper::Green));
-			break;
-		case Feature::Blue:
-			source.reset(new ColorScalarFieldWrapper(cloud, ColorScalarFieldWrapper::Blue));
-			break;
+			errorMessage = QObject::tr("Invalid feature (%1): associated cloud is different than the others").arg(f->toString());
+			return false;
 		}
 
+		QSharedPointer<IScalarFieldWrapper> source = GetSource(f, cloud);
 		if (!source || !source->isValid())
 		{
 			assert(false);
@@ -212,23 +293,12 @@ bool Classifier::train(const TrainParameters& params, const Feature::Set& featur
 			return false;
 		}
 
-		unsigned sampleIndex = 0;
-		unsigned testSampleIndex = 0;
-		for (unsigned i = 0; i < cloud->size(); ++i)
+		for (int i = 0; i < sampleCount; ++i)
 		{
-			double value = source->pointValue(i);
-			if (isSample[i])
-			{
-				assert(sampleIndex < sampleCount);
-				training_data.at<float>(sampleIndex++, fIndex) = static_cast<float>(value);
-			}
-			else
-			{
-				assert(testSampleIndex< testSampleCount);
-				test_data.at<float>(testSampleIndex++, fIndex) = static_cast<float>(value);
-			}
+			int pointIndex = (trainSubset ? static_cast<int>(trainSubset->getPointGlobalIndex(i)) : i);
+			double value = source->pointValue(pointIndex);
+			training_data.at<float>(i, fIndex) = static_cast<float>(value);
 		}
-		assert(sampleIndex + testSampleIndex == totalSampleCount);
 	}
 
 	QProgressDialog pDlg(parentWidget);
@@ -238,11 +308,11 @@ bool Classifier::train(const TrainParameters& params, const Feature::Set& featur
 	QCoreApplication::processEvents();
 
 	m_rtrees = cv::ml::RTrees::create();
-	m_rtrees->setMaxDepth(params.rt.maxDepth);
-	m_rtrees->setMinSampleCount(params.rt.minSampleCount);
-	m_rtrees->setCalculateVarImportance(params.rt.calcVarImportance);
-	m_rtrees->setActiveVarCount(params.rt.activeVarCount);
-	cv::TermCriteria terminationCriteria(cv::TermCriteria::MAX_ITER, params.rt.maxTreeCount, std::numeric_limits<double>::epsilon());
+	m_rtrees->setMaxDepth(params.maxDepth);
+	m_rtrees->setMinSampleCount(params.minSampleCount);
+	m_rtrees->setCalculateVarImportance(params.calcVarImportance);
+	m_rtrees->setActiveVarCount(params.activeVarCount);
+	cv::TermCriteria terminationCriteria(cv::TermCriteria::MAX_ITER, params.maxTreeCount, std::numeric_limits<double>::epsilon());
 	m_rtrees->setTermCriteria(terminationCriteria);
 	
 	//rtrees->setRegressionAccuracy(0);
@@ -280,22 +350,6 @@ bool Classifier::train(const TrainParameters& params, const Feature::Set& featur
 		return false;
 	}
 
-	//estimate the efficiency of the classiier
-	{
-		int goodGuessCount = 0;
-		for (int j = 0; j < testSampleCount; ++j)
-		{
-			if (m_rtrees->predict(test_data.row(j)) == test_labels.at<float>(j))
-			{
-				++goodGuessCount;
-			}
-		}
-
-		float acc = static_cast<float>(goodGuessCount) / testSampleCount;
-		ccLog::Print(QString("Correct = %1 / %2 --> Accuracy = %3").arg(goodGuessCount).arg(testSampleCount).arg(acc));
-	}
-
-	//QString outputFilename = QCoreApplication::applicationDirPath() + "/classifier.yaml";
 	return true;
 }
 

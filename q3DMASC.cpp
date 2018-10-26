@@ -20,6 +20,7 @@
 //local
 #include "q3DMASCDisclaimerDialog.h"
 #include "q3DMASCClassifier.h"
+#include "q3DMASCTools.h"
 #include "Features.h"
 
 //qCC_db
@@ -136,6 +137,15 @@ void q3DMASCPlugin::doTrainAction()
 
 	QString outputFilename = QCoreApplication::applicationDirPath() + "/classifier.yaml";
 
+	//randomly select the training points
+	QScopedPointer<CCLib::ReferenceCloud> trainSubset(new CCLib::ReferenceCloud(cloud));
+	QScopedPointer<CCLib::ReferenceCloud> testSubset(new CCLib::ReferenceCloud(cloud));
+	if (!masc::Tools::RandomSubset(cloud, params.testDataRatio, trainSubset.data(), testSubset.data()))
+	{
+		m_app->dispToConsole("Not enough memory", ccMainAppInterface::ERR_CONSOLE_MESSAGE);
+		return;
+	}
+
 	masc::Classifier classifier;
 	if (QFile(outputFilename).exists())
 	{
@@ -149,7 +159,7 @@ void q3DMASCPlugin::doTrainAction()
 	else
 	{
 		QString errorMessage;
-		if (!classifier.train(params, features, errorMessage, m_app->getMainWindow()))
+		if (!classifier.train(params.rt, features, errorMessage, trainSubset.data(), m_app->getMainWindow()))
 		{
 			m_app->dispToConsole(errorMessage, ccMainAppInterface::ERR_CONSOLE_MESSAGE);
 			return;
@@ -159,6 +169,17 @@ void q3DMASCPlugin::doTrainAction()
 		classifier.toFile(outputFilename, m_app->getMainWindow());
 		m_app->dispToConsole("Classifier succesfully created", ccMainAppInterface::WRN_CONSOLE_MESSAGE);
 	}
+
+	masc::Classifier::AccuracyMetrics metrics;
+	QString errorMessage;
+	if (!classifier.evaluate(features, testSubset.data(), metrics, errorMessage, m_app->getMainWindow()))
+	{
+		m_app->dispToConsole(errorMessage, ccMainAppInterface::ERR_CONSOLE_MESSAGE);
+		return;
+	}
+
+	m_app->dispToConsole(QString("Correct = %1 / %2 --> accuracy = %3").arg(metrics.goodGuess).arg(metrics.sampleCount).arg(metrics.ratio), ccMainAppInterface::STD_CONSOLE_MESSAGE);
+
 }
 
 void q3DMASCPlugin::registerCommands(ccCommandLineInterface* cmd)

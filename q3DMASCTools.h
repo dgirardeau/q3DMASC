@@ -17,57 +17,21 @@
 //#                                                                        #
 //##########################################################################
 
-//Local
-#include "Parameters.h"
-#include "FeaturesInterface.h"
-
-//Qt
-#include <QString>
+//qCC_db
+#include <ccPointCloud.h>
 
 //CCLib
 #include <ReferenceCloud.h>
-
-//OpenCV
-#include <opencv2/ml.hpp>
 
 class QWidget;
 
 //! 3DMASC classifier
 namespace masc
 {
-	class Classifier
+	class Tools
 	{
 	public:
-
-		//! Default constructor
-		Classifier();
-
-		//! Train the classifier
-		bool train(const RandomTreesParams& params, const Feature::Set& features, QString& errorMessage, CCLib::ReferenceCloud* trainSubset = nullptr, QWidget* parentWidget = nullptr);
-
-		//! Classifier accuracy metrics
-		struct AccuracyMetrics
-		{
-			unsigned sampleCount = 0;
-			unsigned goodGuess = 0;
-			float ratio = 0.0f;
-		};
-
-		//! Evaluates the classifier
-		bool evaluate(const Feature::Set& features, CCLib::ReferenceCloud* testSubset, AccuracyMetrics& metrics, QString& errorMessage, QWidget* parentWidget = nullptr);
-
-		//! Returns whether the classifier is valid or not
-		bool isValid() const;
-
-		//! Saves the classifier to file
-		bool toFile(QString filename, QWidget* parentWidget = nullptr) const;
-		//! Loads the classifier from file
-		bool fromFile(QString filename, QWidget* parentWidget = nullptr);
-
-	protected:
-
-		//! Random trees (OpenCV)
-		cv::Ptr<cv::ml::RTrees> m_rtrees;
+		static bool RandomSubset(ccPointCloud* cloud, float ratio, CCLib::ReferenceCloud* inRatioSubset, CCLib::ReferenceCloud* outRatioSubset);
 	};
 
 }; //namespace masc

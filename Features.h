@@ -140,7 +140,7 @@ public:	//methods
 	{}
 
 	//! Returns the descriptor for this particular feature
-	QString toString() const
+	virtual QString toString() const override
 	{
 		//default keyword otherwise
 		QString prefix = ToString(type);
@@ -309,7 +309,7 @@ public: //methods
 	{}
 
 	//! Returns the descriptor for this particular feature
-	QString toString() const
+	virtual QString toString() const override
 	{
 		//use the default keyword + the scale
 		return ToString(type) + "_SC" + QString::number(scale);
@@ -405,7 +405,7 @@ public: //methods
 	{}
 
 	//! Returns the descriptor for this particular feature
-	QString toString() const
+	virtual QString toString() const override
 	{
 		//use the default keyword + number of neighbors + the scale + the context class
 		return ToString(type) + QString::number(kNN) + "_SC" + QString::number(scale) + "CTX" + QString::number(ctxClassLabel);
@@ -481,7 +481,7 @@ public: //methods
 	{}
 
 	//! Returns the descriptor for this particular feature
-	QString toString() const
+	virtual QString toString() const override
 	{
 		//use the default keyword + "_SC" + the scale
 		return ToString(type) + "_SC" + QString::number(scale);
