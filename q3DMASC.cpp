@@ -179,7 +179,6 @@ void q3DMASCPlugin::doTrainAction()
 	}
 
 	m_app->dispToConsole(QString("Correct = %1 / %2 --> accuracy = %3").arg(metrics.goodGuess).arg(metrics.sampleCount).arg(metrics.ratio), ccMainAppInterface::STD_CONSOLE_MESSAGE);
-
 }
 
 void q3DMASCPlugin::registerCommands(ccCommandLineInterface* cmd)

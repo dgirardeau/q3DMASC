@@ -495,3 +495,32 @@ public: //methods
 	//! Scale (optional)
 	double scale;
 };
+
+struct Scales
+{
+	typedef QSharedPointer<Scales> Shared;
+	std::vector<double> values;
+}; 
+
+struct FeatureRule
+{
+	typedef std::vector<FeatureRule> Set;
+
+	enum Stat
+	{
+		NO_STAT, MEAN, STD, MIN, MAX
+	};
+	Stat stat = NO_STAT; //only considered if a scale is defined
+	
+	enum Operation
+	{
+		NO_OPERATION, MINUS, PLUS, DIVIDE, MULTIPLY
+	};
+	Operation op = NO_OPERATION; //only considered if 2 clouds are defined
+
+	Scales::Shared scales;
+	Feature::Type featureType = Feature::Type::Invalid;
+	Feature::Shared feature;
+	ccPointCloud* cloud1 = nullptr;
+	ccPointCloud* cloud2 = nullptr;
+};

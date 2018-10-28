@@ -17,6 +17,9 @@
 //#                                                                        #
 //##########################################################################
 
+//Local
+#include "Features.h"
+
 //qCC_db
 #include <ccPointCloud.h>
 
@@ -31,6 +34,9 @@ namespace masc
 	class Tools
 	{
 	public:
+
+		static bool LoadFile(QString filename, ccPointCloud* pc1, ccPointCloud* pc2, FeatureRule::Set& features);
+
 		static bool RandomSubset(ccPointCloud* cloud, float ratio, CCLib::ReferenceCloud* inRatioSubset, CCLib::ReferenceCloud* outRatioSubset);
 	};
 

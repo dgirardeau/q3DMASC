@@ -41,7 +41,8 @@ struct Feature
 		PointFeature,			/*!< Point features (scalar field, etc.) */
 		NeighborhoodFeature,	/*!< Neighborhood based features for a given scale */
 		ContextBasedFeature,	/*!< Contextual based features */
-		DualCloudFeature		/*!< Dual Cloud features: requires 2 point clouds */
+		DualCloudFeature,		/*!< Dual Cloud features: requires 2 point clouds */
+		Invalid					/*!< Invalid feature */
 	};
 
 	//! Returns the type (must be reimplemented by child struct)
