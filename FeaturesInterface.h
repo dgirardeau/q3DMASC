@@ -58,9 +58,10 @@ struct Feature
 	};
 
 	//! Default constructor
-	Feature(ccPointCloud* p_cloud, Source p_source, QString p_sourceName)
+	Feature(ccPointCloud* p_cloud = nullptr, double p_scale = std::numeric_limits<double>::quiet_NaN(), Source p_source = ScalarField, QString p_sourceName = QString())
 		: cloud(p_cloud)
 		, source(p_source)
+		, scale(p_scale)
 		, sourceName(p_sourceName)
 	{
 		assert(cloud);
@@ -68,8 +69,10 @@ struct Feature
 
 	//! Associated cloud
 	ccPointCloud* cloud;
+	//! Scale (diameter)
+	double scale;
 	//! Values source
 	Source source;
-	//! Feature source name (mandatory for scalar fields)
+	//! Feature source name (mandatory for scalar fields if the SF index is not set)
 	QString sourceName;
 };

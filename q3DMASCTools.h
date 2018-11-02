@@ -37,6 +37,8 @@ namespace masc
 
 		static bool LoadFile(QString filename, ccPointCloud* pc1, ccPointCloud* pc2, FeatureRule::Set& features);
 
+		static bool PrepareFeatures(const FeatureRule::Set& rules, Feature::Set& features, QString& error);
+
 		static bool RandomSubset(ccPointCloud* cloud, float ratio, CCLib::ReferenceCloud* inRatioSubset, CCLib::ReferenceCloud* outRatioSubset);
 	};
 

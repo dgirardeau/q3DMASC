@@ -55,6 +55,7 @@ static QSharedPointer<IScalarFieldWrapper> GetSource(const Feature::Shared& f, c
 	{
 	case Feature::ScalarField:
 	{
+		assert(!f->sourceName.isEmpty());
 		int sfIdx = cloud->getScalarFieldIndexByName(qPrintable(f->sourceName));
 		if (sfIdx >= 0)
 		{
@@ -63,6 +64,7 @@ static QSharedPointer<IScalarFieldWrapper> GetSource(const Feature::Shared& f, c
 		else
 		{
 			ccLog::Warning(QObject::tr("Internal error: unknwon scalar field '%1'").arg(f->sourceName));
+			return QSharedPointer<IScalarFieldWrapper>(nullptr);
 		}
 	}
 	break;

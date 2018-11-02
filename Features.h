@@ -36,6 +36,8 @@ public:	//PointFeatureType
 	{
 		Invalid = 0
 		, Intensity
+		, X
+		, Y
 		, Z
 		, NbRet
 		, RetNb
@@ -59,6 +61,10 @@ public:	//PointFeatureType
 			return "Invalid";
 		case Intensity:
 			return "INT";
+		case X:
+			return "X";
+		case Y:
+			return "Y";
 		case Z:
 			return "Z";
 		case NbRet:
@@ -92,11 +98,15 @@ public:	//PointFeatureType
 		return "Invalid";
 	}
 
-	static PointFeatureType FromString(QString token)
+	static inline PointFeatureType FromString(const QString& token) { return FromUpperString(token.toUpper()); }
+	static PointFeatureType FromUpperString(const QString& token)
 	{
-		token = token.toUpper();
 		if (token == "INT")
 			return Intensity;
+		else if (token == "X")
+			return X;
+		else if (token == "Y")
+			return Y;
 		else if (token == "Z")
 			return Z;
 		else if (token == "NBRET")
@@ -113,15 +123,15 @@ public:	//PointFeatureType
 			return B;
 		else if (token == "NIR")
 			return NIR;
-		else if (token == "DIPANG")
+		else if (token == "NORMDIPANG")
 			return DipAng;
-		else if (token == "DIPDIR")
+		else if (token == "NORMDIPDIR")
 			return DipDir;
 		else if (token == "M3C2")
 			return M3C2;
 		else if (token == "PCV")
 			return PCV;
-		else if (token == "SF#")
+		else if (token.startsWith("SF"))
 			return SF;
 
 		assert(false);
@@ -134,10 +144,43 @@ public:	//methods
 	virtual Type getType() override { return Type::PointFeature; }
 
 	//! Default constructor
-	PointFeature(ccPointCloud* p_cloud, PointFeatureType p_type, Source p_source, QString p_name)
-		: Feature(p_cloud, p_source, p_name)
+	PointFeature(PointFeatureType p_type, ccPointCloud* p_cloud = nullptr)
+		: Feature(p_cloud)
 		, type(p_type)
-	{}
+	{
+		//auomatically set the right source for specific features
+		switch (type)
+		{
+		case Z:
+			source = DimZ;
+			sourceName = "X";
+			break;
+		case Z:
+			source = DimZ;
+			sourceName = "Y";
+			break;
+		case Z:
+			source = DimZ;
+			sourceName = "Z";
+			break;
+		case R:
+			source = Red;
+			sourceName = "Red";
+			break;
+		case G:
+			source = Green;
+			sourceName = "Green";
+			break;
+		case B:
+			source = Blue;
+			sourceName = "Blue";
+			break;
+		default:
+			source = ScalarField;
+			//sourceName --> TBD later
+			break;
+		}
+	}
 
 	//! Returns the descriptor for this particular feature
 	virtual QString toString() const override
@@ -253,10 +296,9 @@ public: //NeighborhoodFeatureType
 		return "Invalid";
 	}
 
-	static NeighborhoodFeatureType FromString(QString token)
+	static inline NeighborhoodFeatureType FromString(const QString& token) { return FromUpperString(token.toUpper()); }
+	static NeighborhoodFeatureType FromUpperString(const QString& token)
 	{
-		token = token.toUpper();
-
 		if (token == "PCA1")
 			return PCA1;
 		else if (token == "PCA2")
@@ -302,11 +344,11 @@ public: //methods
 	virtual Type getType() override { return Type::NeighborhoodFeature; }
 
 	//! Default constructor
-	NeighborhoodFeature(ccPointCloud* p_cloud, NeighborhoodFeatureType p_type, Source p_source, QString p_name, double p_scale = std::numeric_limits<double>::quiet_NaN())
-		: Feature(p_cloud, p_source, p_name)
-		, scale(p_scale)
+	NeighborhoodFeature(NeighborhoodFeatureType p_type, ccPointCloud* p_cloud = nullptr)
+		: Feature(p_cloud)
 		, type(p_type)
-	{}
+	{
+	}
 
 	//! Returns the descriptor for this particular feature
 	virtual QString toString() const override
@@ -317,9 +359,6 @@ public: //methods
 
 public: //members
 
-	//! Neighborhood scale (diameter)
-	double scale;
-	
 	//! Neighborhood feature type
 	/** \warning different from the feature type
 	**/
@@ -330,8 +369,8 @@ public: //members
 struct TwoCloudsFeature : public Feature
 {
 	//! Default constructor
-	TwoCloudsFeature(ccPointCloud* p_cloud, ccPointCloud* p_otherCloud, Source p_source, QString p_name, double p_scale = std::numeric_limits<double>::quiet_NaN())
-		: Feature(p_cloud, p_source, p_name)
+	TwoCloudsFeature(ccPointCloud* p_cloud = nullptr, ccPointCloud* p_otherCloud = nullptr, double p_scale = std::numeric_limits<double>::quiet_NaN())
+		: Feature(p_cloud, p_scale)
 		, otherCloud(p_otherCloud)
 	{
 		assert(otherCloud);
@@ -370,10 +409,9 @@ public: //ContextBasedFeatureType
 		return "Invalid";
 	}
 
-	static ContextBasedFeatureType FromString(QString token)
+	static inline ContextBasedFeatureType FromString(const QString& token) { return FromUpperString(token.toUpper()); }
+	static ContextBasedFeatureType FromUpperString(const QString& token)
 	{
-		token = token.toUpper();
-
 		if (token.startsWith("DZ"))
 			return DZ;
 		else if (token.startsWith("DH"))
@@ -389,18 +427,15 @@ public: //methods
 	virtual Type getType() override { return Type::ContextBasedFeature; }
 
 	//! Default constructor
-	ContextBasedFeature(ccPointCloud* p_cloud,
-						ccPointCloud* p_otherCloud,
-						ContextBasedFeatureType p_type,
-						int p_kNN,
-						double p_scale,
-						int p_ctxClassLabel,
-						Source p_source,
-						QString p_name)
-		: TwoCloudsFeature(p_cloud, p_otherCloud, p_source, p_name)
+	ContextBasedFeature(ContextBasedFeatureType p_type,
+						ccPointCloud* p_cloud = nullptr,
+						ccPointCloud* p_otherCloud = nullptr,
+						int p_kNN = 0,
+						double p_scale = std::numeric_limits<double>::quiet_NaN(),
+						int p_ctxClassLabel = 0)
+		: TwoCloudsFeature(p_cloud, p_otherCloud, p_scale)
 		, type(p_type)
 		, kNN(p_kNN)
-		, scale(p_scale)
 		, ctxClassLabel(p_ctxClassLabel)
 	{}
 
@@ -418,8 +453,6 @@ public: //methods
 
 	//Number of neighbors
 	int kNN;
-	//! Scale (optional)
-	double scale;
 	//! Context class (label)
 	int ctxClassLabel;
 };
@@ -451,10 +484,9 @@ public: //DualCloudFeatureType
 		return "Invalid";
 	}
 
-	static DualCloudFeatureType FromString(QString token)
+	static inline DualCloudFeatureType FromString(const QString& token) { return FromUpperString(token.toUpper()); }
+	static DualCloudFeatureType FromUpperString(const QString& token)
 	{
-		token = token.toUpper();
-
 		if (token == "IDIFF")
 			return IDIFF;
 
@@ -468,16 +500,13 @@ public: //methods
 	virtual Type getType() override { return Type::DualCloudFeature; }
 
 	//! Default constructor
-	DualCloudFeature(	ccPointCloud* p_cloud,
-						ccPointCloud* p_otherCloud,
-						DualCloudFeatureType p_type,
-						double p_scale,
-						Source p_source,
-						QString p_name
-	)
-		: TwoCloudsFeature(p_cloud, p_otherCloud, p_source, p_name)
+	DualCloudFeature(	DualCloudFeatureType p_type,
+						ccPointCloud* p_cloud = nullptr,
+						ccPointCloud* p_otherCloud = nullptr,
+						double p_scale = std::numeric_limits<double>::quiet_NaN()
+					)
+		: TwoCloudsFeature(p_cloud, p_otherCloud, p_scale)
 		, type(p_type)
-		, scale(p_scale)
 	{}
 
 	//! Returns the descriptor for this particular feature
@@ -491,9 +520,6 @@ public: //methods
 	/** \warning different from the feature type
 	**/
 	DualCloudFeatureType type;
-
-	//! Scale (optional)
-	double scale;
 };
 
 struct Scales
@@ -504,23 +530,122 @@ struct Scales
 
 struct FeatureRule
 {
-	typedef std::vector<FeatureRule> Set;
+	typedef QSharedPointer<FeatureRule> Shared;
+	typedef std::vector<Shared> Set;
 
 	enum Stat
 	{
-		NO_STAT, MEAN, STD, MIN, MAX
+		NO_STAT,
+		MEAN,
+		MODE, //number with the highest frequency
+		STD,
+		RANGE,
+		SKEW //(SKEW = (MEAN - MODE)/STD)
 	};
 	Stat stat = NO_STAT; //only considered if a scale is defined
-	
+
+	static QString StatToString(Stat stat)
+	{
+		switch (stat)
+		{
+		case MEAN:
+			return "MEAN";
+		case MODE:
+			return "MODE";
+		case STD:
+			return "STD";
+		case RANGE:
+			return "RANGE";
+		case SKEW:
+			return "SKEW";
+		default:
+			break;
+		};
+		return QString();
+	}
+
 	enum Operation
 	{
 		NO_OPERATION, MINUS, PLUS, DIVIDE, MULTIPLY
 	};
 	Operation op = NO_OPERATION; //only considered if 2 clouds are defined
 
+	static QString OpToString(Operation op)
+	{
+		switch (op)
+		{
+		case MINUS:
+			return "MINUS";
+		case PLUS:
+			return "PLUS";
+		case DIVIDE:
+			return "DIVIDE";
+		case MULTIPLY:
+			return "MULTIPLY";
+		default:
+			break;
+		};
+		return QString();
+	}
+
 	Scales::Shared scales;
-	Feature::Type featureType = Feature::Type::Invalid;
 	Feature::Shared feature;
 	ccPointCloud* cloud1 = nullptr;
 	ccPointCloud* cloud2 = nullptr;
+
+	//! Source scalar field index (if the feature source is 'ScalarField')
+	int sourceSFIndex = -1;
+
+	//! Checks the rule validity
+	bool checkValidity(QString &error) const
+	{
+		int cloudCount = (cloud1 ? (cloud2 ? 2 : 1) : 0);
+
+		if (feature == nullptr) //feature object should have already been instantiated
+		{
+			error = "feature rule has no associated feature";
+			return false;
+		}
+		if (scales != nullptr && scales->values.empty())
+		{
+			error = "invalid scales definition";
+			return false;
+		}
+		if (stat != FeatureRule::NO_STAT)
+		{
+			if (feature->getType() != Feature::Type::PointFeature)
+			{
+				error = "stat. measures can only be defined on Point features";
+				return false;
+			}
+			if (!scales)
+			{
+				error = "stat. measures need at least one scale to be defined";
+				return false;
+			}
+		}
+		if (stat != FeatureRule::NO_OPERATION)
+		{
+			if (feature->getType() == Feature::Type::DualCloudFeature)
+			{
+				error = "math operation can't be defined on dual-cloud features";
+				return false;
+			}
+			if (cloudCount < 2)
+			{
+				error = "at least two clouds are required to apply math operations";
+				return false;
+			}
+		}
+		if (feature->getType() == Feature::Type::DualCloudFeature || feature->getType() == Feature::Type::ContextBasedFeature)
+		{
+			if (cloudCount < 2)
+			{
+				error = "at least two clouds are required to compute dual-cloud or context-based features";
+				return false;
+			}
+		}
+		
+		return true;
+	}
 };
