@@ -25,40 +25,43 @@
 #include <LASFields.h>
 //qCC_db
 #include <ccScalarField.h>
-
-//CCLib
-#include <GenericProgressCallback.h>
+#include <ccPointCloud.h>
 
 //Qt
 #include <QTextStream>
 #include <QFile>
+#include <QFileInfo>
+#include <QDir>
 
 //system
 #include <assert.h>
 
 using namespace masc;
 
-bool Tools::LoadFile(QString filename, ccPointCloud* pc1, ccPointCloud* pc2, FeatureRule::Set& features)
+bool Tools::LoadFile(	QString filename,
+						FeatureRule::Set& features,
+						std::vector<ccPointCloud*>& loadedClouds,
+						CorePoints& corePoints)
 {
-	QFile file(filename);
-	if (!file.exists())
+	QFileInfo fi(filename);
+	if (!fi.exists())
 	{
 		ccLog::Warning(QString("Can't find file '%1'").arg(filename));
 		return false;
 	}
+
+	QFile file(filename);
 	if (!file.open(QFile::Text | QFile::ReadOnly))
 	{
 		ccLog::Warning(QString("Can't open file '%1'").arg(filename));
 		return false;
 	}
 
-	Scales::Shared scales(new Scales);
 	assert(features.empty());
-
-	QMap<QString, QSharedPointer<ccPointCloud> > clouds;
+	Scales::Shared scales(new Scales);
+	QMap<QString, ccPointCloud* > clouds;
 
 	QTextStream stream(&file);
-	
 	for (int lineNumber = 0; ; ++lineNumber)
 	{
 		QString line = stream.readLine();
@@ -84,14 +87,14 @@ bool Tools::LoadFile(QString filename, ccPointCloud* pc1, ccPointCloud* pc2, Fea
 		if (upperLine.startsWith("CLOUD:")) //clouds
 		{
 			QString command = line.mid(6);
-			QStringList tokens = command.split(':');
+			QStringList tokens = command.split('=');
 			if (tokens.size() != 2)
 			{
 				ccLog::Warning("Malformed file: expecting 2 tokens after 'cloud:' on line #" + QString::number(lineNumber));
 				return false;
 			}
-			QString pcName = tokens[0];
-			QString pcFilename = tokens[1];
+			QString pcName = tokens[0].trimmed();
+			QString pcFilename = fi.absoluteDir().absoluteFilePath(tokens[1].trimmed());
 			//try to open the cloud
 			{
 				FileIOFilter::LoadParameters parameters;
@@ -100,18 +103,92 @@ bool Tools::LoadFile(QString filename, ccPointCloud* pc1, ccPointCloud* pc2, Fea
 				ccHObject* object = FileIOFilter::LoadFromFile(pcFilename, parameters, error);
 				if (error != CC_FERR_NO_ERROR || !object)
 				{
-					ccLog::Warning("Failed to open the file (see console)");
+					//error message already issued
 					if (object)
 						delete object;
 					return false;
 				}
-				if (!object->isA(CC_TYPES::POINT_CLOUD))
+				ccHObject::Container cloudsInFile;
+				object->filterChildren(cloudsInFile, false, CC_TYPES::POINT_CLOUD, true);
+				if (cloudsInFile.empty())
 				{
 					ccLog::Warning("File doesn't contain a single cloud");
 					delete object;
 					return false;
 				}
-				clouds.insert(pcName, QSharedPointer<ccPointCloud>(static_cast<ccPointCloud*>(object)));
+				else if (cloudsInFile.size() > 1)
+				{
+					ccLog::Warning("File contains more than one cloud, only the first one will be kept");
+				}
+				ccPointCloud* pc = static_cast<ccPointCloud*>(cloudsInFile.front());
+				for (size_t i = 1; i < cloudsInFile.size(); ++i)
+				{
+					delete cloudsInFile[i];
+				}
+				if (pc->getParent())
+					pc->getParent()->detachChild(pc);
+				pc->setName(pcName);
+				clouds.insert(pcName, pc);
+				loadedClouds.push_back(pc);
+			}
+		}
+		else if (upperLine.startsWith("CORE_POINTS:")) //core points
+		{
+			if (corePoints.origin)
+			{
+				ccLog::Warning("Malformed file: can't declare core points twice! (line #" + QString::number(lineNumber) + ")");
+				return false;
+			}
+			QString command = line.mid(12);
+			QStringList tokens = command.split('_');
+			if (tokens.empty())
+			{
+				ccLog::Warning("Malformed file: expecting tokens after 'core_points:' on line #" + QString::number(lineNumber));
+				return false;
+			}
+			QString pcName = tokens[0].trimmed();
+			if (!clouds.contains(pcName))
+			{
+				ccLog::Warning(QString("Malformed file: unknown cloud '%1' on line #%2 (make sure it is declared before the core points)").arg(pcName).arg(lineNumber));
+				return false;
+			}
+			corePoints.origin = clouds[pcName];
+
+			//should we sub-sample the origin cloud?
+			if (tokens.size() > 1)
+			{
+				if (tokens[1].toUpper() == "SS")
+				{
+					if (tokens.size() < 3)
+					{
+						ccLog::Warning("Malformed file: missing token after 'SS' on line #" + QString::number(lineNumber));
+						return false;
+					}
+					QString options = tokens[2];
+					if (options.startsWith('R'))
+					{
+						corePoints.selectionMethod = CorePoints::RANDOM;
+					}
+					else if (options.startsWith('S'))
+					{
+						corePoints.selectionMethod = CorePoints::SPATIAL;
+					}
+					else
+					{
+						ccLog::Warning("Malformed file: unknown option after 'SS' on line #" + QString::number(lineNumber));
+						return false;
+					}
+
+					//read the subsampling parameter (ignore the first character)
+					bool ok = false;
+					corePoints.selectionParam = options.mid(1).toDouble(&ok);
+					if (!ok)
+					{
+						ccLog::Warning("Malformed file: expecting a number after 'SS_X' on line #" + QString::number(lineNumber));
+						return false;
+					}
+				
+				} //end of subsampling options
 			}
 		}
 		else if (upperLine.startsWith("SCALES:")) //scales
@@ -131,14 +208,14 @@ bool Tools::LoadFile(QString filename, ccPointCloud* pc1, ccPointCloud* pc2, Fea
 					if (token.contains(':'))
 					{
 						//it's probably a range
-						QStringList subTokens = token.split(':');
+						QStringList subTokens = token.trimmed().split(':');
 						if (subTokens.size() != 3)
 						{
 							ccLog::Warning(QString("Malformed file: expecting 3 tokens for a range of scales (%1)").arg(token));
 							return false;
 						}
 						bool ok[3] = { true, true, true };
-						double start = subTokens[0].toDouble(ok);
+						double start = subTokens[0].trimmed().toDouble(ok);
 						double step = subTokens[1].toDouble(ok + 1);
 						double stop = subTokens[2].toDouble(ok + 2);
 						if (!ok[0] || !ok[1] || !ok[2])
@@ -151,7 +228,7 @@ bool Tools::LoadFile(QString filename, ccPointCloud* pc1, ccPointCloud* pc2, Fea
 							ccLog::Warning(QString("Malformed file: invalid range (%1) on line #%2").arg(token).arg(lineNumber));
 							return false;
 						}
-						for (double v = start; v <= stop + 1.0 - 6; v += step)
+						for (double v = start; v <= stop + 1.0e-6; v += step)
 						{
 							scales->values.push_back(v);
 						}
@@ -159,7 +236,7 @@ bool Tools::LoadFile(QString filename, ccPointCloud* pc1, ccPointCloud* pc2, Fea
 					else
 					{
 						bool ok = true;
-						double v = token.toDouble(&ok);
+						double v = token.trimmed().toDouble(&ok);
 						if (!ok)
 						{
 							ccLog::Warning(QString("Malformed file: invalid scale value (%1) on line #%2").arg(token).arg(lineNumber));
@@ -188,7 +265,7 @@ bool Tools::LoadFile(QString filename, ccPointCloud* pc1, ccPointCloud* pc2, Fea
 			FeatureRule::Shared rule(new FeatureRule);
 
 			//read the type
-			QString typeStr = tokens[0].toUpper();
+			QString typeStr = tokens[0].trimmed().toUpper();
 			{
 				for (int iteration = 0; iteration < 1; ++iteration) //fake loop for easy break
 				{
@@ -209,7 +286,7 @@ bool Tools::LoadFile(QString filename, ccPointCloud* pc1, ccPointCloud* pc2, Fea
 								ccLog::Warning(QString("Malformed file: expecting a valid integer value after 'SF' on line #%1").arg(lineNumber));
 								return false;
 							}
-							pointFeature->sourceSFIndex = sfIndex;
+							rule->sourceSFIndex = sfIndex;
 						}
 
 						rule->feature = pointFeature;
@@ -264,7 +341,7 @@ bool Tools::LoadFile(QString filename, ccPointCloud* pc1, ccPointCloud* pc2, Fea
 				else
 				{
 					//read the specific scale index
-					QString scaleStr = scaleStr.mid(2);
+					scaleStr = scaleStr.mid(2);
 					bool ok = true;
 					double scale = scaleStr.toDouble(&ok);
 					if (!ok)
@@ -284,7 +361,7 @@ bool Tools::LoadFile(QString filename, ccPointCloud* pc1, ccPointCloud* pc2, Fea
 			bool mathDefined = false;
 			for (int i = 2; i < tokens.size(); ++i)
 			{
-				QString token = tokens[i].toUpper();
+				QString token = tokens[i].trimmed().toUpper();
 
 				//is the token a 'stat' one?
 				if (!statDefined)
@@ -325,14 +402,15 @@ bool Tools::LoadFile(QString filename, ccPointCloud* pc1, ccPointCloud* pc2, Fea
 				if (cloudCount < 2)
 				{
 					bool cloudNameMatches = false;
-					for (QMap<QString, QSharedPointer<ccPointCloud> >::const_iterator it = clouds.begin(); it != clouds.end(); ++it)
+					for (QMap<QString, ccPointCloud* >::const_iterator it = clouds.begin(); it != clouds.end(); ++it)
 					{
-						if (it.key().toUpper() == token)
+						QString key = it.key().toUpper();
+						if (key == token)
 						{
 							if (cloudCount == 0)
-								rule->cloud1 = it.value().data();
+								rule->cloud1 = it.value();
 							else
-								rule->cloud2 = it.value().data();
+								rule->cloud2 = it.value();
 							++cloudCount;
 							cloudNameMatches = true;
 							break;
@@ -400,7 +478,7 @@ bool Tools::LoadFile(QString filename, ccPointCloud* pc1, ccPointCloud* pc2, Fea
 			assert(rule && rule->feature);
 
 			QString errorMessage;
-			bool ruleIsValid = rule->checkValidity(errorMessage);
+			bool ruleIsValid = rule->checkValidity(/*corePoints, */errorMessage);
 			if (!ruleIsValid)
 			{
 				ccLog::Warning("Malformed feature: " + errorMessage + QString("(line %1)").arg(lineNumber));
@@ -462,7 +540,7 @@ static const char* s_PCVSFName = "Illuminance (PCV)";
 static const char* s_normDipSFName = "Norm dip";
 static const char* s_normDipDirSFName = "Norm dip dir.";
 
-static CCLib::ScalarField* RetrieveOrComputeSF(PointFeature::PointFeatureType featureType, int sourceSFIndex, ccPointCloud* cloud, QString& error)
+static QSharedPointer<IScalarFieldWrapper> RetrieveField(PointFeature::PointFeatureType featureType, int sourceSFIndex, ccPointCloud* cloud, QString& error)
 {
 	QString sfName;
 	switch (featureType)
@@ -475,14 +553,14 @@ static CCLib::ScalarField* RetrieveOrComputeSF(PointFeature::PointFeatureType fe
 			error = "Cloud has no 'intensity' scalar field";
 			return nullptr;
 		}
-		return sf;
+		return QSharedPointer<IScalarFieldWrapper>(new ScalarFieldWrapper(sf));
 	}
 	case PointFeature::X:
+		return QSharedPointer<IScalarFieldWrapper>(new DimScalarFieldWrapper(cloud, DimScalarFieldWrapper::DimX));
 	case PointFeature::Y:
+		return QSharedPointer<IScalarFieldWrapper>(new DimScalarFieldWrapper(cloud, DimScalarFieldWrapper::DimY));
 	case PointFeature::Z:
-		//not a ScalarField source
-		error = "Internal error (source is not a scalar field)";
-		return nullptr;
+		return QSharedPointer<IScalarFieldWrapper>(new DimScalarFieldWrapper(cloud, DimScalarFieldWrapper::DimZ));
 	case PointFeature::NbRet:
 	{
 		CCLib::ScalarField* sf = RetrieveSF(cloud, LAS_FIELD_NAMES[LAS_NUMBER_OF_RETURNS], false);
@@ -491,7 +569,7 @@ static CCLib::ScalarField* RetrieveOrComputeSF(PointFeature::PointFeatureType fe
 			error = "Cloud has no 'number of returns' scalar field";
 			return nullptr;
 		}
-		return sf;
+		return QSharedPointer<IScalarFieldWrapper>(new ScalarFieldWrapper(sf));
 	}
 	case PointFeature::RetNb:
 	{
@@ -501,17 +579,11 @@ static CCLib::ScalarField* RetrieveOrComputeSF(PointFeature::PointFeatureType fe
 			error = "Cloud has no 'return number' scalar field";
 			return nullptr;
 		}
-		return sf;
+		return QSharedPointer<IScalarFieldWrapper>(new ScalarFieldWrapper(sf));
 	}
 	case PointFeature::EchoRat:
 	{
-		CCLib::ScalarField* _echoRatioSF = RetrieveSF(cloud, s_echoRatioSFName, true);
-		if (_echoRatioSF)
-		{
-			//SF was already computed?
-			return _echoRatioSF;
-		}
-		//otherwise we need to compute it
+		//retrieve the two scalar fields 'p/q'
 		CCLib::ScalarField* numberOfRetSF = RetrieveSF(cloud, LAS_FIELD_NAMES[LAS_NUMBER_OF_RETURNS], false);
 		if (!numberOfRetSF)
 		{
@@ -529,31 +601,14 @@ static CCLib::ScalarField* RetrieveOrComputeSF(PointFeature::PointFeatureType fe
 			error = "Internal error (inconsistent scalar fields)";
 			return nullptr;
 		}
-		ccScalarField* echoRatioSF = new ccScalarField(s_echoRatioSFName);
-		if (!echoRatioSF->reserveSafe(retNumberSF->size()))
-		{
-			error = "Not enough memory";
-			echoRatioSF->release();
-			return nullptr;
-		}
-
-		for (unsigned i = 0; i < cloud->size(); ++i)
-		{
-			ScalarType p = retNumberSF->getValue(i);
-			ScalarType q = numberOfRetSF->getValue(i);
-			ScalarType ratio = (std::abs(q) > std::numeric_limits<ScalarType>::epsilon() ? p / q : NAN_VALUE);
-			echoRatioSF->addElement(ratio);
-		}
-		echoRatioSF->computeMinAndMax();
-		cloud->addScalarField(echoRatioSF);
-		return echoRatioSF;
+		return QSharedPointer<IScalarFieldWrapper>(new ScalarFieldRatioWrapper(retNumberSF, numberOfRetSF, "EchoRat"));
 	}
 	case PointFeature::R:
+		return QSharedPointer<IScalarFieldWrapper>(new ColorScalarFieldWrapper(cloud, ColorScalarFieldWrapper::Red));
 	case PointFeature::G:
+		return QSharedPointer<IScalarFieldWrapper>(new ColorScalarFieldWrapper(cloud, ColorScalarFieldWrapper::Green));
 	case PointFeature::B:
-		//not a ScalarField source
-		error = "Internal error (source is not a scalar field)";
-		return nullptr;
+		return QSharedPointer<IScalarFieldWrapper>(new ColorScalarFieldWrapper(cloud, ColorScalarFieldWrapper::Blue));
 	case PointFeature::NIR:
 	{
 		CCLib::ScalarField* sf = RetrieveSF(cloud, s_NIRSFName, false);
@@ -562,46 +617,18 @@ static CCLib::ScalarField* RetrieveOrComputeSF(PointFeature::PointFeatureType fe
 			error = "Cloud has no 'NIR' scalar field";
 			return nullptr;
 		}
-		return sf;
+		return QSharedPointer<IScalarFieldWrapper>(new ScalarFieldWrapper(sf));
 	}
 	case PointFeature::DipAng:
 	case PointFeature::DipDir:
 	{
-		CCLib::ScalarField* _dipSF = RetrieveSF(cloud, (featureType == PointFeature::DipAng ? s_normDipSFName : s_normDipDirSFName), true);
-		if (_dipSF)
-		{
-			//SF was already computed?
-			return _dipSF;
-		}
-		//otherwise we need to compute it
-
-		static const char* s_normDipSFName = "Norm dip";
-		static const char* s_normDipDirSFName = "Norm dip dir.";
-		//we need normals to cumpute Dip and Dip Dir. angles!
+		//we need normals to compute the dip and dip direction!
 		if (!cloud->hasNormals())
 		{
 			error = "Cloud has no normals: can't compute dip or dip dir. angles";
 			return nullptr;
 		}
-
-		ccScalarField* dipSF = new ccScalarField(featureType == PointFeature::DipAng ? s_normDipSFName : s_normDipDirSFName);
-		if (!dipSF->reserveSafe(cloud->size()))
-		{
-			error = "Not enough memory";
-			dipSF->release();
-			return nullptr;
-		}
-
-		for (unsigned i = 0; i < cloud->size(); ++i)
-		{
-			const CCVector3& N = cloud->getPointNormal(i);
-			PointCoordinateType dip_deg, dipDir_deg;
-			ccNormalVectors::ConvertNormalToDipAndDipDir(N, dip_deg, dipDir_deg);
-			dipSF->addElement(static_cast<ScalarType>(featureType == PointFeature::DipAng ? dip_deg : dipDir_deg));
-		}
-		dipSF->computeMinAndMax();
-		cloud->addScalarField(dipSF);
-		return dipSF;
+		return QSharedPointer<IScalarFieldWrapper>(new NormDipAndDipDirFieldWrapper(cloud, featureType == PointFeature::DipAng ? NormDipAndDipDirFieldWrapper::Dip : NormDipAndDipDirFieldWrapper::DipDir));
 	}
 	case PointFeature::M3C2:
 	{
@@ -611,7 +638,7 @@ static CCLib::ScalarField* RetrieveOrComputeSF(PointFeature::PointFeatureType fe
 			error = "Cloud has no 'm3c2 distance' scalar field";
 			return nullptr;
 		}
-		return sf;
+		return QSharedPointer<IScalarFieldWrapper>(new ScalarFieldWrapper(sf));
 	}
 	case PointFeature::PCV:
 	{
@@ -621,7 +648,7 @@ static CCLib::ScalarField* RetrieveOrComputeSF(PointFeature::PointFeatureType fe
 			error = "Cloud has no 'PCV/Illuminance' scalar field";
 			return nullptr;
 		}
-		return sf;
+		return QSharedPointer<IScalarFieldWrapper>(new ScalarFieldWrapper(sf));
 	}
 	case PointFeature::SF:
 		if (sourceSFIndex < 0 || sourceSFIndex >= static_cast<int>(cloud->getNumberOfScalarFields()))
@@ -629,7 +656,7 @@ static CCLib::ScalarField* RetrieveOrComputeSF(PointFeature::PointFeatureType fe
 			error = QString("Can't retrieve the specified SF: invalid index (%1)").arg(sourceSFIndex);
 			return nullptr;
 		}
-		return cloud->getScalarField(sourceSFIndex);
+		return QSharedPointer<IScalarFieldWrapper>(new ScalarFieldWrapper(cloud->getScalarField(sourceSFIndex)));
 	default:
 		break;
 	}
@@ -638,71 +665,48 @@ static CCLib::ScalarField* RetrieveOrComputeSF(PointFeature::PointFeatureType fe
 	return nullptr;
 }
 
-static bool ExtractStatFromSF(	const CCLib::DgmOctree::octreeCell& cell,
-								void** additionalParameters,
-								CCLib::NormalizedProgress* nProgress = nullptr)
+static bool ExtractStatFromSF(	const CCVector3& queryPoint,
+								const CCLib::DgmOctree* octree,
+								unsigned char octreeLevel,
+								FeatureRule::Stat stat,
+								const IScalarFieldWrapper& inputField,
+								PointCoordinateType radius,
+								double& outputValue)
 {
-	//additional parameters
-	FeatureRule::Stat stat       = *reinterpret_cast<FeatureRule::Stat*>  (additionalParameters[0]);
-	CCLib::ScalarField* inputSF  =  reinterpret_cast<CCLib::ScalarField*> (additionalParameters[1]);
-	CCLib::ScalarField* resultSF =  reinterpret_cast<CCLib::ScalarField*> (additionalParameters[2]);
-	PointCoordinateType radius   = *reinterpret_cast<PointCoordinateType*>(additionalParameters[3]);
-	assert(inputSF && resultSF);
-
-	//number of points inside the current cell
-	unsigned n = cell.points->size();
+	if (!octree)
+	{
+		assert(false);
+		return false;
+	}
+	outputValue = std::numeric_limits<double>::quiet_NaN();
 
 	//spherical neighborhood extraction structure
 	CCLib::DgmOctree::NearestNeighboursSphericalSearchStruct nNSS;
-	nNSS.level = cell.level;
-	nNSS.prepare(radius, cell.parentOctree->getCellSize(nNSS.level));
-	cell.parentOctree->getCellPos(cell.truncatedCode, cell.level, nNSS.cellPos, true);
-	cell.parentOctree->computeCellCenter(nNSS.cellPos, cell.level, nNSS.cellCenter);
-
-	//we already know the points inside the current cell
 	{
-		try
-		{
-			nNSS.pointsInNeighbourhood.resize(n);
-		}
-		catch (.../*const std::bad_alloc&*/) //out of memory
-		{
-			return false;
-		}
-		CCLib::DgmOctree::NeighboursSet::iterator it = nNSS.pointsInNeighbourhood.begin();
-		for (unsigned j = 0; j < n; ++j, ++it)
-		{
-			it->point = cell.points->getPointPersistentPtr(j);
-			it->pointIndex = cell.points->getPointGlobalIndex(j);
-		}
-		nNSS.alreadyVisitedNeighbourhoodSize = 1;
+		nNSS.level = octreeLevel;
+		nNSS.queryPoint = queryPoint;
+		nNSS.prepare(radius, octree->getCellSize(nNSS.level));
+		octree->getTheCellPosWhichIncludesThePoint(&nNSS.queryPoint, nNSS.cellPos, nNSS.level);
+		octree->computeCellCenter(nNSS.cellPos, nNSS.level, nNSS.cellCenter);
 	}
 
-	for (unsigned i = 0; i < n; ++i)
+	//we extract the point's neighbors
+	unsigned kNN = octree->findNeighborsInASphereStartingFromCell(nNSS, radius, true);
+	if (kNN == 0)
 	{
-		//retrieve the points around the current cell point
-		cell.points->getPoint(i, nNSS.queryPoint);
+		return true;
+	}
 
-		//we extract the point's neighbors
-		//warning: there may be more points at the end of nNSS.pointsInNeighbourhood than the actual nearest neighbors (k)!
-		unsigned kNN = cell.parentOctree->findNeighborsInASphereStartingFromCell(nNSS, radius, true);
-		if (kNN == 0)
-		{
-			assert(false);
-			continue;
-		}
-
-		double sum = 0.0;
-		double sum2 = 0.0;
-		ScalarType minValue = 0;
-		ScalarType maxValue = 0;
-		bool withMode = (stat == FeatureRule::MODE || stat == FeatureRule::SKEW);
-		QMap<ScalarType, unsigned> modeCounter;
+	//specific case
+	if (stat == FeatureRule::RANGE)
+	{
+		double minValue = 0;
+		double maxValue = 0;
 
 		for (unsigned k = 0; k < kNN; ++k)
 		{
 			unsigned index = nNSS.pointsInNeighbourhood[k].pointIndex;
-			ScalarType v = inputSF->getValue(index);
+			double v = inputField.pointValue(index);
 
 			//track min and max values
 			if (k != 0)
@@ -716,96 +720,114 @@ static bool ExtractStatFromSF(	const CCLib::DgmOctree::octreeCell& cell,
 			{
 				minValue = maxValue = v;
 			}
+		}
 
+		outputValue = maxValue - minValue;
+		return true;
+	}
+
+	bool withSums = (stat == FeatureRule::MEAN || stat == FeatureRule::STD || stat == FeatureRule::SKEW);
+	bool withMode = (stat == FeatureRule::MODE || stat == FeatureRule::SKEW);
+	double sum = 0.0;
+	double sum2 = 0.0;
+	QMap<float, unsigned> modeCounter;
+
+	for (unsigned k = 0; k < kNN; ++k)
+	{
+		unsigned index = nNSS.pointsInNeighbourhood[k].pointIndex;
+		double v = inputField.pointValue(index);
+
+		if (withSums)
+		{
 			//compute average and std. dev.
 			sum += v;
-			sum2 += static_cast<double>(v) * v;
-
-			if (withMode)
-			{
-				if (modeCounter.contains(v))
-				{
-					++modeCounter[v];
-				}
-				else
-				{
-					modeCounter[v] = 1;
-				}
-			}
+			sum2 += v * v;
 		}
 
-		double mode = NAN_VALUE;
 		if (withMode)
 		{
-			int maxCounter = 0;
-			//look for the value with the highest frequency
-			for (QMap<ScalarType, unsigned>::const_iterator it = modeCounter.begin(); it != modeCounter.end(); ++it)
+			//store the number of occurences of each value
+			//DGM TODO: it would be better with a custom 'resolution' if the field is not an integer one
+			float vf = static_cast<float>(v);
+			if (modeCounter.contains(vf))
 			{
-				if (it.value() > maxCounter)
-				{
-					maxCounter = it.value();
-					mode = it.key();
-				}
+				++modeCounter[vf];
+			}
+			else
+			{
+				modeCounter[vf] = 1;
 			}
 		}
+	}
 
-		ScalarType outValue = NAN_VALUE;
-		switch (stat)
+	double mode = std::numeric_limits<double>::quiet_NaN();
+	if (withMode)
+	{
+		//look for the value with the highest frequency
+		unsigned maxCounter = 0;
+		for (QMap<ScalarType, unsigned>::const_iterator it = modeCounter.begin(); it != modeCounter.end(); ++it)
 		{
-			case FeatureRule::MEAN:
-				outValue = static_cast<ScalarType>(sum / kNN);
-				break;
-			case FeatureRule::MODE:
-				outValue = static_cast<ScalarType>(mode);
-				break;
-			case FeatureRule::STD:
-				outValue = static_cast<ScalarType>(sqrt(std::abs(sum2 * kNN - sum * sum)) / kNN);
-				break;
-			case FeatureRule::RANGE:
-				outValue = maxValue - minValue;
-				break;
-			case FeatureRule::SKEW:
+			if (it.value() > maxCounter)
 			{
-				double mean = sum / kNN;
-				double std = sqrt(std::abs(sum2 / kNN - mean * mean));
-				if (std > std::numeric_limits<float>::epsilon()) //arbitrary epsilon
-				{
-					outValue = static_cast<ScalarType>((mean - mode) / std);
-				}
-				break;
+				maxCounter = it.value();
+				mode = it.key();
 			}
-			default:
-				assert(false);
-				break;
 		}
-		resultSF->setValue(cell.points->getPointGlobalIndex(i), outValue);
+	}
 
-		if (nProgress && !nProgress->oneStep())
+	switch (stat)
+	{
+	case FeatureRule::MEAN:
+		outputValue = sum / kNN;
+		break;
+	case FeatureRule::MODE:
+		outputValue = mode;
+		break;
+	case FeatureRule::STD:
+		outputValue = sqrt(std::abs(sum2 * kNN - sum * sum)) / kNN;
+		break;
+	case FeatureRule::RANGE:
+		//we can't be here
+		assert(false);
+		return false;
+	case FeatureRule::SKEW:
+	{
+		double mean = sum / kNN;
+		double std = sqrt(std::abs(sum2 / kNN - mean * mean));
+		if (std > std::numeric_limits<float>::epsilon()) //arbitrary epsilon
 		{
-			return false;
+			outputValue = (mean - mode) / std;
 		}
+		break;
+	}
+	default:
+		ccLog::Warning("Unhandled STAT measure");
+		assert(false);
+		return false;
 	}
 
 	return true;
 }
 
-static CCLib::ScalarField* ExtractStat(	ccPointCloud* cloud,
-										CCLib::ScalarField* sf,
+static CCLib::ScalarField* ExtractStat(	const CorePoints& corePoints, 
+										ccPointCloud* sourceCloud,
+										const IScalarFieldWrapper* sourceField,
 										double scale,
 										FeatureRule::Stat stat,
+										const char* resultSFName,
 										CCLib::GenericProgressCallback* progressCb = nullptr)
 {
-	if (!cloud || !sf || scale <= 0.0 || stat == FeatureRule::NO_STAT)
+	if (!corePoints.cloud || !sourceCloud || !sourceField || scale <= 0.0 || stat == FeatureRule::NO_STAT || !resultSFName)
 	{
 		//invalid input parameters
 		assert(false);
 		return nullptr;
 	}
 
-	ccOctree::Shared octree = cloud->getOctree();
+	ccOctree::Shared octree = sourceCloud->getOctree();
 	if (!octree)
 	{
-		octree = cloud->computeOctree(progressCb);
+		octree = sourceCloud->computeOctree(progressCb);
 		if (!octree)
 		{
 			ccLog::Warning("Failed to compute octree");
@@ -814,16 +836,15 @@ static CCLib::ScalarField* ExtractStat(	ccPointCloud* cloud,
 	}
 
 	CCLib::ScalarField* resultSF = nullptr;
-	QString resultSFName = sf->getName() + QString("_") + FeatureRule::StatToString(stat) + "_" + QString::number(scale);
-	int sfIdx = cloud->getScalarFieldIndexByName(qPrintable(resultSFName));
+	int sfIdx = corePoints.cloud->getScalarFieldIndexByName(resultSFName);
 	if (sfIdx >= 0)
 	{
-		resultSF = cloud->getScalarField(sfIdx);
+		resultSF = corePoints.cloud->getScalarField(sfIdx);
 	}
 	else
 	{
-		resultSF = new ccScalarField(qPrintable(resultSFName));
-		if (!resultSF->reserveSafe(cloud->size()))
+		resultSF = new ccScalarField(resultSFName);
+		if (!resultSF->resizeSafe(corePoints.cloud->size()))
 		{
 			ccLog::Warning("Not enough memory");
 			resultSF->release();
@@ -835,135 +856,331 @@ static CCLib::ScalarField* ExtractStat(	ccPointCloud* cloud,
 	PointCoordinateType radius = static_cast<PointCoordinateType>(scale / 2);
 	unsigned char octreeLevel = octree->findBestLevelForAGivenNeighbourhoodSizeExtraction(radius); //scale is the diameter!
 
-	//additionnal parameters
-	void* additionalParameters[] = {	static_cast<void*>(&stat),
-										static_cast<void*>(&sf),
-										static_cast<void*>(&resultSF),
-										static_cast<void*>(&radius)
-	};
+	unsigned pointCount = corePoints.size();
+	progressCb->setInfo(qPrintable(QString("Computing field: %1\n(core points: %2)").arg(resultSFName).arg(pointCount)));
+	CCLib::NormalizedProgress nProgress(progressCb, pointCount);
 
-	if (octree->executeFunctionForAllCellsAtLevel(	octreeLevel,
-													ExtractStatFromSF,
-													additionalParameters,
-													true,
-													progressCb,
-													qPrintable(QString("Extract stat @ scale %1").arg(scale))) == 0)
+	for (unsigned i = 0; i < pointCount; ++i)
 	{
-		//something went wrong
-		ccLog::Warning("Process failed");
-		resultSF->release();
-		return nullptr;
+		double outputValue = 0;
+		if (!ExtractStatFromSF(	*corePoints.cloud->getPoint(i),
+								octree.data(),
+								octreeLevel,
+								stat,
+								*sourceField,
+								radius,
+								outputValue))
+		{
+			//unexpected error
+			resultSF->release();
+			return nullptr;
+		}
+
+		ScalarType v = static_cast<ScalarType>(outputValue);
+		resultSF->setValue(i, v);
+
+		if (progressCb && !nProgress.oneStep())
+		{
+			//process cancelled by the user
+			ccLog::Warning("Process cancelled");
+			resultSF->release();
+			return nullptr;
+		}
 	}
 
 	resultSF->computeMinAndMax();
-	cloud->addScalarField(static_cast<ccScalarField*>(resultSF));
+	int newSFIdx = corePoints.cloud->addScalarField(static_cast<ccScalarField*>(resultSF));
+	//update display
+	if (corePoints.cloud->getDisplay())
+	{
+		corePoints.cloud->setCurrentDisplayedScalarField(newSFIdx);
+		corePoints.cloud->getDisplay()->redraw();
+	}
 
 	return resultSF;
 }
 
-
-static bool PreparePointBasedFeature(FeatureRule& rule, QString& error)
+static bool PerformMathOp(CCLib::ScalarField* sf1, const CCLib::ScalarField* sf2, FeatureRule::Operation op)
 {
-	assert(rule.feature && rule.feature->getType() == Feature::Type::PointFeature);
+	if (!sf1 || !sf2 || sf1->size() != sf2->size() || op == FeatureRule::NO_OPERATION)
+	{
+		//invalid input parameters
+		return false;
+	}
 
-	PointFeature* feature = static_cast<PointFeature*>(rule.feature.data());
+	for (unsigned i = 0; i < sf1->size(); ++i)
+	{
+		ScalarType s1 = sf1->getValue(i);
+		ScalarType s2 = sf2->getValue(i);
+		ScalarType s = NAN_VALUE;
+		switch (op)
+		{
+		case FeatureRule::MINUS:
+			s = s1 - s2;
+			break;
+		case FeatureRule::PLUS:
+			s = s1 + s2;
+			break;
+		case FeatureRule::DIVIDE:
+			if (std::abs(s2) > std::numeric_limits<ScalarType>::epsilon())
+				s = s1 / s2;
+			break;
+		case FeatureRule::MULTIPLY:
+			s = s1 * s2;
+			break;
+		default:
+			assert(false);
+			break;
+		}
+		sf1->setValue(i, s);
+	}
+	sf1->computeMinAndMax();
 
-	std::vector<PointFeature::Shared> preparedFeatures;
+	return true;
+}
 
-	//look for the source field (and compute it if necessary)
-	CCLib::ScalarField* sf1 = RetrieveOrComputeSF(feature->type, rule.sourceSFIndex, rule.cloud1, error);
-	if (!sf1)
+static Feature::Shared PreparePointBasedFeature(const FeatureRule& rule,
+												double scale,
+												const CorePoints& corePoints,
+												QString& error,
+												CCLib::GenericProgressCallback* progressCb = nullptr)
+{
+	if (!rule.cloud1 || !rule.feature || rule.feature->getType() != Feature::Type::PointFeature || !corePoints.cloud)
+	{
+		//invalid input
+		assert(false);
+		return false;
+	}
+	PointFeature::PointFeatureType featureType = static_cast<PointFeature*>(rule.feature.data())->type;
+
+	//look for the source field
+	QSharedPointer<IScalarFieldWrapper> field1 = RetrieveField(featureType, rule.sourceSFIndex, rule.cloud1, error);
+	if (!field1)
 	{
 		//error should be up to date
 		return false;
 	}
 
-	CCLib::ScalarField* sf2 = nullptr;
-	if (rule.cloud2 && rule.op != FeatureRule::NO_OPERATION)
+	//shall we extract a statistical measure? (= scaled feature)
+	if (std::isfinite(scale))
 	{
-		sf2 = RetrieveOrComputeSF(feature->type, rule.sourceSFIndex, rule.cloud2, error);
-		if (!sf2)
+		if (rule.stat == FeatureRule::NO_STAT)
 		{
-			//error should be up to date
+			assert(false);
+			ccLog::Warning("Scaled features (SCx) must have an associated STAT measure");
 			return false;
 		}
-	}
 
-	//shall we extract a statistical measure?
-	if (rule.scales && rule.stat != FeatureRule::NO_STAT)
-	{
-		//duplicate the feature for each scale
-		for (double s : rule.scales->values)
+		QSharedPointer<IScalarFieldWrapper> field2;
+		if (rule.cloud2)
 		{
-			CCLib::ScalarField* statSF1 = ExtractStat(rule.cloud1, sf1, s, rule.stat);
-			if (!statSF1)
+			//no need to compute the second scalar field if no MATH operation has to be performed?!
+			if (rule.op != FeatureRule::NO_OPERATION)
 			{
-				ccLog::Warning(QString("Failed to extract stat. from sf '%1' @ scale %2").arg(sf1->getName()).arg(s));
-				return false;
-			}
-			PointFeature::Shared f1(new PointFeature(*feature));
-			f1->cloud = rule.cloud1;
-			f1->sourceName = statSF1->getName();
-			preparedFeatures.push_back(f1);
-
-			if (rule.cloud2 && sf2)
-			{
-				assert(rule.op != FeatureRule::NO_OPERATION);
-				CCLib::ScalarField* statSF2 = ExtractStat(rule.cloud2, sf2, s, rule.stat);
-				if (!statSF2)
+				field2 = RetrieveField(featureType, rule.sourceSFIndex, rule.cloud2, error);
+				if (!field2)
 				{
-					ccLog::Warning(QString("Failed to extract stat. from sf '%1' @ scale %2").arg(sf2->getName()).arg(s));
+					//error should be up to date
 					return false;
 				}
-				PointFeature::Shared f2(new PointFeature(*feature));
-				f2->cloud = rule.cloud2;
-				f2->sourceName = statSF2->getName();
-				preparedFeatures.push_back(f2);
+			}
+			else
+			{
+				assert(false);
+				ccLog::Warning("Feature has a second cloud associated but no MATH operation is defined");
 			}
 		}
-	}
-	else
-	{
-		//only one version of the main feature
-		feature->cloud = rule.cloud1;
-		feature->sourceName = sf1->getName();
-		preparedFeatures.push_back(rule.feature);
-	}
 
-	switch (feature->type)
-	{
-	case PointFeature::Intensity:
-	case PointFeature::X:
-	case PointFeature::Y:
-	case PointFeature::Z:
-	case PointFeature::NbRet:
-	case PointFeature::RetNb:
-	case PointFeature::EchoRat:
-	case PointFeature::R:
-	case PointFeature::G:
-	case PointFeature::B:
-	case PointFeature::NIR:
-	case PointFeature::DipAng:
-	case PointFeature::DipDir:
-	case PointFeature::M3C2:
-	case PointFeature::PCV:
-	case PointFeature::SF:
-	}
+		//build the final SF name
+		QString resultSFName = rule.cloud1->getName() + "." + field1->getName() + QString("_") + FeatureRule::StatToString(rule.stat);
+		if (field2 && rule.op != FeatureRule::NO_OPERATION)
+		{
+			//include the math operation as well if necessary!
+			resultSFName += "_" + FeatureRule::OpToString(rule.op) + "_" + rule.cloud2->getName() + "." + field2->getName() + QString("_") + FeatureRule::StatToString(rule.stat);
+		}
+		resultSFName += "@" + QString::number(scale);
 
+		CCLib::ScalarField* statSF1 = ExtractStat(corePoints, rule.cloud1, field1.data(), scale, rule.stat, qPrintable(resultSFName), progressCb);
+		if (!statSF1)
+		{
+			error = QString("Failed to extract stat. from field '%1' @ scale %2").arg(field1->getName()).arg(scale);
+			return false;
+		}
+
+		PointFeature::Shared feature(new PointFeature(*static_cast<PointFeature*>(rule.feature.data())));
+		feature->cloud = corePoints.cloud;
+		feature->sourceName = statSF1->getName();
+		feature->scale = scale;
+
+		if (rule.cloud2 && field2 && rule.op != FeatureRule::NO_OPERATION)
+		{
+			QString resultSFName2 = rule.cloud2->getName() + "." + field2->getName() + QString("_") + FeatureRule::StatToString(rule.stat) + "@" + QString::number(scale);
+			int sfIndex2 = corePoints.cloud->getScalarFieldIndexByName(qPrintable(resultSFName2));
+			CCLib::ScalarField* statSF2 = ExtractStat(corePoints, rule.cloud2, field2.data(), scale, rule.stat, qPrintable(resultSFName2), progressCb);
+			if (!statSF2)
+			{
+				error = QString("Failed to extract stat. from field '%1' @ scale %2").arg(field2->getName()).arg(scale);
+				return false;
+			}
+
+			//now perform the math operation
+			if (!PerformMathOp(statSF1, statSF2, rule.op))
+			{
+				error = "Failed to perform the MATH operation";
+				return false;
+			}
+
+			if (sfIndex2 < 0)
+			{
+				//release some memory
+				sfIndex2 = corePoints.cloud->getScalarFieldIndexByName(qPrintable(resultSFName2));
+				corePoints.cloud->deleteScalarField(sfIndex2);
+			}
+		}
+
+		return feature;
+	}
+	else //non scaled feature
+	{
+		if (rule.cloud1 != corePoints.cloud && rule.cloud1 != corePoints.origin)
+		{
+			assert(false);
+			error = "Scale-less features (SC0) can only be defined on the core points (origin) cloud";
+			return false;
+		}
+
+		if (rule.cloud2)
+		{
+			if (rule.op != FeatureRule::NO_OPERATION)
+			{
+				assert(false);
+				ccLog::Warning("MATH operations cannot be performed on scale-less features (SC0)");
+				return false;
+			}
+			else
+			{
+				assert(false);
+				ccLog::Warning("Feature has a second cloud associated but no MATH operation is defined");
+			}
+		}
+
+		//build the final SF name
+		QString resultSFName = /*rule.cloud1->getName() + "." + */field1->getName();
+		//if (rule.cloud2 && field2 && rule.op != FeatureRule::NO_OPERATION)
+		//{
+		//	resultSFName += QString("_") + FeatureRule::OpToString(rule.op) + "_" + field2->getName();
+		//}
+
+		//retrieve/create a SF to host the result
+		CCLib::ScalarField* resultSF = nullptr;
+		int sfIdx = corePoints.cloud->getScalarFieldIndexByName(qPrintable(resultSFName));
+		if (sfIdx >= 0)
+		{
+			//reuse the existing field
+			resultSF = corePoints.cloud->getScalarField(sfIdx);
+		}
+		else
+		{
+			//copy the SF1 field
+			resultSF = new ccScalarField(qPrintable(resultSFName));
+			if (!resultSF->resizeSafe(corePoints.cloud->size()))
+			{
+				error = "Not enough memory";
+				resultSF->release();
+				return false;
+			}
+
+			//copy the values
+			for (unsigned i = 0; i < corePoints.size(); ++i)
+			{
+				resultSF->setValue(i, field1->pointValue(corePoints.originIndex(i)));
+			}
+			resultSF->computeMinAndMax();
+			int newSFIdx = corePoints.cloud->addScalarField(static_cast<ccScalarField*>(resultSF));
+			//update display
+			if (corePoints.cloud->getDisplay())
+			{
+				corePoints.cloud->setCurrentDisplayedScalarField(newSFIdx);
+				corePoints.cloud->getDisplay()->redraw();
+			}
+		}
+
+		rule.feature->cloud = corePoints.cloud;
+		rule.feature->sourceName = resultSF->getName();
+		rule.feature->scale = scale;
+
+		//if (rule.cloud2 && field2 && rule.op != FeatureRule::NO_OPERATION)
+		//{
+		//	//now perform the math operation
+		//	if (!PerformMathOp(*field1, *field2, rule.op, resultSF))
+		//	{
+		//		error = "Failed to perform the MATH operation";
+		//		return false;
+		//	}
+
+		//	//sf2 is held by the second cloud for now
+		//	//sf2->release();
+		//	//sf2 = nullptr;
+		//}
+
+		return rule.feature;
+	}
 }
 
-bool Tools::PrepareFeatures(const FeatureRule::Set& rules, Feature::Set& features, QString& error)
+bool Tools::PrepareFeatures(const FeatureRule::Set& rules, const CorePoints& corePoints, Feature::Set& features, QString& error, CCLib::GenericProgressCallback* progressCb/*=nullptr*/)
 {
+	if (rules.empty() || !corePoints.origin)
+	{
+		//invalid input parameters
+		assert(false);
+		return false;
+	}
+	
 	for (const FeatureRule::Shared& rule : rules)
 	{
 		QString errorMessage("invalid pointer");
-		if (!rule || !rule->checkValidity(errorMessage))
+		if (!rule || !rule->checkValidity(/*corePoints, */errorMessage))
 		{
 			error = "Invalid rule/feature: " + error;
 			return false;
 		}
 
-		if ()
+		size_t scaleCount = (rule->scales ? rule->scales->values.size(): 1);
+		for (size_t i = 0; i < scaleCount; ++i)
+		{
+			//retrieve the right scale
+			double scale = std::numeric_limits<double>::quiet_NaN();
+			if (rule->scales)
+			{
+				scale = rule->scales->values[i];
+			}
+
+			Feature::Shared preparedFeature;
+
+			//we will prepare the different versions of the feature (one per scale, etc.)
+			//depending on the feature type
+			switch (rule->feature->getType())
+			{
+			case Feature::Type::PointFeature:
+			{
+				//Point feature
+				preparedFeature = PreparePointBasedFeature(*rule, scale, corePoints, error, progressCb);
+				break;
+			}
+			default:
+				assert(false);
+				break;
+			}
+
+			if (!preparedFeature)
+			{
+				//something failed (error should be up to date)
+				return false;
+			}
+			
+			//otherwise add the new feature
+			features.push_back(preparedFeature);
+		}
 	}
 
 	return true;

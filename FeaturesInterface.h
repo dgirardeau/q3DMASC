@@ -63,9 +63,7 @@ struct Feature
 		, source(p_source)
 		, scale(p_scale)
 		, sourceName(p_sourceName)
-	{
-		assert(cloud);
-	}
+	{}
 
 	//! Associated cloud
 	ccPointCloud* cloud;

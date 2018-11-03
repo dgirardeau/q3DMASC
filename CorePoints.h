@@ -17,30 +17,41 @@
 //#                                                                        #
 //##########################################################################
 
-//Local
-#include "Features.h"
-#include "CorePoints.h"
+//qCC_db
+#include <ccPointCloud.h>
 
 //CCLib
+#include <ReferenceCloud.h>
 #include <GenericProgressCallback.h>
 
-//qCC_db
-class ccPointCloud;
-
-class QWidget;
+//Qt
+#include <QSharedPointer>
 
 //! 3DMASC classifier
 namespace masc
 {
-	class Tools
+	//! Core points descriptor
+	struct CorePoints
 	{
-	public:
+		//origin cloud
+		ccPointCloud* origin = nullptr;
 
-		static bool LoadFile(QString filename, FeatureRule::Set& features, std::vector<ccPointCloud*>& loadedClouds, CorePoints& corePoints);
+		//core points cloud
+		ccPointCloud* cloud = nullptr;
 
-		static bool PrepareFeatures(const FeatureRule::Set& rules, const CorePoints& corePoints, Feature::Set& features, QString& error, CCLib::GenericProgressCallback* progressCb = nullptr);
+		//! Return the size
+		inline unsigned size() const { return (cloud ? cloud->size() : 0); }
+		//! Return the point index
+		inline unsigned originIndex(unsigned i) const { return selection ? selection->getPointGlobalIndex(i) : i; }
 
-		static bool RandomSubset(ccPointCloud* cloud, float ratio, CCLib::ReferenceCloud* inRatioSubset, CCLib::ReferenceCloud* outRatioSubset);
+		//selection (if any)
+		QSharedPointer<CCLib::ReferenceCloud> selection;
+		enum SubSamplingMethod { NONE, RANDOM, SPATIAL };
+		SubSamplingMethod selectionMethod = NONE;
+		double selectionParam = std::numeric_limits<double>::quiet_NaN();
+
+		//! Prepares the selection (must be called once)
+		bool prepare(CCLib::GenericProgressCallback* progressCb = nullptr);
 	};
 
 }; //namespace masc

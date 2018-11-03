@@ -19,6 +19,7 @@
 
 //Local
 #include "FeaturesInterface.h"
+#include "CorePoints.h"
 
 //qCC_db
 #include <ccPointCloud.h>
@@ -151,12 +152,12 @@ public:	//methods
 		//auomatically set the right source for specific features
 		switch (type)
 		{
-		case Z:
-			source = DimZ;
+		case X:
+			source = DimX;
 			sourceName = "X";
 			break;
-		case Z:
-			source = DimZ;
+		case Y:
+			source = DimY;
 			sourceName = "Y";
 			break;
 		case Z:
@@ -597,7 +598,7 @@ struct FeatureRule
 	int sourceSFIndex = -1;
 
 	//! Checks the rule validity
-	bool checkValidity(QString &error) const
+	bool checkValidity(/*const masc::CorePoints& corePoints, */QString &error) const
 	{
 		int cloudCount = (cloud1 ? (cloud2 ? 2 : 1) : 0);
 
@@ -606,29 +607,50 @@ struct FeatureRule
 			error = "feature rule has no associated feature";
 			return false;
 		}
-		if (scales != nullptr && scales->values.empty())
+		if (scales != nullptr)
 		{
-			error = "invalid scales definition";
-			return false;
+			if (scales->values.empty())
+			{
+				error = "invalid scales definition";
+				return false;
+			}
+			if (stat == FeatureRule::NO_STAT)
+			{
+				error = "scaled features need a STAT measure to be defined";
+				return false;
+			}
+		}
+		else //no scales
+		{
+			//if (corePoints.origin != cloud1)
+			//{
+			//	error = "feature with no scale must be computed/extracted from the core points origin cloud";
+			//	return false;
+			//}
 		}
 		if (stat != FeatureRule::NO_STAT)
 		{
 			if (feature->getType() != Feature::Type::PointFeature)
 			{
-				error = "stat. measures can only be defined on Point features";
+				error = "STAT measures can only be defined on Point features";
 				return false;
 			}
 			if (!scales)
 			{
-				error = "stat. measures need at least one scale to be defined";
+				error = "STAT measures need at least one scale to be defined";
 				return false;
 			}
 		}
-		if (stat != FeatureRule::NO_OPERATION)
+		if (op != FeatureRule::NO_OPERATION)
 		{
+			if (!scales)
+			{
+				error = "math operations can't be defined on scale-less features (SC0)";
+				return false;
+			}
 			if (feature->getType() == Feature::Type::DualCloudFeature)
 			{
-				error = "math operation can't be defined on dual-cloud features";
+				error = "math operations can't be defined on dual-cloud features";
 				return false;
 			}
 			if (cloudCount < 2)

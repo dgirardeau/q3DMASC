@@ -27,6 +27,8 @@ class IScalarFieldWrapper
 public:
 	virtual double pointValue(unsigned index) const = 0;
 	virtual bool isValid() const = 0;
+	virtual QString getName() const = 0;
+	virtual unsigned size() const = 0;
 };
 
 class ScalarFieldWrapper : public IScalarFieldWrapper
@@ -38,9 +40,62 @@ public:
 
 	virtual inline double pointValue(unsigned index) const override { return m_sf->at(index); }
 	virtual inline bool isValid() const { return m_sf != nullptr; }
+	virtual inline QString getName() const { return m_sf->getName(); }
+	virtual unsigned size() const { return m_sf->size(); }
 
 protected:
 	CCLib::ScalarField* m_sf;
+};
+
+class ScalarFieldRatioWrapper : public IScalarFieldWrapper
+{
+public:
+	ScalarFieldRatioWrapper(CCLib::ScalarField* sfp, CCLib::ScalarField* sfq, QString name)
+		: m_sfp(sfp)
+		, m_sfq(sfq)
+		, m_name(name)
+	{}
+
+	virtual inline double pointValue(unsigned index) const override
+	{
+		ScalarType p = m_sfp->getValue(index);
+		ScalarType q = m_sfq->getValue(index);
+		ScalarType ratio = (std::abs(q) > std::numeric_limits<ScalarType>::epsilon() ? p / q : NAN_VALUE);
+		return ratio;
+	}
+	virtual inline bool isValid() const { return (m_sfp != nullptr && m_sfq != nullptr); }
+	virtual inline QString getName() const { return m_name; }
+	virtual inline unsigned size() const { return std::min(m_sfp->size(), m_sfq->size()); }
+
+protected:
+	CCLib::ScalarField *m_sfp, *m_sfq;
+	QString m_name;
+};
+
+class NormDipAndDipDirFieldWrapper : public IScalarFieldWrapper
+{
+public:
+	enum Mode { Dip = 0, DipDir = 1 };
+
+	NormDipAndDipDirFieldWrapper(ccPointCloud* cloud, Mode mode)
+		: m_cloud(cloud)
+		, m_mode(mode)
+	{}
+
+	virtual double pointValue(unsigned index) const override
+	{
+		const CCVector3& N = m_cloud->getPointNormal(index);
+		PointCoordinateType dip_deg, dipDir_deg;
+		ccNormalVectors::ConvertNormalToDipAndDipDir(N, dip_deg, dipDir_deg);
+		return (m_mode == Dip ? dip_deg : dipDir_deg);
+	}
+	virtual inline bool isValid() const { return m_cloud != nullptr && m_cloud->hasNormals(); }
+	virtual inline QString getName() const { static const char s_names[][14] = { "Norm dip", "Norm dip dir." }; return s_names[m_mode]; }
+	virtual inline unsigned size() const { return m_cloud->size(); }
+
+protected:
+	ccPointCloud* m_cloud;
+	Mode m_mode;
 };
 
 class DimScalarFieldWrapper : public IScalarFieldWrapper
@@ -55,6 +110,8 @@ public:
 
 	virtual inline double pointValue(unsigned index) const override { return m_cloud->getPoint(index)->u[m_dim]; }
 	virtual inline bool isValid() const { return m_cloud != nullptr; }
+	virtual inline QString getName() const { static const char s_names[][5] = { "DimX", "DimY", "DimZ" }; return s_names[m_dim]; }
+	virtual inline unsigned size() const { return m_cloud->size(); }
 
 protected:
 	ccPointCloud* m_cloud;
@@ -73,6 +130,8 @@ public:
 
 	virtual inline double pointValue(unsigned index) const override { return m_cloud->getPointColor(index).rgb[m_band]; }
 	virtual inline bool isValid() const { return m_cloud != nullptr && m_cloud->hasColors(); }
+	virtual inline QString getName() const { static const char s_names[][6] = { "Red", "Green", "Blue" }; return s_names[m_band]; }
+	virtual inline unsigned size() const { return m_cloud->size(); }
 
 protected:
 	ccPointCloud* m_cloud;
