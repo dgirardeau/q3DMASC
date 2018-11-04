@@ -45,8 +45,9 @@ bool Tools::SaveClassifier(QString filename, const Feature::Set& features, const
 {
 	//first save the classifier data (same base filename but with the ymal extension)
 	QFileInfo fi(filename);
-	QString yamlFilename = fi.completeBaseName() + ".yaml";
-	if (!classifier.toFile(fi.absoluteFilePath() + "/" + yamlFilename, parent))
+	QString yamlFilename = fi.baseName() + ".yaml";
+	QString yamlAbsoluteFilename = fi.absoluteDir().absoluteFilePath(yamlFilename);
+	if (!classifier.toFile(yamlAbsoluteFilename, parent))
 	{
 		ccLog::Error("Failed to save the classifier data");
 		return false;
@@ -109,6 +110,7 @@ bool Tools::LoadClassifierCloudLabels(QString filename, QSet<QString>& labels)
 		}
 		++lineNumber;
 
+		line = line.toUpper();
 		if (line.startsWith("CLOUD:"))
 		{
 			QString command = line.mid(6).trimmed();
@@ -633,12 +635,13 @@ static bool LoadFileCommon(	const QString& filename,
 					return false;
 				}
 				QString yamlFilename = line.mid(11).trimmed();
-				if (!classifier->fromFile(fi.absolutePath() + "/" + yamlFilename, parent))
+				QString yamlAbsoluteFilename = fi.absoluteDir().absoluteFilePath(yamlFilename);
+				if (!classifier->fromFile(yamlAbsoluteFilename, parent))
 				{
-					ccLog::Warning("Failed to load the classifier file from " + yamlFilename);
+					ccLog::Warning("Failed to load the classifier file from " + yamlAbsoluteFilename);
 					return false;
 				}
-				ccLog::Print("[3DMASC] Classifier data loaded from " + yamlFilename);
+				ccLog::Print("[3DMASC] Classifier data loaded from " + yamlAbsoluteFilename);
 			}
 			else if (upperLine.startsWith("CLOUD:")) //clouds
 			{

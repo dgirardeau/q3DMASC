@@ -99,13 +99,6 @@ Classify3DMASCDialog::Classify3DMASCDialog(ccMainAppInterface* app)
 		}
 	}
 
-	cloud1RadioButton->setEnabled(false);
-	cloud2RadioButton->setEnabled(false);
-	cloud3RadioButton->setEnabled(false);
-	cloud1ComboBox->setEnabled(false);
-	cloud2ComboBox->setEnabled(false);
-	cloud3ComboBox->setEnabled(false);
-
 	onCloudChanged(0);
 }
 
@@ -118,28 +111,37 @@ void Classify3DMASCDialog::setCloudRoles(const QSet<QString>& roles)
 		{
 		case 0:
 			cloud1RadioButton->setText(role);
-
-			cloud1RadioButton->setEnabled(true);
-			cloud1ComboBox->setEnabled(false);
-
 			cloud1RadioButton->setChecked(true);
 			break;
 		case 1:
 			cloud2RadioButton->setText(role);
-
-			cloud2RadioButton->setEnabled(true);
-			cloud2ComboBox->setEnabled(false);
 			break;
 		case 2:
 			cloud3RadioButton->setText(role);
-
-			cloud3RadioButton->setEnabled(true);
-			cloud3ComboBox->setEnabled(false);
 			break;
 		default:
 			//this dialog can't handle more than 3 roles!
 			break;
 		}
+		++index;
+	}
+
+	if (index < 1)
+	{
+		cloud1RadioButton->setEnabled(false);
+		cloud1ComboBox->setEnabled(false);
+	}
+	if (index < 2)
+	{
+		cloud2RadioButton->setEnabled(false);
+		cloud2RadioButton->setVisible(false);
+		cloud2ComboBox->setVisible(false);
+	}
+	if (index < 3)
+	{
+		cloud3RadioButton->setEnabled(false);
+		cloud3RadioButton->setVisible(false);
+		cloud3ComboBox->setVisible(false);
 	}
 }
 

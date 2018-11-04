@@ -133,6 +133,7 @@ void q3DMASCPlugin::doClassifyAction()
 	//now show a dialog where the user will be able to set the cloud roles
 	Classify3DMASCDialog classifDlg(m_app);
 	classifDlg.setCloudRoles(cloudLabels);
+	classifDlg.classifierFileLineEdit->setText(inputFilename);
 	if (!classifDlg.exec())
 	{
 		//process cancelled by the user

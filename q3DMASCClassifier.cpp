@@ -132,12 +132,12 @@ bool Classifier::classify(const Feature::Set& features, ccPointCloud* cloud, QSt
 		}
 		classifSFIdx = cloud->addScalarField(_classificationSF);
 		classificationSF = _classificationSF;
-		cloud->setCurrentDisplayedScalarField(classifSFIdx);
 	}
 	else
 	{
 		classificationSF = cloud->getScalarField(classifSFIdx);
 	}
+	cloud->setCurrentDisplayedScalarField(classifSFIdx);
 	assert(classificationSF);
 	classificationSF->fill(0); //0 = no classification?
 
@@ -552,16 +552,32 @@ bool Classifier::toFile(QString filename, QWidget* parentWidget/*=nullptr*/) con
 bool Classifier::fromFile(QString filename, QWidget* parentWidget/*=nullptr*/)
 {
 	//load the classifier
-	QProgressDialog pDlg(parentWidget);
-	pDlg.setRange(0, 0); //infinite loop
-	pDlg.setLabelText(QObject::tr("Loading classifier"));
-	pDlg.show();
-	QCoreApplication::processEvents();
+	QScopedPointer<QProgressDialog> pDlg;
+	if (parentWidget)
+	{
+		pDlg.reset(new QProgressDialog(parentWidget));
+		pDlg->setRange(0, 0); //infinite loop
+		pDlg->setLabelText(QObject::tr("Loading classifier"));
+		pDlg->show();
+		QCoreApplication::processEvents();
+	}
+	
+	try
+	{
+		m_rtrees = cv::ml::RTrees::load(filename.toStdString());
+	}
+	catch (const cv::Exception& cvex)
+	{
+		ccLog::Warning(cvex.msg.c_str());
+		ccLog::Error("Failed to load file: " + filename);
+		return false;
+	}
 
-	m_rtrees = cv::ml::RTrees::load(filename.toStdString());
-
-	pDlg.close();
-	QCoreApplication::processEvents();
+	if (pDlg)
+	{
+		pDlg->close();
+		QCoreApplication::processEvents();
+	}
 
 	if (!m_rtrees->isTrained())
 	{
