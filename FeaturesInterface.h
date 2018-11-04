@@ -142,9 +142,15 @@ namespace masc
 		inline bool scaled() const { return std::isfinite(scale); }
 
 		//! Checks the feature definition validity
-		bool checkValidity(QString &error) const
+		virtual bool checkValidity(QString &error) const
 		{
-			int cloudCount = (cloud1 ? (cloud2 ? 2 : 1) : 0);
+			unsigned char cloudCount = (cloud1 ? (cloud2 ? 2 : 1) : 0);
+
+			if (cloudCount == 0)
+			{
+				error = "feature has no associated cloud";
+				return false;
+			}
 
 			if (scaled() && stat == NO_STAT)
 			{

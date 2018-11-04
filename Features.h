@@ -85,9 +85,9 @@ namespace masc
 			case NIR:
 				return "NIR";
 			case DipAng:
-				return "DipAng";
+				return "NormDip";
 			case DipDir:
-				return "DipDir";
+				return "NormDipDir";
 			case M3C2:
 				return "M3C2";
 			case PCV:
@@ -126,7 +126,7 @@ namespace masc
 				return B;
 			else if (token == "NIR")
 				return NIR;
-			else if (token == "NORMDIPANG")
+			else if (token == "NORMDIP")
 				return DipAng;
 			else if (token == "NORMDIPDIR")
 				return DipDir;
@@ -184,9 +184,11 @@ namespace masc
 		//! Returns the feature type
 		virtual Type getType() const override { return Type::PointFeature; }
 		//! Clones this feature
-		virtual Feature::Shared clone() const { return Feature::Shared(new PointFeature(*this)); }
+		virtual Feature::Shared clone() const override { return Feature::Shared(new PointFeature(*this)); }
 		//! Prepares the feature (compute the scalar field, etc.)
-		virtual bool prepare(const CorePoints& corePoints, QString& error, CCLib::GenericProgressCallback* progressCb = nullptr);
+		virtual bool prepare(const CorePoints& corePoints, QString& error, CCLib::GenericProgressCallback* progressCb = nullptr) override;
+		//! Checks the feature definition validity
+		virtual bool checkValidity(QString &error) const override;
 		//! Returns the descriptor for this particular feature
 		virtual QString toString() const override
 		{
@@ -347,9 +349,9 @@ namespace masc
 		//! Returns the feature type
 		virtual Type getType() const override { return Type::NeighborhoodFeature; }
 		//! Clones this feature
-		virtual Feature::Shared clone() const { return Feature::Shared(new NeighborhoodFeature(*this)); }
+		virtual Feature::Shared clone() const override { return Feature::Shared(new NeighborhoodFeature(*this)); }
 		//! Prepares the feature (compute the scalar field, etc.)
-		virtual bool prepare(const CorePoints& corePoints, QString& error, CCLib::GenericProgressCallback* progressCb = nullptr);
+		virtual bool prepare(const CorePoints& corePoints, QString& error, CCLib::GenericProgressCallback* progressCb = nullptr) override;
 		//! Returns the descriptor for this particular feature
 		virtual QString toString() const override
 		{
@@ -423,9 +425,9 @@ namespace masc
 		//! Returns the feature type
 		virtual Type getType() const override { return Type::ContextBasedFeature; }
 		//! Clones this feature
-		virtual Feature::Shared clone() const { return Feature::Shared(new ContextBasedFeature(*this)); }
+		virtual Feature::Shared clone() const override { return Feature::Shared(new ContextBasedFeature(*this)); }
 		//! Prepares the feature (compute the scalar field, etc.)
-		virtual bool prepare(const CorePoints& corePoints, QString& error, CCLib::GenericProgressCallback* progressCb = nullptr);
+		virtual bool prepare(const CorePoints& corePoints, QString& error, CCLib::GenericProgressCallback* progressCb = nullptr) override;
 		//! Returns the descriptor for this particular feature
 		virtual QString toString() const override
 		{
@@ -490,9 +492,9 @@ namespace masc
 		//! Returns the feature type
 		virtual Type getType() const override { return Type::DualCloudFeature; }
 		//! Clones this feature
-		virtual Feature::Shared clone() const { return Feature::Shared(new DualCloudFeature(*this)); }
+		virtual Feature::Shared clone() const override { return Feature::Shared(new DualCloudFeature(*this)); }
 		//! Prepares the feature (compute the scalar field, etc.)
-		virtual bool prepare(const CorePoints& corePoints, QString& error, CCLib::GenericProgressCallback* progressCb = nullptr);
+		virtual bool prepare(const CorePoints& corePoints, QString& error, CCLib::GenericProgressCallback* progressCb = nullptr) override;
 		//! Returns the descriptor for this particular feature
 		virtual QString toString() const override
 		{

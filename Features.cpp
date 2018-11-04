@@ -28,6 +28,9 @@
 #include <ccPointCloud.h>
 #include <ccScalarField.h>
 
+//CCLib
+#include <WeibullDistribution.h>
+
 //system
 #include <assert.h>
 
@@ -39,6 +42,122 @@ static const char* s_normDipSFName = "Norm dip";
 static const char* s_normDipDirSFName = "Norm dip dir.";
 
 using namespace masc;
+
+bool PointFeature::checkValidity(QString &error) const
+{
+	if (!Feature::checkValidity(error))
+	{
+		return false;
+	}
+
+	assert(cloud1);
+
+	switch (type)
+	{
+	case PointFeature::Intensity:
+	{
+		if (cloud1->getScalarFieldIndexByName(LAS_FIELD_NAMES[LAS_INTENSITY]) < 0)
+		{
+			error = QString("Cloud has no '%1' scalar field").arg(LAS_FIELD_NAMES[LAS_INTENSITY]);
+			return false;
+		}
+		return true;
+	}
+	case PointFeature::X:
+	case PointFeature::Y:
+	case PointFeature::Z:
+		return true;
+	case PointFeature::NbRet:
+	{
+		if (cloud1->getScalarFieldIndexByName(LAS_FIELD_NAMES[LAS_NUMBER_OF_RETURNS]) < 0)
+		{
+			error = QString("Cloud has no '%1' scalar field").arg(LAS_FIELD_NAMES[LAS_NUMBER_OF_RETURNS]);
+			return false;
+		}
+		return true;
+	}
+	case PointFeature::RetNb:
+	{
+		if (cloud1->getScalarFieldIndexByName(LAS_FIELD_NAMES[LAS_RETURN_NUMBER]) < 0)
+		{
+			error = QString("Cloud has no '%1' scalar field").arg(LAS_FIELD_NAMES[LAS_RETURN_NUMBER]);
+			return false;
+		}
+		return true;
+	}
+	case PointFeature::EchoRat:
+	{
+		if (cloud1->getScalarFieldIndexByName(LAS_FIELD_NAMES[LAS_NUMBER_OF_RETURNS]) < 0)
+		{
+			error = QString("Cloud has no '%1' scalar field").arg(LAS_FIELD_NAMES[LAS_NUMBER_OF_RETURNS]);
+			return false;
+		}
+		if (cloud1->getScalarFieldIndexByName(LAS_FIELD_NAMES[LAS_RETURN_NUMBER]) < 0)
+		{
+			error = QString("Cloud has no '%1' scalar field").arg(LAS_FIELD_NAMES[LAS_RETURN_NUMBER]);
+			return false;
+		}
+		return true;
+	}
+	case PointFeature::R:
+	case PointFeature::G:
+	case PointFeature::B:
+		if (!cloud1->hasColors())
+		{
+			error = "Cloud has no RGB color";
+			return false;
+		}
+		return true;
+	case PointFeature::NIR:
+	{
+		if (cloud1->getScalarFieldIndexByName(s_NIRSFName) < 0)
+		{
+			error = QString("Cloud has no '%1' scalar field").arg(s_NIRSFName);
+			return false;
+		}
+		return true;
+	}
+	case PointFeature::DipAng:
+	case PointFeature::DipDir:
+	{
+		if (!cloud1->hasNormals())
+		{
+			error = "Cloud has no normals";
+			return false;
+		}
+		return true;
+	}
+	case PointFeature::M3C2:
+	{
+		if (cloud1->getScalarFieldIndexByName(s_M3C2SFName) < 0)
+		{
+			error = QString("Cloud has no '%1' scalar field").arg(s_M3C2SFName);
+			return false;
+		}
+		return true;
+	}
+	case PointFeature::PCV:
+	{
+		if (cloud1->getScalarFieldIndexByName(s_PCVSFName) < 0)
+		{
+			error = QString("Cloud has no '%1' scalar field").arg(s_PCVSFName);
+			return false;
+		}
+		return true;
+	}
+	case PointFeature::SF:
+		if (sourceSFIndex >= static_cast<int>(cloud1->getNumberOfScalarFields()))
+		{
+			error = QString("Cloud has no scalar field #%1").arg(sourceSFIndex);
+			return false;
+		}
+		return true;
+	default:
+		break;
+	}
+
+	return true;
+}
 
 QSharedPointer<IScalarFieldWrapper> PointFeature::retrieveField(ccPointCloud* cloud, QString& error)
 {
@@ -183,7 +302,7 @@ static bool ExtractStatFromSF(	const CCVector3& queryPoint,
 		assert(false);
 		return false;
 	}
-	outputValue = std::numeric_limits<double>::quiet_NaN();
+	std::numeric_limits<double>::quiet_NaN();
 
 	//spherical neighborhood extraction structure
 	CCLib::DgmOctree::NearestNeighboursSphericalSearchStruct nNSS;
@@ -230,85 +349,90 @@ static bool ExtractStatFromSF(	const CCVector3& queryPoint,
 		outputValue = maxValue - minValue;
 		return true;
 	}
-
-	bool withSums = (stat == Feature::MEAN || stat == Feature::STD || stat == Feature::SKEW);
-	bool withMode = (stat == Feature::MODE || stat == Feature::SKEW);
-	double sum = 0.0;
-	double sum2 = 0.0;
-	QMap<float, unsigned> modeCounter;
-
-	for (unsigned k = 0; k < kNN; ++k)
+	else
 	{
-		unsigned index = nNSS.pointsInNeighbourhood[k].pointIndex;
-		double v = inputField.pointValue(index);
+		bool withSums = (stat == Feature::MEAN || stat == Feature::STD);
+		bool storeValues = (stat == Feature::MODE || stat == Feature::SKEW);
+		double sum = 0.0;
+		double sum2 = 0.0;
 
-		if (withSums)
+		CCLib::WeibullDistribution::ScalarContainer values;
+		if (storeValues)
 		{
-			//compute average and std. dev.
-			sum += v;
-			sum2 += v * v;
-		}
-
-		if (withMode)
-		{
-			//store the number of occurences of each value
-			//DGM TODO: it would be better with a custom 'resolution' if the field is not an integer one
-			float vf = static_cast<float>(v);
-			if (modeCounter.contains(vf))
+			try
 			{
-				++modeCounter[vf];
+				values.resize(kNN);
 			}
-			else
+			catch (const std::bad_alloc&)
 			{
-				modeCounter[vf] = 1;
+				ccLog::Warning("Not enough memory");
+				return false;
 			}
 		}
-	}
 
-	double mode = std::numeric_limits<double>::quiet_NaN();
-	if (withMode)
-	{
-		//look for the value with the highest frequency
-		unsigned maxCounter = 0;
-		for (QMap<ScalarType, unsigned>::const_iterator it = modeCounter.begin(); it != modeCounter.end(); ++it)
+		for (unsigned k = 0; k < kNN; ++k)
 		{
-			if (it.value() > maxCounter)
+			unsigned index = nNSS.pointsInNeighbourhood[k].pointIndex;
+			double v = inputField.pointValue(index);
+
+			if (withSums)
 			{
-				maxCounter = it.value();
-				mode = it.key();
+				//compute average and std. dev.
+				sum += v;
+				sum2 += v * v;
+			}
+
+			if (storeValues)
+			{
+				values[k] = static_cast<ScalarType>(v);
 			}
 		}
-	}
 
-	switch (stat)
-	{
-	case Feature::MEAN:
-		outputValue = sum / kNN;
+		switch (stat)
+		{
+		case Feature::MEAN:
+		{
+			outputValue = sum / kNN;
+		}
 		break;
-	case Feature::MODE:
-		outputValue = mode;
+
+		case Feature::MODE:
+		{
+			CCLib::WeibullDistribution w;
+			w.computeParameters(values);
+			outputValue = w.computeMode();
+		}
 		break;
-	case Feature::STD:
-		outputValue = sqrt(std::abs(sum2 * kNN - sum * sum)) / kNN;
+
+		case Feature::STD:
+		{
+			outputValue = sqrt(std::abs(sum2 * kNN - sum * sum)) / kNN;
+		}
 		break;
-	case Feature::RANGE:
-		//we can't be here
-		assert(false);
+
+		case Feature::RANGE:
+		{
+			//we can't be here
+			assert(false);
+		}
 		return false;
-	case Feature::SKEW:
-	{
-		double mean = sum / kNN;
-		double std = sqrt(std::abs(sum2 / kNN - mean * mean));
-		if (std > std::numeric_limits<float>::epsilon()) //arbitrary epsilon
+
+		case Feature::SKEW:
 		{
-			outputValue = (mean - mode) / std;
+			CCLib::WeibullDistribution w;
+			w.computeParameters(values);
+			outputValue = w.computeSkewness();
 		}
 		break;
-	}
-	default:
-		ccLog::Warning("Unhandled STAT measure");
-		assert(false);
+
+		default:
+		{
+			ccLog::Warning("Unhandled STAT measure");
+			assert(false);
+		}
 		return false;
+
+		}
 	}
 
 	return true;
