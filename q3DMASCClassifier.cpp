@@ -30,6 +30,7 @@
 //Qt
 #include <QCoreApplication>
 #include <QProgressDialog>
+#include <QtConcurrent>
 
 using namespace masc;
 
@@ -208,7 +209,12 @@ bool Classifier::evaluate(const Feature::Set& features, CCLib::ReferenceCloud* t
 	return true;
 }
 
-bool Classifier::train(const ccPointCloud* cloud, const RandomTreesParams& params, const Feature::Set& features, QString& errorMessage, CCLib::ReferenceCloud* trainSubset/*=nullptr*/, QWidget* parentWidget/*=nullptr*/)
+bool Classifier::train(	const ccPointCloud* cloud,
+						const RandomTreesParams& params,
+						const Feature::Set& features,
+						QString& errorMessage,
+						CCLib::ReferenceCloud* trainSubset/*=nullptr*/,
+						QWidget* parentWidget/*=nullptr*/)
 {
 	if (features.empty())
 	{
@@ -297,11 +303,14 @@ bool Classifier::train(const ccPointCloud* cloud, const RandomTreesParams& param
 		}
 	}
 
-	QProgressDialog pDlg(parentWidget);
-	pDlg.setRange(0, 0); //infinite loop
-	pDlg.setLabelText("Training classifier");
-	pDlg.show();
-	QCoreApplication::processEvents();
+	QScopedPointer<QProgressDialog> pDlg;
+	if (parentWidget)
+	{
+		pDlg.reset(new QProgressDialog(parentWidget));
+		pDlg->setRange(0, 0); //infinite loop
+		pDlg->setLabelText("Training classifier");
+		pDlg->show();
+	}
 
 	m_rtrees = cv::ml::RTrees::create();
 	m_rtrees->setMaxDepth(params.maxDepth);
@@ -315,31 +324,59 @@ bool Classifier::train(const ccPointCloud* cloud, const RandomTreesParams& param
 	//rtrees->setUseSurrogates(false);
 	//rtrees->setMaxCategories(params.maxCategories); //not important?
 	//rtrees->setPriors(cv::Mat());
-	try
+
+	QFuture<bool> future = QtConcurrent::run([&]()
 	{
-		m_rtrees->train(training_data, cv::ml::ROW_SAMPLE, train_labels);
-	}
-	catch (const cv::Exception& cvex)
+		// Code in this block will run in another thread
+		try
+		{
+			m_rtrees->train(training_data, cv::ml::ROW_SAMPLE, train_labels);
+		}
+		catch (const cv::Exception& cvex)
+		{
+			m_rtrees.release();
+			errorMessage = cvex.msg.c_str();
+			return false;
+		}
+		catch (const std::exception& stdex)
+		{
+			errorMessage = stdex.what();
+			return false;
+		}
+		catch (...)
+		{
+			errorMessage = QObject::tr("Unknown error");
+			return false;
+		}
+		return true;
+	});
+
+	while (!future.isFinished())
 	{
-		m_rtrees.release();
-		errorMessage = cvex.msg.c_str();
-		return false;
-	}
-	catch (const std::exception& stdex)
-	{
-		errorMessage = stdex.what();
-		return false;
-	}
-	catch (...)
-	{
-		errorMessage = QObject::tr("Unknown error");
-		return false;
+#if defined(CC_WINDOWS)
+		::Sleep(500);
+#else
+		usleep(500 * 1000);
+#endif
+		if (pDlg)
+		{
+			if (pDlg->wasCanceled())
+			{
+				future.cancel();
+				break;
+			}
+			pDlg->setValue(pDlg->value() + 1);
+		}
+		QCoreApplication::processEvents();
 	}
 
-	pDlg.hide();
-	QCoreApplication::processEvents();
+	if (pDlg)
+	{
+		pDlg->close();
+		QCoreApplication::processEvents();
+	}
 
-	if (!m_rtrees->isTrained())
+	if (future.isCanceled() || !future.result() || !m_rtrees->isTrained())
 	{
 		errorMessage = QObject::tr("Training failed for an unknown reason...");
 		m_rtrees.release();
