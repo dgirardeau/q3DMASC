@@ -124,7 +124,7 @@ void q3DMASCPlugin::doTrainAction()
 		return;
 	}
 
-	Feature::Set features;
+	masc::Feature::Set features;
 #if 0
 	if (m_selectedEntities.empty() || !m_selectedEntities.front()->isA(CC_TYPES::POINT_CLOUD))
 	{
@@ -158,10 +158,9 @@ void q3DMASCPlugin::doTrainAction()
 		settings.endGroup();
 	}
 
-	FeatureRule::Set rules;
 	std::vector<ccPointCloud*> loadedClouds;
 	masc::CorePoints corePoints;
-	if (!masc::Tools::LoadFile(inputFilename, rules, loadedClouds, corePoints))
+	if (!masc::Tools::LoadFile(inputFilename, features, loadedClouds, corePoints))
 	{
 		while (!loadedClouds.empty())
 		{
@@ -215,7 +214,7 @@ void q3DMASCPlugin::doTrainAction()
 
 	pDlg.setAutoClose(false); //we don't want the progress dialog to 'pop' for each feature
 	QString error;
-	if (!masc::Tools::PrepareFeatures(rules, corePoints, features, error, &pDlg))
+	if (!masc::Tools::PrepareFeatures(corePoints, features, error, &pDlg))
 	{
 		m_app->dispToConsole(error, ccMainAppInterface::ERR_CONSOLE_MESSAGE);
 		delete group;
@@ -250,7 +249,7 @@ void q3DMASCPlugin::doTrainAction()
 	//else
 	{
 		QString errorMessage;
-		if (!classifier.train(params.rt, features, errorMessage, trainSubset.data(), m_app->getMainWindow()))
+		if (!classifier.train(corePoints.cloud, params.rt, features, errorMessage, trainSubset.data(), m_app->getMainWindow()))
 		{
 			m_app->dispToConsole(errorMessage, ccMainAppInterface::ERR_CONSOLE_MESSAGE);
 			return;

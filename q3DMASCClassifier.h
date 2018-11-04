@@ -43,7 +43,7 @@ namespace masc
 		Classifier();
 
 		//! Train the classifier
-		bool train(const RandomTreesParams& params, const Feature::Set& features, QString& errorMessage, CCLib::ReferenceCloud* trainSubset = nullptr, QWidget* parentWidget = nullptr);
+		bool train(const ccPointCloud* cloud, const RandomTreesParams& params, const Feature::Set& features, QString& errorMessage, CCLib::ReferenceCloud* trainSubset = nullptr, QWidget* parentWidget = nullptr);
 
 		//! Classifier accuracy metrics
 		struct AccuracyMetrics

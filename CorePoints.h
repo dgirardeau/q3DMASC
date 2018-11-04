@@ -27,7 +27,6 @@
 //Qt
 #include <QSharedPointer>
 
-//! 3DMASC classifier
 namespace masc
 {
 	//! Core points descriptor

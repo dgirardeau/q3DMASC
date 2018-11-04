@@ -36,11 +36,13 @@ namespace masc
 	{
 	public:
 
-		static bool LoadFile(QString filename, FeatureRule::Set& features, std::vector<ccPointCloud*>& loadedClouds, CorePoints& corePoints);
+		static bool LoadFile(QString filename, Feature::Set& rawFeatures, std::vector<ccPointCloud*>& loadedClouds, CorePoints& corePoints);
 
-		static bool PrepareFeatures(const FeatureRule::Set& rules, const CorePoints& corePoints, Feature::Set& features, QString& error, CCLib::GenericProgressCallback* progressCb = nullptr);
+		static bool PrepareFeatures(const CorePoints& corePoints, Feature::Set& features, QString& error, CCLib::GenericProgressCallback* progressCb = nullptr);
 
 		static bool RandomSubset(ccPointCloud* cloud, float ratio, CCLib::ReferenceCloud* inRatioSubset, CCLib::ReferenceCloud* outRatioSubset);
+
+		static CCLib::ScalarField* RetrieveSF(const ccPointCloud* cloud, const QString& sfName, bool caseSensitive = true);
 	};
 
 }; //namespace masc

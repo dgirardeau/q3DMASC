@@ -77,7 +77,7 @@ class NormDipAndDipDirFieldWrapper : public IScalarFieldWrapper
 public:
 	enum Mode { Dip = 0, DipDir = 1 };
 
-	NormDipAndDipDirFieldWrapper(ccPointCloud* cloud, Mode mode)
+	NormDipAndDipDirFieldWrapper(const ccPointCloud* cloud, Mode mode)
 		: m_cloud(cloud)
 		, m_mode(mode)
 	{}
@@ -94,7 +94,7 @@ public:
 	virtual inline unsigned size() const { return m_cloud->size(); }
 
 protected:
-	ccPointCloud* m_cloud;
+	const ccPointCloud* m_cloud;
 	Mode m_mode;
 };
 
@@ -103,7 +103,7 @@ class DimScalarFieldWrapper : public IScalarFieldWrapper
 public:
 	enum Dim { DimX = 0, DimY = 1, DimZ = 2 };
 	
-	DimScalarFieldWrapper(ccPointCloud* cloud, Dim dim)
+	DimScalarFieldWrapper(const ccPointCloud* cloud, Dim dim)
 		: m_cloud(cloud)
 		, m_dim(dim)
 	{}
@@ -114,7 +114,7 @@ public:
 	virtual inline unsigned size() const { return m_cloud->size(); }
 
 protected:
-	ccPointCloud* m_cloud;
+	const ccPointCloud* m_cloud;
 	Dim m_dim;
 };
 
@@ -123,7 +123,7 @@ class ColorScalarFieldWrapper : public IScalarFieldWrapper
 public:
 	enum Band { Red = 0, Green = 1, Blue = 2 };
 
-	ColorScalarFieldWrapper(ccPointCloud* cloud, Band band)
+	ColorScalarFieldWrapper(const ccPointCloud* cloud, Band band)
 		: m_cloud(cloud)
 		, m_band(band)
 	{}
@@ -134,6 +134,6 @@ public:
 	virtual inline unsigned size() const { return m_cloud->size(); }
 
 protected:
-	ccPointCloud* m_cloud;
+	const ccPointCloud* m_cloud;
 	Band m_band;
 };

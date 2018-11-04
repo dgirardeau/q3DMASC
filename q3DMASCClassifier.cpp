@@ -42,7 +42,7 @@ bool Classifier::isValid() const
 	return (m_rtrees && m_rtrees->isTrained());
 }
 
-static QSharedPointer<IScalarFieldWrapper> GetSource(const Feature::Shared& f, ccPointCloud* cloud)
+static QSharedPointer<IScalarFieldWrapper> GetSource(const Feature::Shared& f, const ccPointCloud* cloud)
 {
 	QSharedPointer<IScalarFieldWrapper> source(nullptr);
 	if (!f)
@@ -208,19 +208,18 @@ bool Classifier::evaluate(const Feature::Set& features, CCLib::ReferenceCloud* t
 	return true;
 }
 
-bool Classifier::train(const RandomTreesParams& params, const Feature::Set& features, QString& errorMessage, CCLib::ReferenceCloud* trainSubset/*=nullptr*/, QWidget* parentWidget/*=nullptr*/)
+bool Classifier::train(const ccPointCloud* cloud, const RandomTreesParams& params, const Feature::Set& features, QString& errorMessage, CCLib::ReferenceCloud* trainSubset/*=nullptr*/, QWidget* parentWidget/*=nullptr*/)
 {
 	if (features.empty())
 	{
 		errorMessage = QObject::tr("Training method called without any feature?!");
 		return false;
 	}
-	if (!features.front() || !features.front()->cloud)
+	if (!cloud)
 	{
-		errorMessage = QObject::tr("Invalid feature (no associated point cloud)");
+		errorMessage = QObject::tr("Invalid input cloud");
 		return false;
 	}
-	ccPointCloud* cloud = features.front()->cloud;
 
 	if (trainSubset && trainSubset->getAssociatedCloud() != cloud)
 	{
@@ -281,11 +280,6 @@ bool Classifier::train(const RandomTreesParams& params, const Feature::Set& feat
 	for (int fIndex = 0; fIndex < attributesPerSample; ++fIndex)
 	{
 		const Feature::Shared &f = features[fIndex];
-		if (f->cloud != cloud)
-		{
-			errorMessage = QObject::tr("Invalid feature (%1): associated cloud is different than the others").arg(f->toString());
-			return false;
-		}
 
 		QSharedPointer<IScalarFieldWrapper> source = GetSource(f, cloud);
 		if (!source || !source->isValid())
