@@ -332,6 +332,7 @@ static CCLib::ScalarField* ExtractStat(	const CorePoints& corePoints,
 	ccOctree::Shared octree = sourceCloud->getOctree();
 	if (!octree)
 	{
+		ccLog::Print(QString("Computing octree of cloud %1 (%2 points)").arg(sourceCloud->getName()).arg(sourceCloud->size()));
 		octree = sourceCloud->computeOctree(progressCb);
 		if (!octree)
 		{
@@ -362,7 +363,11 @@ static CCLib::ScalarField* ExtractStat(	const CorePoints& corePoints,
 	unsigned char octreeLevel = octree->findBestLevelForAGivenNeighbourhoodSizeExtraction(radius); //scale is the diameter!
 
 	unsigned pointCount = corePoints.size();
-	progressCb->setInfo(qPrintable(QString("Computing field: %1\n(core points: %2)").arg(resultSFName).arg(pointCount)));
+	if (progressCb)
+	{
+		progressCb->setInfo(qPrintable(QString("Computing field: %1\n(core points: %2)").arg(resultSFName).arg(pointCount)));
+	}
+	ccLog::Print(QString("Computing field: %1 (core points: %2)").arg(resultSFName).arg(pointCount));
 	CCLib::NormalizedProgress nProgress(progressCb, pointCount);
 
 	for (unsigned i = 0; i < pointCount; ++i)
