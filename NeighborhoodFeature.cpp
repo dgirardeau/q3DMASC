@@ -1,5 +1,3 @@
-#pragma once
-
 //##########################################################################
 //#                                                                        #
 //#                     CLOUDCOMPARE PLUGIN: q3DMASC                       #
@@ -17,33 +15,14 @@
 //#                                                                        #
 //##########################################################################
 
-//Local
-#include "FeaturesInterface.h"
+#include "NeighborhoodFeature.h"
 
-//CCLib
-#include <GenericProgressCallback.h>
+using namespace masc;
 
-//qCC_db
-class ccPointCloud;
-
-class QWidget;
-
-//! 3DMASC classifier
-namespace masc
+bool NeighborhoodFeature::prepare(	const CorePoints& corePoints,
+									QString& error,
+									CCLib::GenericProgressCallback* progressCb/*=nullptr*/)
 {
-	class Tools
-	{
-	public:
-
-		static bool LoadFile(QString filename, Feature::Set& rawFeatures, std::vector<ccPointCloud*>& loadedClouds, CorePoints& corePoints);
-
-		static bool SaveFeatureDescriptors(QString filename, const Feature::Set& features);
-
-		static bool PrepareFeatures(const CorePoints& corePoints, Feature::Set& features, QString& error, CCLib::GenericProgressCallback* progressCb = nullptr);
-
-		static bool RandomSubset(ccPointCloud* cloud, float ratio, CCLib::ReferenceCloud* inRatioSubset, CCLib::ReferenceCloud* outRatioSubset);
-
-		static CCLib::ScalarField* RetrieveSF(const ccPointCloud* cloud, const QString& sfName, bool caseSensitive = true);
-	};
-
-}; //namespace masc
+	//TODO
+	return false;
+}

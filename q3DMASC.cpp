@@ -21,7 +21,6 @@
 #include "q3DMASCDisclaimerDialog.h"
 #include "q3DMASCClassifier.h"
 #include "q3DMASCTools.h"
-#include "Features.h"
 
 //qCC_db
 #include <ccPointCloud.h>

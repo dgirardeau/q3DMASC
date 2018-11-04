@@ -15,10 +15,9 @@
 //#                                                                        #
 //##########################################################################
 
-#include "Features.h"
+#include "PointFeature.h"
 
 //Local
-#include "ScalarFieldWrappers.h"
 #include "q3DMASCTools.h"
 
 //qCC_io
@@ -752,26 +751,29 @@ bool PointFeature::prepare(	const CorePoints& corePoints,
 	}
 }
 
-bool NeighborhoodFeature::prepare(	const CorePoints& corePoints,
-									QString& error,
-									CCLib::GenericProgressCallback* progressCb/*=nullptr*/)
+QString PointFeature::toString() const
 {
-	//TODO
-	return false;
-}
+	//default keyword otherwise
+	QString description = ToString(type);
 
-bool ContextBasedFeature::prepare(	const CorePoints& corePoints,
-									QString& error,
-									CCLib::GenericProgressCallback* progressCb/*=nullptr*/)
-{
-	//TODO
-	return false;
-}
+	//special case for the 'SF' type
+	if (type == SF)
+	{
+		//'SF#' + sf index
+		description += QString::number(sourceSFIndex);
+	}
 
-bool DualCloudFeature::prepare(	const CorePoints& corePoints,
-								QString& error,
-								CCLib::GenericProgressCallback* progressCb/*=nullptr*/)
-{
-	//TODO
-	return false;
+	if (scaled())
+	{
+		description += QString("_SC%1_%2").arg(scale).arg(StatToString(stat));
+	}
+	else
+	{
+		description += "_SC0";
+	}
+
+	description += "_" + cloud1Label;
+
+	//Point features always have a scale equal to 0 by definition
+	return description;
 }

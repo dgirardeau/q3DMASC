@@ -18,7 +18,10 @@
 #include "q3DMASCTools.h"
 
 //Local
-#include "ScalarFieldWrappers.h"
+#include "PointFeature.h"
+#include "NeighborhoodFeature.h"
+#include "DualCloudFeature.h"
+#include "ContextBasedFeature.h"
 
 //qCC_io
 #include <FileIOFilter.h>
@@ -37,6 +40,23 @@
 #include <assert.h>
 
 using namespace masc;
+
+bool Tools::SaveFeatureDescriptors(QString filename, const Feature::Set& features)
+{
+	QFile file(filename);
+	if (!file.open(QFile::Text | QFile::WriteOnly))
+	{
+		ccLog::Warning(QString("Can't open file '%1' for writing").arg(filename));
+		return false;
+	}
+
+	QTextStream stream(&file);
+
+	//header
+	stream << "#3DMASC classifier" << endl;
+
+	return true;
+}
 
 bool Tools::LoadFile(	QString filename,
 						Feature::Set& rawFeatures,
