@@ -229,7 +229,7 @@ void q3DMASCPlugin::doTrainAction()
 	//randomly select the training points
 	QScopedPointer<CCLib::ReferenceCloud> trainSubset(new CCLib::ReferenceCloud(corePoints.cloud));
 	QScopedPointer<CCLib::ReferenceCloud> testSubset(new CCLib::ReferenceCloud(corePoints.cloud));
-	if (!masc::Tools::RandomSubset(corePoints.cloud, params.testDataRatio, trainSubset.data(), testSubset.data()))
+	if (!masc::Tools::RandomSubset(corePoints.cloud, params.testDataRatio, testSubset.data(), trainSubset.data()))
 	{
 		m_app->dispToConsole("Not enough memory", ccMainAppInterface::ERR_CONSOLE_MESSAGE);
 		return;

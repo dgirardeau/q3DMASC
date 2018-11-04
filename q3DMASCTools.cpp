@@ -641,11 +641,11 @@ bool Tools::RandomSubset(ccPointCloud* cloud, float ratio, CCLib::ReferenceCloud
 
 	//we draw the smallest population (faster)
 	unsigned targetCount = inSampleCount;
-	bool defaultState = true;
+	bool defaultState = false;
 	if (outSampleCount < inSampleCount)
 	{
 		targetCount = outSampleCount;
-		defaultState = false;
+		defaultState = true;
 	}
 
 	//reserve memory
