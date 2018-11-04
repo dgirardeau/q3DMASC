@@ -56,6 +56,9 @@ namespace masc
 		//! Evaluates the classifier
 		bool evaluate(const Feature::Set& features, CCLib::ReferenceCloud* testSubset, AccuracyMetrics& metrics, QString& errorMessage, QWidget* parentWidget = nullptr);
 
+		//! Applies the classifier
+		bool classify(const Feature::Set& features, ccPointCloud* cloud, QString& errorMessage, QWidget* parentWidget = nullptr);
+
 		//! Returns whether the classifier is valid or not
 		bool isValid() const;
 

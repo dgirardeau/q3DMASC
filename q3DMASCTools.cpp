@@ -41,8 +41,17 @@
 
 using namespace masc;
 
-bool Tools::SaveFeatureDescriptors(QString filename, const Feature::Set& features)
+bool Tools::SaveClassifier(QString filename, const Feature::Set& features, const masc::Classifier& classifier, QWidget* parent/*=nullptr*/)
 {
+	//first save the classifier data (same base filename but with the ymal extension)
+	QFileInfo fi(filename);
+	QString yamlFilename = fi.completeBaseName() + ".yaml";
+	if (!classifier.toFile(fi.absoluteFilePath() + "/" + yamlFilename, parent))
+	{
+		ccLog::Error("Failed to save the classifier data");
+		return false;
+	}
+
 	QFile file(filename);
 	if (!file.open(QFile::Text | QFile::WriteOnly))
 	{
@@ -52,16 +61,522 @@ bool Tools::SaveFeatureDescriptors(QString filename, const Feature::Set& feature
 
 	QTextStream stream(&file);
 
-	//header
-	stream << "#3DMASC classifier" << endl;
+	stream << "# 3DMASC classifier file" << endl;
+	stream << "classifier: " << yamlFilename << endl;
+
+	//look for all clouds (labels)
+	QSet<QString> cloudLabels;
+	for (Feature::Shared f : features)
+	{
+		if (f->cloud1)
+			cloudLabels.insert(f->cloud1Label);
+		if (f->cloud2)
+			cloudLabels.insert(f->cloud2Label);
+	}
+
+	stream << "# Clouds (roles)" << endl;
+	for (const QString& label : cloudLabels)
+	{
+		stream << "cloud: " << label << endl;
+	}
+
+	stream << "# Features" << endl;
+	for (Feature::Shared f : features)
+	{
+		stream << "feature: " << f->toString() << endl;
+	}
 
 	return true;
 }
 
-bool Tools::LoadFile(	QString filename,
-						Feature::Set& rawFeatures,
-						std::vector<ccPointCloud*>& loadedClouds,
-						CorePoints& corePoints)
+bool Tools::LoadClassifierCloudLabels(QString filename, QSet<QString>& labels)
+{
+	QFile file(filename);
+	if (!file.open(QFile::Text | QFile::ReadOnly))
+	{
+		ccLog::Warning(QString("Can't open file '%1'").arg(filename));
+		return false;
+	}
+
+	QTextStream stream(&file);
+	for (int lineNumber = 0; ; ++lineNumber)
+	{
+		QString line = stream.readLine();
+		if (line.isNull())
+		{
+			//eof
+			break;
+		}
+		++lineNumber;
+
+		if (line.startsWith("CLOUD:"))
+		{
+			QString command = line.mid(6).trimmed();
+			QStringList tokens = command.split('=');
+			if (tokens.size() == 0)
+			{
+				ccLog::Warning("Malformed file: expecting some tokens after 'cloud:' on line #" + QString::number(lineNumber));
+				return false;
+			}
+
+			QString label = tokens.front();
+			labels.insert(label);
+		}
+	}
+
+	return true;
+}
+
+static bool CreateFeaturesFromCommand(const QString& command, int lineNumber, const Tools::NamedClouds& clouds, std::vector<Feature::Shared>& rawFeatures, std::vector<double>& scales)
+{
+	QStringList tokens = command.split('_');
+	if (tokens.empty())
+	{
+		ccLog::Warning("Malformed file: expecting at least one token after 'feature:' on line #" + QString::number(lineNumber));
+		return false;
+	}
+
+	Feature::Shared feature;
+
+	//read the type
+	QString typeStr = tokens[0].trimmed().toUpper();
+	{
+		for (int iteration = 0; iteration < 1; ++iteration) //fake loop for easy break
+		{
+			PointFeature::PointFeatureType pointFeatureType = PointFeature::FromUpperString(typeStr);
+			if (pointFeatureType != PointFeature::Invalid)
+			{
+				//we have a point feature
+				PointFeature* pointFeature = new PointFeature(pointFeatureType);
+
+				//specific case: 'SF#'
+				if (pointFeatureType == PointFeature::SF)
+				{
+					QString sfIndexStr = typeStr.mid(2);
+					bool ok = true;
+					int sfIndex = sfIndexStr.toInt(&ok);
+					if (!ok)
+					{
+						ccLog::Warning(QString("Malformed file: expecting a valid integer value after 'SF' on line #%1").arg(lineNumber));
+						delete pointFeature;
+						return false;
+					}
+					pointFeature->sourceSFIndex = sfIndex;
+				}
+
+				feature.reset(pointFeature);
+				break;
+			}
+
+			NeighborhoodFeature::NeighborhoodFeatureType neighborhoodFeatureType = NeighborhoodFeature::FromUpperString(typeStr);
+			if (neighborhoodFeatureType != NeighborhoodFeature::Invalid)
+			{
+				//we have a neighborhood feature
+				feature = NeighborhoodFeature::Shared(new NeighborhoodFeature(neighborhoodFeatureType));
+				break;
+			}
+
+			ContextBasedFeature::ContextBasedFeatureType contextBasedFeatureType = ContextBasedFeature::FromUpperString(typeStr);
+			if (contextBasedFeatureType != ContextBasedFeature::Invalid)
+			{
+				//we have a context-based feature
+				feature = ContextBasedFeature::Shared(new ContextBasedFeature(contextBasedFeatureType));
+				break;
+			}
+
+			DualCloudFeature::DualCloudFeatureType dualCloudFeatureType = DualCloudFeature::FromUpperString(typeStr);
+			if (dualCloudFeatureType != DualCloudFeature::Invalid)
+			{
+				//we have a dual cloud feature
+				feature = DualCloudFeature::Shared(new DualCloudFeature(dualCloudFeatureType));
+				break;
+			}
+
+			if (!feature)
+			{
+				ccLog::Warning(QString("Malformed file: unrecognized token '%1' after 'feature:' on line #%2").arg(typeStr).arg(lineNumber));
+				return false;
+			}
+		}
+	}
+	assert(feature);
+
+	//read the scales
+	bool useAllScales = false;
+	{
+		QString scaleStr = tokens[1].toUpper();
+		if (!scaleStr.startsWith("SC"))
+		{
+			ccLog::Warning(QString("Malformed file: unrecognized token '%1' (expecting the scale descriptor 'SC...' on line #%2").arg(typeStr).arg(lineNumber));
+			return false;
+		}
+
+		if (scaleStr == "SC0")
+		{
+			//no scale
+		}
+		else if (scaleStr == "SCX")
+		{
+			//all scales
+			useAllScales = true;
+		}
+		else
+		{
+			//read the specific scale index
+			bool ok = true;
+			feature->scale = scaleStr.mid(2).toDouble(&ok);
+			if (!ok)
+			{
+				ccLog::Warning(QString("Malformed file: expecting a valid number after 'SC:' on line #%1").arg(lineNumber));
+				return false;
+			}
+		}
+	}
+
+	//process the next tokens (may not be ordered)
+	int cloudCount = 0;
+	bool statDefined = false;
+	bool mathDefined = false;
+	for (int i = 2; i < tokens.size(); ++i)
+	{
+		QString token = tokens[i].trimmed().toUpper();
+
+		//is the token a 'stat' one?
+		if (!statDefined)
+		{
+			if (token == "MEAN")
+			{
+				feature->stat = Feature::MEAN;
+				statDefined = true;
+			}
+			else if (token == "MODE")
+			{
+				feature->stat = Feature::MODE;
+				statDefined = true;
+			}
+			else if (token == "STD")
+			{
+				feature->stat = Feature::STD;
+				statDefined = true;
+			}
+			else if (token == "RANGE")
+			{
+				feature->stat = Feature::RANGE;
+				statDefined = true;
+			}
+			else if (token == "SKEW")
+			{
+				feature->stat = Feature::SKEW;
+				statDefined = true;
+			}
+
+			if (statDefined)
+			{
+				continue;
+			}
+		}
+
+		//is the token a cloud name?
+		if (cloudCount < 2)
+		{
+			bool cloudNameMatches = false;
+			for (QMap<QString, ccPointCloud* >::const_iterator it = clouds.begin(); it != clouds.end(); ++it)
+			{
+				QString key = it.key().toUpper();
+				if (key == token)
+				{
+					if (cloudCount == 0)
+					{
+						feature->cloud1 = it.value();
+						feature->cloud1Label = key;
+					}
+					else if (cloudCount == 1)
+					{
+						feature->cloud2 = it.value();
+						feature->cloud2Label = key;
+					}
+					else
+					{
+						//we can't fall here
+						assert(false);
+					}
+					++cloudCount;
+					cloudNameMatches = true;
+					break;
+				}
+			}
+
+			if (cloudNameMatches)
+			{
+				continue;
+			}
+		}
+
+		//is the token a 'math' one?
+		if (!mathDefined)
+		{
+			if (token == "MINUS")
+			{
+				feature->op = Feature::MINUS;
+				mathDefined = true;
+			}
+			else if (token == "PLUS")
+			{
+				feature->op = Feature::PLUS;
+				mathDefined = true;
+			}
+			else if (token == "DIVIDE")
+			{
+				feature->op = Feature::DIVIDE;
+				mathDefined = true;
+			}
+			else if (token == "MULTIPLY")
+			{
+				feature->op = Feature::MULTIPLY;
+				mathDefined = true;
+			}
+
+			if (mathDefined)
+			{
+				continue;
+			}
+		}
+
+		//is the token a 'context' descriptor?
+		if (feature->getType() == Feature::Type::ContextBasedFeature && token.startsWith("CTX"))
+		{
+			//read the context label
+			QString ctxLabelStr = token.mid(2);
+			bool ok = true;
+			int ctxLabel = ctxLabelStr.toInt(&ok);
+			if (!ok)
+			{
+				ccLog::Warning(QString("Malformed file: expecting a valid integer value after 'CTX' on line #%1").arg(lineNumber));
+				return false;
+			}
+			static_cast<ContextBasedFeature*>(feature.data())->ctxClassLabel = ctxLabel;
+			continue;
+		}
+
+		//if we are here, it means we couldn't find a correspondance for the current token
+		ccLog::Warning(QString("Malformed file: unrecognized or unexpected token '%1' on line #%2").arg(token).arg(lineNumber));
+		return false;
+	}
+
+	//now create the various versions of rules (if any)
+	if (useAllScales)
+	{
+		if (scales.empty())
+		{
+			ccLog::Warning("Malformed file: 'SCx' token used while no scale is defined" + QString(" (line %1)").arg(lineNumber));
+			return false;
+		}
+		feature->scale = scales.front();
+
+		//we will duplicate the original feature AFTER having checked its consistency!
+	}
+
+	//now check the consistency of the rule
+	QString errorMessage;
+	if (!feature->checkValidity(errorMessage))
+	{
+		ccLog::Warning("Malformed feature: " + errorMessage + QString(" (line %1)").arg(lineNumber));
+		return false;
+	}
+
+	//save it
+	rawFeatures.push_back(feature);
+
+	if (useAllScales)
+	{
+		for (size_t i = 1; i < scales.size(); ++i)
+		{
+			//copy the original rule
+			Feature::Shared newFeature = feature->clone();
+			newFeature->scale = scales.at(i);
+
+			//as we only change the scale value, all the duplicated features should be valid
+			assert(newFeature->checkValidity(errorMessage));
+
+			rawFeatures.push_back(newFeature);
+		}
+	}
+
+	return true;
+}
+
+static bool ReadScales(const QString& command, std::vector<double>& scales, int lineNumber)
+{
+	assert(scales.empty());
+
+	QStringList tokens = command.split(';');
+	if (tokens.empty())
+	{
+		ccLog::Warning("Malformed file: expecting at least one token after 'scales:' on line #" + QString::number(lineNumber));
+		return false;
+	}
+
+	for (const QString& token : tokens)
+	{
+		if (token.contains(':'))
+		{
+			//it's probably a range
+			QStringList subTokens = token.trimmed().split(':');
+			if (subTokens.size() != 3)
+			{
+				ccLog::Warning(QString("Malformed file: expecting 3 tokens for a range of scales (%1)").arg(token));
+				return false;
+			}
+			bool ok[3] = { true, true, true };
+			double start = subTokens[0].trimmed().toDouble(ok);
+			double step = subTokens[1].toDouble(ok + 1);
+			double stop = subTokens[2].toDouble(ok + 2);
+			if (!ok[0] || !ok[1] || !ok[2])
+			{
+				ccLog::Warning(QString("Malformed file: invalid values in scales range (%1) on line #%2").arg(token).arg(lineNumber));
+				return false;
+			}
+			if (stop < start || step <= 1.0 - 6)
+			{
+				ccLog::Warning(QString("Malformed file: invalid range (%1) on line #%2").arg(token).arg(lineNumber));
+				return false;
+			}
+
+			for (double v = start; v <= stop + 1.0e-6; v += step)
+			{
+				scales.push_back(v);
+			}
+		}
+		else
+		{
+			bool ok = true;
+			double v = token.trimmed().toDouble(&ok);
+			if (!ok)
+			{
+				ccLog::Warning(QString("Malformed file: invalid scale value (%1) on line #%2").arg(token).arg(lineNumber));
+				return false;
+			}
+			scales.push_back(v);
+		}
+	}
+
+	scales.shrink_to_fit();
+	return true;
+}
+
+static bool ReadCorePoints(const QString& command, const Tools::NamedClouds& clouds, masc::CorePoints& corePoints, int lineNumber)
+{
+	QStringList tokens = command.split('_');
+	if (tokens.empty())
+	{
+		ccLog::Warning("Malformed file: expecting tokens after 'core_points:' on line #" + QString::number(lineNumber));
+		return false;
+	}
+	QString pcName = tokens[0].trimmed();
+	if (!clouds.contains(pcName))
+	{
+		ccLog::Warning(QString("Malformed file: unknown cloud '%1' on line #%2 (make sure it is declared before the core points)").arg(pcName).arg(lineNumber));
+		return false;
+	}
+	corePoints.origin = clouds[pcName];
+
+	//should we sub-sample the origin cloud?
+	if (tokens.size() > 1)
+	{
+		if (tokens[1].toUpper() == "SS")
+		{
+			if (tokens.size() < 3)
+			{
+				ccLog::Warning("Malformed file: missing token after 'SS' on line #" + QString::number(lineNumber));
+				return false;
+			}
+			QString options = tokens[2];
+			if (options.startsWith('R'))
+			{
+				corePoints.selectionMethod = CorePoints::RANDOM;
+			}
+			else if (options.startsWith('S'))
+			{
+				corePoints.selectionMethod = CorePoints::SPATIAL;
+			}
+			else
+			{
+				ccLog::Warning("Malformed file: unknown option after 'SS' on line #" + QString::number(lineNumber));
+				return false;
+			}
+
+			//read the subsampling parameter (ignore the first character)
+			bool ok = false;
+			corePoints.selectionParam = options.mid(1).toDouble(&ok);
+			if (!ok)
+			{
+				ccLog::Warning("Malformed file: expecting a number after 'SS_X' on line #" + QString::number(lineNumber));
+				return false;
+			}
+
+		} //end of subsampling options
+	}
+	
+	return true;
+}
+
+static bool ReadCloud(const QString& command, Tools::NamedClouds& clouds, QDir& defaultDir, int lineNumber)
+{
+	QStringList tokens = command.split('=');
+	if (tokens.size() != 2)
+	{
+		ccLog::Warning("Malformed file: expecting 2 tokens after 'cloud:' on line #" + QString::number(lineNumber));
+		return false;
+	}
+	
+	QString pcName = tokens[0].trimmed();
+	QString pcFilename = defaultDir.absoluteFilePath(tokens[1].trimmed());
+	//try to open the cloud
+	{
+		FileIOFilter::LoadParameters parameters;
+		parameters.alwaysDisplayLoadDialog = false;
+		CC_FILE_ERROR error = CC_FERR_NO_ERROR;
+		ccHObject* object = FileIOFilter::LoadFromFile(pcFilename, parameters, error);
+		if (error != CC_FERR_NO_ERROR || !object)
+		{
+			//error message already issued
+			if (object)
+				delete object;
+			return false;
+		}
+		ccHObject::Container cloudsInFile;
+		object->filterChildren(cloudsInFile, false, CC_TYPES::POINT_CLOUD, true);
+		if (cloudsInFile.empty())
+		{
+			ccLog::Warning("File doesn't contain a single cloud");
+			delete object;
+			return false;
+		}
+		else if (cloudsInFile.size() > 1)
+		{
+			ccLog::Warning("File contains more than one cloud, only the first one will be kept");
+		}
+		ccPointCloud* pc = static_cast<ccPointCloud*>(cloudsInFile.front());
+		for (size_t i = 1; i < cloudsInFile.size(); ++i)
+		{
+			delete cloudsInFile[i];
+		}
+		if (pc->getParent())
+			pc->getParent()->detachChild(pc);
+		pc->setName(pcName); //DGM: warning, may not be acceptable in the GUI version?
+		clouds.insert(pcName, pc);
+	}
+
+	return true;
+}
+
+static bool LoadFileCommon(	const QString& filename,
+							Tools::NamedClouds& clouds,
+							bool cloudsAreProvided,
+							std::vector<Feature::Shared>& rawFeatures,
+							masc::CorePoints* corePoints = nullptr,
+							masc::Classifier* classifier = nullptr,
+							QWidget* parent = nullptr)
 {
 	QFileInfo fi(filename);
 	if (!fi.exists())
@@ -81,7 +596,6 @@ bool Tools::LoadFile(	QString filename,
 	{
 		assert(rawFeatures.empty());
 		std::vector<double> scales;
-		QMap<QString, ccPointCloud* > clouds;
 
 		QTextStream stream(&file);
 		for (int lineNumber = 0; ; ++lineNumber)
@@ -106,111 +620,56 @@ bool Tools::LoadFile(	QString filename,
 				line = line.left(commentIndex);
 
 			QString upperLine = line.toUpper();
-			if (upperLine.startsWith("CLOUD:")) //clouds
+			if (upperLine.startsWith("CLASSIFIER:")) //classifier
 			{
-				QString command = line.mid(6);
-				QStringList tokens = command.split('=');
-				if (tokens.size() != 2)
+				if (!classifier)
 				{
-					ccLog::Warning("Malformed file: expecting 2 tokens after 'cloud:' on line #" + QString::number(lineNumber));
+					//no need to load the classifier
+					continue;
+				}
+				if (classifier->isValid())
+				{
+					ccLog::Warning("Malformed file: can't declare the classifier file twice! (line #" + QString::number(lineNumber) + ")");
 					return false;
 				}
-				QString pcName = tokens[0].trimmed();
-				QString pcFilename = fi.absoluteDir().absoluteFilePath(tokens[1].trimmed());
-				//try to open the cloud
+				QString yamlFilename = line.mid(11).trimmed();
+				if (!classifier->fromFile(fi.absolutePath() + "/" + yamlFilename, parent))
 				{
-					FileIOFilter::LoadParameters parameters;
-					parameters.alwaysDisplayLoadDialog = false;
-					CC_FILE_ERROR error = CC_FERR_NO_ERROR;
-					ccHObject* object = FileIOFilter::LoadFromFile(pcFilename, parameters, error);
-					if (error != CC_FERR_NO_ERROR || !object)
-					{
-						//error message already issued
-						if (object)
-							delete object;
-						return false;
-					}
-					ccHObject::Container cloudsInFile;
-					object->filterChildren(cloudsInFile, false, CC_TYPES::POINT_CLOUD, true);
-					if (cloudsInFile.empty())
-					{
-						ccLog::Warning("File doesn't contain a single cloud");
-						delete object;
-						return false;
-					}
-					else if (cloudsInFile.size() > 1)
-					{
-						ccLog::Warning("File contains more than one cloud, only the first one will be kept");
-					}
-					ccPointCloud* pc = static_cast<ccPointCloud*>(cloudsInFile.front());
-					for (size_t i = 1; i < cloudsInFile.size(); ++i)
-					{
-						delete cloudsInFile[i];
-					}
-					if (pc->getParent())
-						pc->getParent()->detachChild(pc);
-					pc->setName(pcName); //DGM: warning, may not be acceptable in the GUI version?
-					clouds.insert(pcName, pc);
-					loadedClouds.push_back(pc);
+					ccLog::Warning("Failed to load the classifier file from " + yamlFilename);
+					return false;
+				}
+				ccLog::Print("[3DMASC] Classifier data loaded from " + yamlFilename);
+			}
+			else if (upperLine.startsWith("CLOUD:")) //clouds
+			{
+				if (cloudsAreProvided)
+				{
+					//no need to load the clouds in this case
+					continue;
+				}
+				QString command = line.mid(6);
+				if (!ReadCloud(command, clouds, fi.absoluteDir(), lineNumber))
+				{
+					return false;
 				}
 			}
 			else if (upperLine.startsWith("CORE_POINTS:")) //core points
 			{
-				if (corePoints.origin)
+				if (!corePoints)
+				{
+					//no need to load the core points
+					continue;
+				}
+				if (corePoints->origin)
 				{
 					ccLog::Warning("Malformed file: can't declare core points twice! (line #" + QString::number(lineNumber) + ")");
 					return false;
 				}
 				QString command = line.mid(12);
-				QStringList tokens = command.split('_');
-				if (tokens.empty())
+
+				if (!ReadCorePoints(command, clouds, *corePoints, lineNumber))
 				{
-					ccLog::Warning("Malformed file: expecting tokens after 'core_points:' on line #" + QString::number(lineNumber));
 					return false;
-				}
-				QString pcName = tokens[0].trimmed();
-				if (!clouds.contains(pcName))
-				{
-					ccLog::Warning(QString("Malformed file: unknown cloud '%1' on line #%2 (make sure it is declared before the core points)").arg(pcName).arg(lineNumber));
-					return false;
-				}
-				corePoints.origin = clouds[pcName];
-
-				//should we sub-sample the origin cloud?
-				if (tokens.size() > 1)
-				{
-					if (tokens[1].toUpper() == "SS")
-					{
-						if (tokens.size() < 3)
-						{
-							ccLog::Warning("Malformed file: missing token after 'SS' on line #" + QString::number(lineNumber));
-							return false;
-						}
-						QString options = tokens[2];
-						if (options.startsWith('R'))
-						{
-							corePoints.selectionMethod = CorePoints::RANDOM;
-						}
-						else if (options.startsWith('S'))
-						{
-							corePoints.selectionMethod = CorePoints::SPATIAL;
-						}
-						else
-						{
-							ccLog::Warning("Malformed file: unknown option after 'SS' on line #" + QString::number(lineNumber));
-							return false;
-						}
-
-						//read the subsampling parameter (ignore the first character)
-						bool ok = false;
-						corePoints.selectionParam = options.mid(1).toDouble(&ok);
-						if (!ok)
-						{
-							ccLog::Warning("Malformed file: expecting a number after 'SS_X' on line #" + QString::number(lineNumber));
-							return false;
-						}
-
-					} //end of subsampling options
 				}
 			}
 			else if (upperLine.startsWith("SCALES:")) //scales
@@ -222,332 +681,19 @@ bool Tools::LoadFile(	QString filename,
 				}
 
 				QString command = line.mid(7);
-				QStringList tokens = command.split(';');
-				if (tokens.empty())
+				if (!ReadScales(command, scales, lineNumber))
 				{
-					ccLog::Warning("Malformed file: expecting at least one token after 'scales:' on line #" + QString::number(lineNumber));
 					return false;
 				}
-
-				for (const QString& token : tokens)
-				{
-					if (token.contains(':'))
-					{
-						//it's probably a range
-						QStringList subTokens = token.trimmed().split(':');
-						if (subTokens.size() != 3)
-						{
-							ccLog::Warning(QString("Malformed file: expecting 3 tokens for a range of scales (%1)").arg(token));
-							return false;
-						}
-						bool ok[3] = { true, true, true };
-						double start = subTokens[0].trimmed().toDouble(ok);
-						double step = subTokens[1].toDouble(ok + 1);
-						double stop = subTokens[2].toDouble(ok + 2);
-						if (!ok[0] || !ok[1] || !ok[2])
-						{
-							ccLog::Warning(QString("Malformed file: invalid values in scales range (%1) on line #%2").arg(token).arg(lineNumber));
-							return false;
-						}
-						if (stop < start || step <= 1.0 - 6)
-						{
-							ccLog::Warning(QString("Malformed file: invalid range (%1) on line #%2").arg(token).arg(lineNumber));
-							return false;
-						}
-
-						for (double v = start; v <= stop + 1.0e-6; v += step)
-						{
-							scales.push_back(v);
-						}
-					}
-					else
-					{
-						bool ok = true;
-						double v = token.trimmed().toDouble(&ok);
-						if (!ok)
-						{
-							ccLog::Warning(QString("Malformed file: invalid scale value (%1) on line #%2").arg(token).arg(lineNumber));
-							return false;
-						}
-						scales.push_back(v);
-					}
-				}
-				scales.shrink_to_fit();
 			}
 			else if (upperLine.startsWith("FEATURE:")) //feature
 			{
 				QString command = line.mid(8);
-				QStringList tokens = command.split('_');
-				if (tokens.empty())
+
+				if (!CreateFeaturesFromCommand(command, lineNumber, clouds, rawFeatures, scales))
 				{
-					ccLog::Warning("Malformed file: expecting at least one token after 'feature:' on line #" + QString::number(lineNumber));
+					//error message already issued
 					return false;
-				}
-
-				Feature::Shared feature;
-
-				//read the type
-				QString typeStr = tokens[0].trimmed().toUpper();
-				{
-					for (int iteration = 0; iteration < 1; ++iteration) //fake loop for easy break
-					{
-						PointFeature::PointFeatureType pointFeatureType = PointFeature::FromUpperString(typeStr);
-						if (pointFeatureType != PointFeature::Invalid)
-						{
-							//we have a point feature
-							PointFeature* pointFeature = new PointFeature(pointFeatureType);
-
-							//specific case: 'SF#'
-							if (pointFeatureType == PointFeature::SF)
-							{
-								QString sfIndexStr = typeStr.mid(2);
-								bool ok = true;
-								int sfIndex = sfIndexStr.toInt(&ok);
-								if (!ok)
-								{
-									ccLog::Warning(QString("Malformed file: expecting a valid integer value after 'SF' on line #%1").arg(lineNumber));
-									delete pointFeature;
-									return false;
-								}
-								pointFeature->sourceSFIndex = sfIndex;
-							}
-
-							feature.reset(pointFeature);
-							break;
-						}
-
-						NeighborhoodFeature::NeighborhoodFeatureType neighborhoodFeatureType = NeighborhoodFeature::FromUpperString(typeStr);
-						if (neighborhoodFeatureType != NeighborhoodFeature::Invalid)
-						{
-							//we have a neighborhood feature
-							feature = NeighborhoodFeature::Shared(new NeighborhoodFeature(neighborhoodFeatureType));
-							break;
-						}
-
-						ContextBasedFeature::ContextBasedFeatureType contextBasedFeatureType = ContextBasedFeature::FromUpperString(typeStr);
-						if (contextBasedFeatureType != ContextBasedFeature::Invalid)
-						{
-							//we have a context-based feature
-							feature = ContextBasedFeature::Shared(new ContextBasedFeature(contextBasedFeatureType));
-							break;
-						}
-
-						DualCloudFeature::DualCloudFeatureType dualCloudFeatureType = DualCloudFeature::FromUpperString(typeStr);
-						if (dualCloudFeatureType != DualCloudFeature::Invalid)
-						{
-							//we have a dual cloud feature
-							feature = DualCloudFeature::Shared(new DualCloudFeature(dualCloudFeatureType));
-							break;
-						}
-
-						if (!feature)
-						{
-							ccLog::Warning(QString("Malformed file: unrecognized token '%1' after 'feature:' on line #%2").arg(typeStr).arg(lineNumber));
-							return false;
-						}
-					}
-				}
-				assert(feature);
-
-				//read the scales
-				bool useAllScales = false;
-				{
-					QString scaleStr = tokens[1].toUpper();
-					if (!scaleStr.startsWith("SC"))
-					{
-						ccLog::Warning(QString("Malformed file: unrecognized token '%1' (expecting the scale descriptor 'SC...' on line #%2").arg(typeStr).arg(lineNumber));
-						return false;
-					}
-
-					if (scaleStr == "SC0")
-					{
-						//no scale
-					}
-					else if (scaleStr == "SCX")
-					{
-						//all scales
-						useAllScales = true;
-					}
-					else
-					{
-						//read the specific scale index
-						bool ok = true;
-						feature->scale = scaleStr.mid(2).toDouble(&ok);
-						if (!ok)
-						{
-							ccLog::Warning(QString("Malformed file: expecting a valid number after 'SC:' on line #%1").arg(lineNumber));
-							return false;
-						}
-					}
-				}
-
-				//process the next tokens (may not be ordered)
-				int cloudCount = 0;
-				bool statDefined = false;
-				bool mathDefined = false;
-				for (int i = 2; i < tokens.size(); ++i)
-				{
-					QString token = tokens[i].trimmed().toUpper();
-
-					//is the token a 'stat' one?
-					if (!statDefined)
-					{
-						if (token == "MEAN")
-						{
-							feature->stat = Feature::MEAN;
-							statDefined = true;
-						}
-						else if (token == "MODE")
-						{
-							feature->stat = Feature::MODE;
-							statDefined = true;
-						}
-						else if (token == "STD")
-						{
-							feature->stat = Feature::STD;
-							statDefined = true;
-						}
-						else if (token == "RANGE")
-						{
-							feature->stat = Feature::RANGE;
-							statDefined = true;
-						}
-						else if (token == "SKEW")
-						{
-							feature->stat = Feature::SKEW;
-							statDefined = true;
-						}
-
-						if (statDefined)
-						{
-							continue;
-						}
-					}
-
-					//is the token a cloud name?
-					if (cloudCount < 2)
-					{
-						bool cloudNameMatches = false;
-						for (QMap<QString, ccPointCloud* >::const_iterator it = clouds.begin(); it != clouds.end(); ++it)
-						{
-							QString key = it.key().toUpper();
-							if (key == token)
-							{
-								if (cloudCount == 0)
-								{
-									feature->cloud1 = it.value();
-									feature->cloud1Label = key;
-								}
-								else if (cloudCount == 1)
-								{
-									feature->cloud2 = it.value();
-									feature->cloud2Label = key;
-								}
-								else
-								{
-									//we can't fall here
-									assert(false);
-								}
-								++cloudCount;
-								cloudNameMatches = true;
-								break;
-							}
-						}
-
-						if (cloudNameMatches)
-						{
-							continue;
-						}
-					}
-
-					//is the token a 'math' one?
-					if (!mathDefined)
-					{
-						if (token == "MINUS")
-						{
-							feature->op = Feature::MINUS;
-							mathDefined = true;
-						}
-						else if (token == "PLUS")
-						{
-							feature->op = Feature::PLUS;
-							mathDefined = true;
-						}
-						else if (token == "DIVIDE")
-						{
-							feature->op = Feature::DIVIDE;
-							mathDefined = true;
-						}
-						else if (token == "MULTIPLY")
-						{
-							feature->op = Feature::MULTIPLY;
-							mathDefined = true;
-						}
-
-						if (mathDefined)
-						{
-							continue;
-						}
-					}
-
-					//is the token a 'context' descriptor?
-					if (feature->getType() == Feature::Type::ContextBasedFeature && token.startsWith("CTX"))
-					{
-						//read the context label
-						QString ctxLabelStr = token.mid(2);
-						bool ok = true;
-						int ctxLabel = ctxLabelStr.toInt(&ok);
-						if (!ok)
-						{
-							ccLog::Warning(QString("Malformed file: expecting a valid integer value after 'CTX' on line #%1").arg(lineNumber));
-							return false;
-						}
-						static_cast<ContextBasedFeature*>(feature.data())->ctxClassLabel = ctxLabel;
-						continue;
-					}
-
-					//if we are here, it means we couldn't find a correspondance for the current token
-					ccLog::Warning(QString("Malformed file: unrecognized or unexpected token '%1' on line #%2").arg(token).arg(lineNumber));
-					return false;
-				}
-
-				//now create the various versions of rules (if any)
-				if (useAllScales)
-				{
-					if (scales.empty())
-					{
-						ccLog::Warning("Malformed file: 'SCx' token used but not scales were defined" + QString(" (line %1)").arg(lineNumber));
-						return false;
-					}
-					feature->scale = scales.front();
-
-					//we will duplicate the original feature AFTER having checked its consistency!
-				}
-
-				//now check the consistency of the rule
-				QString errorMessage;
-				if (!feature->checkValidity(errorMessage))
-				{
-					ccLog::Warning("Malformed feature: " + errorMessage + QString(" (line %1)").arg(lineNumber));
-					return false;
-				}
-
-				//save it
-				rawFeatures.push_back(feature);
-
-				if (useAllScales)
-				{
-					for (size_t i = 1; i < scales.size(); ++i)
-					{
-						//copy the original rule
-						Feature::Shared newFeature = feature->clone();
-						newFeature->scale = scales[i];
-
-						//as we only change the scale value, all the duplicated features should be valid
-						assert(newFeature->checkValidity(errorMessage));
-
-						rawFeatures.push_back(newFeature);
-					}
 				}
 			}
 			else
@@ -566,6 +712,46 @@ bool Tools::LoadFile(	QString filename,
 	rawFeatures.shrink_to_fit();
 
 	return true;
+}
+
+bool Tools::LoadClassifier(QString filename, const NamedClouds& clouds, Feature::Set& rawFeatures, masc::Classifier& classifier, QWidget* parent/*=nullptr*/)
+{
+	return LoadFileCommon(filename, const_cast<NamedClouds&>(clouds), true, rawFeatures, nullptr, &classifier, parent);
+}
+
+bool Tools::LoadTrainingFile(	QString filename,
+								Feature::Set& rawFeatures,
+								std::vector<ccPointCloud*>& loadedClouds,
+								CorePoints& corePoints)
+{
+	NamedClouds clouds;
+	if (LoadFileCommon(filename, clouds, false, rawFeatures, &corePoints, nullptr, nullptr))
+	{
+		try
+		{
+			loadedClouds.reserve(loadedClouds.size() + clouds.size());
+		}
+		catch (const std::bad_alloc&)
+		{
+			ccLog::Warning("Not enough memory");
+			//release some memory
+			for (NamedClouds::const_iterator it = clouds.begin(); it != clouds.end(); ++it)
+			{
+				delete it.value();
+			}
+			return false;
+		}
+
+		//otherwise transfer the clouds to the 'loadedClouds' vector
+		for (NamedClouds::const_iterator it = clouds.begin(); it != clouds.end(); ++it)
+		{
+			loadedClouds.push_back(it.value());
+		}
+	}
+	else
+	{
+		return false;
+	}
 }
 
 CCLib::ScalarField* Tools::RetrieveSF(const ccPointCloud* cloud, const QString& sfName, bool caseSensitive/*=true*/)

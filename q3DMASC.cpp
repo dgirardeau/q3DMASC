@@ -21,6 +21,7 @@
 #include "q3DMASCDisclaimerDialog.h"
 #include "q3DMASCClassifier.h"
 #include "q3DMASCTools.h"
+#include "qClassify3DMASCDialog.h"
 
 //qCC_db
 #include <ccPointCloud.h>
@@ -45,7 +46,8 @@ void q3DMASCPlugin::onNewSelection(const ccHObject::Container& selectedEntities)
 	if (m_classifyAction)
 	{
 		//classification: only one point cloud
-		m_classifyAction->setEnabled(selectedEntities.size() == 1 && selectedEntities[0]->isA(CC_TYPES::POINT_CLOUD));
+		//m_classifyAction->setEnabled(selectedEntities.size() == 1 && selectedEntities[0]->isA(CC_TYPES::POINT_CLOUD));
+		m_classifyAction->setEnabled(m_app->dbRootObject()->getChildrenNumber() != 0);
 	}
 
 	if (m_trainAction)
@@ -96,7 +98,84 @@ void q3DMASCPlugin::doClassifyAction()
 		return;
 	}
 
-	//TODO
+	QString inputFilename;
+	{
+		QSettings settings;
+		settings.beginGroup("3DMASC");
+		QString inputPath = settings.value("FilePath", QCoreApplication::applicationDirPath()).toString();
+		inputFilename = QFileDialog::getOpenFileName(m_app->getMainWindow(), "Load 3DMASC classifier file", inputPath, "*.txt");
+		if (inputFilename.isNull())
+		{
+			//process cancelled by the user
+			return;
+		}
+		settings.setValue("FilePath", QFileInfo(inputFilename).absolutePath());
+		settings.endGroup();
+	}
+
+	QSet<QString> cloudLabels;
+	if (!masc::Tools::LoadClassifierCloudLabels(inputFilename, cloudLabels))
+	{
+		m_app->dispToConsole("Failed to read classifier file (see Console)", ccMainAppInterface::ERR_CONSOLE_MESSAGE);
+		return;
+	}
+	if (cloudLabels.empty())
+	{
+		m_app->dispToConsole("Invalid classifier file (no cloud label defined)", ccMainAppInterface::ERR_CONSOLE_MESSAGE);
+		return;
+	}
+	else if (cloudLabels.size() > 3)
+	{
+		m_app->dispToConsole("This classifier uses more than 3 clouds (the GUI version cannot handle it)", ccMainAppInterface::ERR_CONSOLE_MESSAGE);
+		return;
+	}
+
+	//now show a dialog where the user will be able to set the cloud roles
+	Classify3DMASCDialog classifDlg(m_app);
+	classifDlg.setCloudRoles(cloudLabels);
+	if (!classifDlg.exec())
+	{
+		//process cancelled by the user
+		return;
+	}
+
+	masc::Tools::NamedClouds clouds;
+	QString mainCloudLabel;
+	classifDlg.getClouds(clouds, mainCloudLabel);
+
+	masc::Feature::Set features;
+	masc::Classifier classifier;
+	if (!masc::Tools::LoadClassifier(inputFilename, clouds, features, classifier, m_app->getMainWindow()))
+	{
+		return;
+	}
+
+	//the 'main cloud' is the cloud that should be classified
+	masc::CorePoints corePoints;
+	corePoints.origin = corePoints.cloud = clouds[mainCloudLabel];
+
+	//prepare the main cloud
+	ccProgressDialog pDlg(true, m_app->getMainWindow());
+	pDlg.setAutoClose(false); //we don't want the progress dialog to 'pop' for each feature
+	QString error;
+	if (!masc::Tools::PrepareFeatures(corePoints, features, error, &pDlg))
+	{
+		m_app->dispToConsole(error, ccMainAppInterface::ERR_CONSOLE_MESSAGE);
+		return;
+	}
+	pDlg.close();
+	QCoreApplication::processEvents();
+	pDlg.setAutoClose(true); //restore the default behavior of the progress dialog
+
+	//apply classifier
+	{
+		QString errorMessage;
+		if (!classifier.classify(features, corePoints.cloud, errorMessage, m_app->getMainWindow()))
+		{
+			m_app->dispToConsole(errorMessage, ccMainAppInterface::ERR_CONSOLE_MESSAGE);
+			return;
+		}
+	}
 }
 
 void q3DMASCPlugin::doTrainAction()
@@ -105,17 +184,6 @@ void q3DMASCPlugin::doTrainAction()
 	if (!ShowTrainDisclaimer(m_app))
 		return;
 
-	//if (m_selectedEntities.size() != 2
-	//	|| !m_selectedEntities[0]->isA(CC_TYPES::POINT_CLOUD)
-	//	|| !m_selectedEntities[1]->isA(CC_TYPES::POINT_CLOUD))
-	//{
-	//	m_app->dispToConsole("Select two point clouds!",ccMainAppInterface::ERR_CONSOLE_MESSAGE);
-	//	return;
-	//}
-	//
-	//ccPointCloud* cloud1 = static_cast<ccPointCloud*>(m_selectedEntities[0]);
-	//ccPointCloud* cloud2 = static_cast<ccPointCloud*>(m_selectedEntities[1]);
-
 	masc::TrainParameters params;
 	if (params.testDataRatio < 0 || params.testDataRatio > 0.99f)
 	{
@@ -123,31 +191,12 @@ void q3DMASCPlugin::doTrainAction()
 		return;
 	}
 
-	masc::Feature::Set features;
-#if 0
-	if (m_selectedEntities.empty() || !m_selectedEntities.front()->isA(CC_TYPES::POINT_CLOUD))
-	{
-		m_app->dispToConsole("Select one and only one point cloud!", ccMainAppInterface::ERR_CONSOLE_MESSAGE);
-		return;
-	}
-
-	ccPointCloud* cloud = static_cast<ccPointCloud*>(m_selectedEntities.front());
-
-	//features
-	{
-		Feature::Shared featureZ(new PointFeature(PointFeature::Z, cloud));
-		features.push_back(featureZ);
-		
-		Feature::Shared featureIntensity(new PointFeature(PointFeature::Intensity, cloud));
-		features.push_back(featureIntensity);
-	}
-#else
 	QString inputFilename;
 	{
 		QSettings settings;
 		settings.beginGroup("3DMASC");
 		QString inputPath = settings.value("FilePath", QCoreApplication::applicationDirPath()).toString();
-		inputFilename = QFileDialog::getOpenFileName(m_app->getMainWindow(), "Load 3DMASC script file", inputPath, "*.txt");
+		inputFilename = QFileDialog::getOpenFileName(m_app->getMainWindow(), "Load 3DMASC training file", inputPath, "*.txt");
 		if (inputFilename.isNull())
 		{
 			//process cancelled by the user
@@ -159,7 +208,8 @@ void q3DMASCPlugin::doTrainAction()
 
 	std::vector<ccPointCloud*> loadedClouds;
 	masc::CorePoints corePoints;
-	if (!masc::Tools::LoadFile(inputFilename, features, loadedClouds, corePoints))
+	masc::Feature::Set features;
+	if (!masc::Tools::LoadTrainingFile(inputFilename, features, loadedClouds, corePoints))
 	{
 		while (!loadedClouds.empty())
 		{
@@ -223,8 +273,6 @@ void q3DMASCPlugin::doTrainAction()
 	QCoreApplication::processEvents();
 	pDlg.setAutoClose(true); //restore the default behavior of the progress dialog
 
-#endif
-
 	//randomly select the training points
 	QScopedPointer<CCLib::ReferenceCloud> trainSubset(new CCLib::ReferenceCloud(corePoints.cloud));
 	QScopedPointer<CCLib::ReferenceCloud> testSubset(new CCLib::ReferenceCloud(corePoints.cloud));
@@ -234,18 +282,8 @@ void q3DMASCPlugin::doTrainAction()
 		return;
 	}
 
+	//train the classifier
 	masc::Classifier classifier;
-	//QString outputFilename = QCoreApplication::applicationDirPath() + "/classifier.yaml";
-	//if (QFile(outputFilename).exists())
-	//{
-	//	if (!classifier.fromFile(outputFilename, m_app->getMainWindow()))
-	//	{
-	//		m_app->dispToConsole("Failed to load previous classifier file", ccMainAppInterface::ERR_CONSOLE_MESSAGE);
-	//		return;
-	//	}
-	//	m_app->dispToConsole("Previous classifier loaded", ccMainAppInterface::WRN_CONSOLE_MESSAGE);
-	//}
-	//else
 	{
 		QString errorMessage;
 		if (!classifier.train(corePoints.cloud, params.rt, features, errorMessage, trainSubset.data(), m_app->getMainWindow()))
@@ -259,7 +297,7 @@ void q3DMASCPlugin::doTrainAction()
 			QSettings settings;
 			settings.beginGroup("3DMASC");
 			QString outputPath = settings.value("FilePath", QCoreApplication::applicationDirPath()).toString();
-			outputFilename = QFileDialog::getSaveFileName(m_app->getMainWindow(), "Save 3DMASC classifier", outputPath, "*.yaml");
+			outputFilename = QFileDialog::getSaveFileName(m_app->getMainWindow(), "Save 3DMASC classifier", outputPath, "*.txt");
 			if (outputFilename.isNull())
 			{
 				//process cancelled by the user
@@ -270,8 +308,10 @@ void q3DMASCPlugin::doTrainAction()
 		}
 
 		//save the classifier
-		classifier.toFile(outputFilename, m_app->getMainWindow());
-		m_app->dispToConsole("Classifier succesfully created", ccMainAppInterface::WRN_CONSOLE_MESSAGE);
+		if (masc::Tools::SaveClassifier(outputFilename, features, classifier, m_app->getMainWindow()))
+		{
+			m_app->dispToConsole("Classifier succesfully saved to " + outputFilename, ccMainAppInterface::STD_CONSOLE_MESSAGE);
+		}
 	}
 
 	//test classifier

@@ -22,6 +22,8 @@
 
 //qCC_db
 #include <ccPointCloud.h>
+#include <ccScalarField.h>
+#include <ccProgressDialog.h>
 #include <ccLog.h>
 
 //qCC_io
@@ -94,6 +96,126 @@ static QSharedPointer<IScalarFieldWrapper> GetSource(const Feature::Shared& f, c
 	return source;
 }
 
+bool Classifier::classify(const Feature::Set& features, ccPointCloud* cloud, QString& errorMessage, QWidget* parentWidget/*=nullptr*/)
+{
+	if (!cloud)
+	{
+		assert(false);
+		errorMessage = QObject::tr("Invalid input");
+		return false;
+	}
+	
+	if (!m_rtrees || !m_rtrees->isTrained())
+	{
+		errorMessage = QObject::tr("Classifier hasn't been trained yet");
+		return false;
+	}
+
+	if (features.empty())
+	{
+		errorMessage = QObject::tr("Training method called without any feature?!");
+		return false;
+	}
+
+	//look for the classification field
+	CCLib::ScalarField* classificationSF = nullptr;
+	int classifSFIdx = cloud->getScalarFieldIndexByName(LAS_FIELD_NAMES[LAS_CLASSIFICATION]); //LAS_FIELD_NAMES[LAS_CLASSIFICATION] = "Classification"
+	if (!classifSFIdx)
+	{
+		//create it if necessary
+		ccScalarField* _classificationSF = new ccScalarField(LAS_FIELD_NAMES[LAS_CLASSIFICATION]);
+		if (!_classificationSF->resizeSafe(cloud->size()))
+		{
+			_classificationSF->release();
+			errorMessage = QObject::tr("Not enough memory");
+			return false;
+		}
+		classifSFIdx = cloud->addScalarField(_classificationSF);
+		classificationSF = _classificationSF;
+		cloud->setCurrentDisplayedScalarField(classifSFIdx);
+	}
+	else
+	{
+		classificationSF = cloud->getScalarField(classifSFIdx);
+	}
+	assert(classificationSF);
+	classificationSF->fill(0); //0 = no classification?
+
+	int sampleCount = static_cast<int>(cloud->size());
+	int attributesPerSample = static_cast<int>(features.size());
+
+	ccLog::Print(QObject::tr("[3DMASC] Classifying %1 points with %2 feature(s)").arg(sampleCount).arg(attributesPerSample));
+
+	//allocate the data matrix
+	cv::Mat test_data;
+	try
+	{
+		test_data.create(1, attributesPerSample, CV_32FC1);
+	}
+	catch (const cv::Exception& cvex)
+	{
+		errorMessage = cvex.msg.c_str();
+		return false;
+	}
+
+	//create the field wrappers
+	std::vector< QSharedPointer<IScalarFieldWrapper> > wrappers;
+	{
+		wrappers.reserve(attributesPerSample);
+		for (int fIndex = 0; fIndex < attributesPerSample; ++fIndex)
+		{
+			const Feature::Shared &f = features[fIndex];
+			if (!f)
+			{
+				assert(false);
+				return false;
+			}
+
+			QSharedPointer<IScalarFieldWrapper> source = GetSource(f, cloud);
+			if (!source || !source->isValid())
+			{
+				assert(false);
+				errorMessage = QObject::tr("Internal error: invalid source '%1'").arg(f->sourceName);
+				return false;
+			}
+
+			wrappers.push_back(source);
+		}
+	}
+
+	QScopedPointer<ccProgressDialog> pDlg;
+	if (parentWidget)
+	{
+		pDlg.reset(new ccProgressDialog(parentWidget));
+		pDlg->setLabelText(QString("Classify (%1 points)").arg(sampleCount));
+		pDlg->show();
+		QCoreApplication::processEvents();
+	}
+	CCLib::NormalizedProgress nProgress(pDlg.data(), cloud->size());
+
+	for (unsigned i = 0; i < cloud->size(); ++i)
+	{
+		for (int fIndex = 0; fIndex < attributesPerSample; ++fIndex)
+		{
+			double value = wrappers[fIndex]->pointValue(i);
+			test_data.at<float>(0, fIndex) = static_cast<float>(value);
+		}
+		
+		float predictedClass = m_rtrees->predict(test_data.row(0));
+		classificationSF->setValue(i, static_cast<ScalarType>(predictedClass));
+
+		if (pDlg && !nProgress.oneStep())
+		{
+			//process cancelled by the user
+			classificationSF->computeMinAndMax();
+			return false;
+		}
+	}
+	classificationSF->computeMinAndMax();
+
+	return true;
+}
+
 bool Classifier::evaluate(const Feature::Set& features, CCLib::ReferenceCloud* testSubset, AccuracyMetrics& metrics, QString& errorMessage, QWidget* parentWidget/*=nullptr*/)
 {
 	metrics.sampleCount = metrics.goodGuess = 0;
@@ -154,6 +276,16 @@ bool Classifier::evaluate(const Feature::Set& features, CCLib::ReferenceCloud* t
 		return false;
 	}
 
+	QScopedPointer<ccProgressDialog> pDlg;
+	if (parentWidget)
+	{
+		pDlg.reset(new ccProgressDialog(parentWidget));
+		pDlg->setLabelText(QString("Evaluating the classifier on %1 points").arg(testSampleCount));
+		pDlg->show();
+		QCoreApplication::processEvents();
+	}
+	CCLib::NormalizedProgress nProgress(pDlg.data(), testSampleCount);
+
 	//fill the data matrix
 	for (int fIndex = 0; fIndex < attributesPerSample; ++fIndex)
 	{
@@ -180,7 +312,7 @@ bool Classifier::evaluate(const Feature::Set& features, CCLib::ReferenceCloud* t
 		}
 	}
 
-	//estimate the efficiency of the classiier
+	//estimate the efficiency of the classifier
 	{
 		metrics.sampleCount = testSubset->size();
 		metrics.goodGuess = 0;
@@ -200,6 +332,12 @@ bool Classifier::evaluate(const Feature::Set& features, CCLib::ReferenceCloud* t
 			if (static_cast<int>(predictedClass) == iClass)
 			{
 				++metrics.goodGuess;
+			}
+
+			if (pDlg && !nProgress.oneStep())
+			{
+				//process cancelled by the user
+				return false;
 			}
 		}
 
@@ -310,6 +448,7 @@ bool Classifier::train(	const ccPointCloud* cloud,
 		pDlg->setRange(0, 0); //infinite loop
 		pDlg->setLabelText("Training classifier");
 		pDlg->show();
+		QCoreApplication::processEvents();
 	}
 
 	m_rtrees = cv::ml::RTrees::create();

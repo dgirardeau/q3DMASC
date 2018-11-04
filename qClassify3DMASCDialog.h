@@ -17,40 +17,37 @@
 //#                                                                        #
 //##########################################################################
 
-//Local
-#include "FeaturesInterface.h"
-#include "q3DMASCClassifier.h"
+//Qt
+#include <QDialog>
 
-//CCLib
-#include <GenericProgressCallback.h>
+#include <ui_Classify3DMASCDialog.h>
 
-//qCC_db
+class ccMainAppInterface;
 class ccPointCloud;
 
-class QWidget;
-
-//! 3DMASC classifier
-namespace masc
+//! 3DMASC plugin 'classify' dialog
+class Classify3DMASCDialog : public QDialog, public Ui::Classify3DMASCDialog
 {
-	class Tools
-	{
-	public:
+	Q_OBJECT
 
-		static bool LoadTrainingFile(QString filename, Feature::Set& rawFeatures, std::vector<ccPointCloud*>& loadedClouds, CorePoints& corePoints);
+public:
 
-		static bool SaveClassifier(QString filename, const Feature::Set& features, const masc::Classifier& classifier, QWidget* parent = nullptr);
+	//! Default constructor
+	Classify3DMASCDialog(ccMainAppInterface* app);
 
-		static bool LoadClassifierCloudLabels(QString filename, QSet<QString>& labels);
+	//! Sets the clouds roles
+	void setCloudRoles(const QSet<QString>& roles);
 
-		typedef QMap<QString, ccPointCloud* > NamedClouds;
+	//! Get point clouds
+	void getClouds(QMap<QString, ccPointCloud*>& clouds, QString& mainCloud);
 
-		static bool LoadClassifier(QString filename, const NamedClouds& clouds, Feature::Set& rawFeatures, masc::Classifier& classifier, QWidget* parent = nullptr);
+protected slots:
 
-		static bool PrepareFeatures(const CorePoints& corePoints, Feature::Set& features, QString& error, CCLib::GenericProgressCallback* progressCb = nullptr);
+	void onCloudChanged(int);
 
-		static bool RandomSubset(ccPointCloud* cloud, float ratio, CCLib::ReferenceCloud* inRatioSubset, CCLib::ReferenceCloud* outRatioSubset);
+protected:
 
-		static CCLib::ScalarField* RetrieveSF(const ccPointCloud* cloud, const QString& sfName, bool caseSensitive = true);
-	};
+	//! Gives access to the application (data-base, UI, etc.)
+	ccMainAppInterface* m_app;
 
-}; //namespace masc
+};
