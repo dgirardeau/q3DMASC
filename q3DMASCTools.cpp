@@ -792,6 +792,12 @@ CCLib::ScalarField* Tools::RetrieveSF(const ccPointCloud* cloud, const QString& 
 	}
 }
 
+struct FeaturesAndScales
+{
+	std::vector<double> scales;
+	std::vector<PointFeature::Shared> features;
+};
+
 bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features, QString& error, CCLib::GenericProgressCallback* progressCb/*=nullptr*/)
 {
 	if (features.empty() || !corePoints.origin)
@@ -800,6 +806,9 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 		assert(false);
 		return false;
 	}
+
+	//gather all the scales that need to be extracted
+	QMap<ccPointCloud*, FeaturesAndScales> cloudsWithScaledFeatures;
 	
 	for (const Feature::Shared& feature : features)
 	{
@@ -816,9 +825,179 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 			//something failed (error should be up to date)
 			return false;
 		}
+
+		if (feature->getType() == Feature::Type::PointFeature && feature->scaled())
+		{
+			try
+			{
+				//build the scaled feature list attached to the first cloud
+				if (feature->cloud1)
+				{
+					FeaturesAndScales& fas = cloudsWithScaledFeatures[feature->cloud1];
+					fas.features.push_back(qSharedPointerCast<PointFeature>(feature));
+					if (std::find(fas.scales.begin(), fas.scales.end(), feature->scale) == fas.scales.end())
+					{
+						fas.scales.push_back(feature->scale);
+					}
+				}
+
+				//build the scaled feature list attached to the second cloud (if any)
+				if (feature->cloud2 && feature->cloud2 != feature->cloud1 && feature->op != Feature::NO_OPERATION)
+				{
+					FeaturesAndScales& fas = cloudsWithScaledFeatures[feature->cloud2];
+					fas.features.push_back(qSharedPointerCast<PointFeature>(feature));
+					if (std::find(fas.scales.begin(), fas.scales.end(), feature->scale) == fas.scales.end())
+					{
+						fas.scales.push_back(feature->scale);
+					}
+				}
+			}
+			catch (const std::bad_alloc&)
+			{
+				error = "Not enough memory";
+				return false;
+			}
+		}
 	}
 
-	return true;
+	bool success = true;
+
+	//if we have scaled features
+	if (!cloudsWithScaledFeatures.empty())
+	{
+		for (QMap<ccPointCloud*, FeaturesAndScales>::iterator it = cloudsWithScaledFeatures.begin(); it != cloudsWithScaledFeatures.end(); ++it)
+		{
+			FeaturesAndScales& fas = it.value();
+			ccPointCloud* sourceCloud = it.key();
+
+			//sort the scales
+			std::sort(fas.scales.begin(), fas.scales.end());
+
+			//get the octree
+			ccOctree::Shared octree = sourceCloud->getOctree();
+			if (!octree)
+			{
+				ccLog::Print(QString("Computing octree of cloud %1 (%2 points)").arg(sourceCloud->getName()).arg(sourceCloud->size()));
+				octree = sourceCloud->computeOctree(progressCb);
+				if (!octree)
+				{
+					error = "Failed to compute octree (not enough memory?)";
+					return false;
+				}
+			}
+
+			//now extract the neighborhoods from the biggest to the smallest scale
+			double largetScale = fas.scales.back();
+			PointCoordinateType largestRadius = static_cast<PointCoordinateType>(largetScale / 2); //scale is the diameter!
+			unsigned char octreeLevel = octree->findBestLevelForAGivenNeighbourhoodSizeExtraction(largestRadius);
+
+			unsigned pointCount = corePoints.size();
+			if (progressCb)
+			{
+				progressCb->setInfo(qPrintable(QString("Computing fields for cloud %1\n(core points: %2)").arg(sourceCloud->getName()).arg(pointCount)));
+			}
+			ccLog::Print(QString("Computing fields for cloud %1 (core points: %2)").arg(sourceCloud->getName()).arg(pointCount));
+			CCLib::NormalizedProgress nProgress(progressCb, pointCount);
+
+			for (unsigned i = 0; i < pointCount; ++i)
+			{
+				//spherical neighborhood extraction structure
+				CCLib::DgmOctree::NearestNeighboursSphericalSearchStruct nNSS;
+				{
+					nNSS.level = octreeLevel;
+					nNSS.queryPoint = *corePoints.cloud->getPoint(i);
+					nNSS.prepare(largestRadius, octree->getCellSize(nNSS.level));
+					octree->getTheCellPosWhichIncludesThePoint(&nNSS.queryPoint, nNSS.cellPos, nNSS.level);
+					octree->computeCellCenter(nNSS.cellPos, nNSS.level, nNSS.cellCenter);
+				}
+
+				//we extract the point's neighbors
+				unsigned kNN = octree->findNeighborsInASphereStartingFromCell(nNSS, largestRadius, true);
+				if (kNN == 0)
+				{
+					//nothing todo
+					continue;
+				}
+				nNSS.pointsInNeighbourhood.resize(kNN);
+
+				//for each scale (from the largest to the smallest)
+				for (size_t scaleIndex = 0; scaleIndex < fas.scales.size(); ++scaleIndex)
+				{
+					if (scaleIndex != 0)
+					{
+						double radius = fas.scales[fas.scales.size() - 1 - scaleIndex] / 2; //scale is the diameter!
+						double sqRadius = radius * radius;
+						//remove the farthest points
+						for (; kNN > 0; --kNN)
+						{
+							if (nNSS.pointsInNeighbourhood[kNN - 1].squareDistd <= sqRadius)
+							{
+								break;
+							}
+						}
+
+						if (kNN == 0)
+						{
+							//no need to go further
+							break;
+						}
+						nNSS.pointsInNeighbourhood.resize(kNN);
+					}
+
+					double outputValue = 0;
+					for (PointFeature::Shared& feature : fas.features)
+					{
+						if (feature->cloud1 == sourceCloud && feature->statSF1 && feature->field1)
+						{
+							if (!feature->computeStat(nNSS.pointsInNeighbourhood, feature->field1, outputValue))
+							{
+								//an error occurred
+								success = false;
+								break;
+							}
+
+							ScalarType v1 = static_cast<ScalarType>(outputValue);
+							feature->statSF1->setValue(i, v1);
+						}
+
+						if (feature->cloud2 == sourceCloud &&feature->statSF2 && feature->field2)
+						{
+							assert(feature->op != Feature::NO_OPERATION);
+							if (!feature->computeStat(nNSS.pointsInNeighbourhood, feature->field2, outputValue))
+							{
+								//an error occurred
+								success = false;
+								break;
+							}
+
+							ScalarType v2 = static_cast<ScalarType>(outputValue);
+							feature->statSF2->setValue(i, v2);
+						}
+					}
+
+					if (!success)
+					{
+						break;
+					}
+
+					if (progressCb && !nProgress.oneStep())
+					{
+						//process cancelled by the user
+						ccLog::Warning("Process cancelled");
+						error = true;
+						break;
+					}
+				
+				} //for each scale
+			
+			} //for each point
+		
+		} //for each cloud
+
+		//now we can end 
+	}
+
+	return success;
 }
 
 bool Tools::RandomSubset(ccPointCloud* cloud, float ratio, CCLib::ReferenceCloud* inRatioSubset, CCLib::ReferenceCloud* outRatioSubset)

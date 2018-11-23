@@ -301,7 +301,6 @@ static bool ExtractStatFromSF(	const CCVector3& queryPoint,
 		assert(false);
 		return false;
 	}
-	std::numeric_limits<double>::quiet_NaN();
 
 	//spherical neighborhood extraction structure
 	CCLib::DgmOctree::NearestNeighboursSphericalSearchStruct nNSS;
@@ -435,6 +434,66 @@ static bool ExtractStatFromSF(	const CCVector3& queryPoint,
 	}
 
 	return true;
+}
+
+static bool PrepareOctree(ccPointCloud* sourceCloud, CCLib::GenericProgressCallback* progressCb = nullptr)
+{
+	if (!sourceCloud)
+	{
+		//invalid input parameters
+		assert(false);
+		return false;
+	}
+
+	ccOctree::Shared octree = sourceCloud->getOctree();
+	if (!octree)
+	{
+		ccLog::Print(QString("Computing octree of cloud %1 (%2 points)").arg(sourceCloud->getName()).arg(sourceCloud->size()));
+		octree = sourceCloud->computeOctree(progressCb);
+		if (!octree)
+		{
+			ccLog::Warning("Failed to compute octree");
+			return nullptr;
+		}
+	}
+
+	return true;
+}
+
+static CCLib::ScalarField* PrepareSF(const CorePoints& corePoints, const char* resultSFName)
+{
+	if (!corePoints.cloud || !resultSFName)
+	{
+		//invalid input parameters
+		assert(false);
+		return nullptr;
+	}
+
+	CCLib::ScalarField* resultSF = nullptr;
+	int sfIdx = corePoints.cloud->getScalarFieldIndexByName(resultSFName);
+	if (sfIdx >= 0)
+	{
+		resultSF = corePoints.cloud->getScalarField(sfIdx);
+	}
+	else
+	{
+		ccScalarField* newSF = new ccScalarField(resultSFName);
+		if (!newSF->resizeSafe(corePoints.cloud->size()))
+		{
+			ccLog::Warning("Not enough memory");
+			newSF->release();
+			return nullptr;
+		}
+		corePoints.cloud->addScalarField(newSF);
+
+		resultSF = newSF;
+
+	}
+
+	assert(resultSF);
+	resultSF->fill(NAN_VALUE);
+
+	return resultSF;
 }
 
 static CCLib::ScalarField* ExtractStat(	const CorePoints& corePoints, 
@@ -580,11 +639,13 @@ bool PointFeature::prepare(	const CorePoints& corePoints,
 	{
 		//invalid input
 		assert(false);
+		error = "internal error (no input core points)";
 		return false;
 	}
 
 	//look for the source field
-	QSharedPointer<IScalarFieldWrapper> field1 = retrieveField(cloud1, error);
+	assert(!field1);
+	field1 = retrieveField(cloud1, error);
 	if (!field1)
 	{
 		//error should be up to date
@@ -601,12 +662,12 @@ bool PointFeature::prepare(	const CorePoints& corePoints,
 			return false;
 		}
 
-		QSharedPointer<IScalarFieldWrapper> field2;
 		if (cloud2)
 		{
 			//no need to compute the second scalar field if no MATH operation has to be performed?!
 			if (op != Feature::NO_OPERATION)
 			{
+				assert(!field2);
 				field2 = retrieveField(cloud2, error);
 				if (!field2)
 				{
@@ -630,10 +691,21 @@ bool PointFeature::prepare(	const CorePoints& corePoints,
 		}
 		resultSFName += "@" + QString::number(scale);
 
-		CCLib::ScalarField* statSF1 = ExtractStat(corePoints, cloud1, field1.data(), scale, stat, qPrintable(resultSFName), progressCb);
+		//prepare the octree
+		//if (!PrepareOctree(cloud1, progressCb))
+		//{
+		//	error = "Failed to compute octree (not enough memory?)";
+		//	return false;
+		//}
+
+		//and the scalar fielda
+		assert(!statSF1);
+		statSF1 = PrepareSF(corePoints, qPrintable(resultSFName));
+		//CCLib::ScalarField* statSF1 = ExtractStat(corePoints, cloud1, field1.data(), scale, stat, qPrintable(resultSFName), progressCb);
 		if (!statSF1)
 		{
-			error = QString("Failed to extract stat. from field '%1' @ scale %2").arg(field1->getName()).arg(scale);
+			//error = QString("Failed to extract stat. from field '%1' @ scale %2").arg(field1->getName()).arg(scale);
+			error = QString("Failed to prepare scalar field for field '%1' @ scale %2").arg(field1->getName()).arg(scale);
 			return false;
 		}
 		sourceName = statSF1->getName();
@@ -641,8 +713,18 @@ bool PointFeature::prepare(	const CorePoints& corePoints,
 		if (cloud2 && field2 && op != Feature::NO_OPERATION)
 		{
 			QString resultSFName2 = cloud2Label + "." + field2->getName() + QString("_") + Feature::StatToString(stat) + "@" + QString::number(scale);
-			int sfIndex2 = corePoints.cloud->getScalarFieldIndexByName(qPrintable(resultSFName2));
-			CCLib::ScalarField* statSF2 = ExtractStat(corePoints, cloud2, field2.data(), scale, stat, qPrintable(resultSFName2), progressCb);
+			keepStatSF2 = (corePoints.cloud->getScalarFieldIndexByName(qPrintable(resultSFName2)) >= 0); //we remember that the scalar field was already existing!
+			
+			//prepare the octree
+			//if (!PrepareOctree(cloud2, progressCb))
+			//{
+			//	error = "Failed to compute octree (not enough memory?)";
+			//	return false;
+			//}
+
+			assert(!statSF2);
+			statSF2 = PrepareSF(corePoints, qPrintable(resultSFName2));
+			//statSF2 = ExtractStat(corePoints, cloud2, field2.data(), scale, stat, qPrintable(resultSFName2), progressCb);
 			if (!statSF2)
 			{
 				error = QString("Failed to extract stat. from field '%1' @ scale %2").arg(field2->getName()).arg(scale);
@@ -650,18 +732,18 @@ bool PointFeature::prepare(	const CorePoints& corePoints,
 			}
 
 			//now perform the math operation
-			if (!PerformMathOp(statSF1, statSF2, op))
-			{
-				error = "Failed to perform the MATH operation";
-				return false;
-			}
+			//if (!PerformMathOp(statSF1, statSF2, op))
+			//{
+			//	error = "Failed to perform the MATH operation";
+			//	return false;
+			//}
 
-			if (sfIndex2 < 0)
-			{
-				//release some memory
-				sfIndex2 = corePoints.cloud->getScalarFieldIndexByName(qPrintable(resultSFName2));
-				corePoints.cloud->deleteScalarField(sfIndex2);
-			}
+			//if (sfIndex2 < 0)
+			//{
+			//	//release some memory
+			//	sfIndex2 = corePoints.cloud->getScalarFieldIndexByName(qPrintable(resultSFName2));
+			//	corePoints.cloud->deleteScalarField(sfIndex2);
+			//}
 		}
 
 		return true;
@@ -692,10 +774,6 @@ bool PointFeature::prepare(	const CorePoints& corePoints,
 
 		//build the final SF name
 		QString resultSFName = /*cloud1Label + "." + */field1->getName();
-		//if (cloud2 && field2 && op != Feature::NO_OPERATION)
-		//{
-		//	resultSFName += QString("_") + Feature::OpToString(op) + "_" + field2->getName();
-		//}
 
 		//retrieve/create a SF to host the result
 		CCLib::ScalarField* resultSF = nullptr;
@@ -733,22 +811,201 @@ bool PointFeature::prepare(	const CorePoints& corePoints,
 
 		sourceName = resultSF->getName();
 
-		//if (cloud2 && field2 && op != Feature::NO_OPERATION)
-		//{
-		//	//now perform the math operation
-		//	if (!PerformMathOp(*field1, *field2, op, resultSF))
-		//	{
-		//		error = "Failed to perform the MATH operation";
-		//		return false;
-		//	}
-
-		//	//sf2 is held by the second cloud for now
-		//	//sf2->release();
-		//	//sf2 = nullptr;
-		//}
-
 		return true;
 	}
+}
+
+bool PointFeature::computeStat(const CCLib::DgmOctree::NeighboursSet& pointsInNeighbourhood, const QSharedPointer<IScalarFieldWrapper>& sourceField, double& outputValue) const
+{
+	outputValue = std::numeric_limits<double>::quiet_NaN();
+
+	if (!sourceField || stat == Feature::NO_STAT)
+	{
+		//invalid input parameters
+		assert(false);
+		return false;
+	}
+
+	size_t kNN = pointsInNeighbourhood.size();
+	if (kNN == 0)
+	{
+		assert(false);
+		return false;
+	}
+
+	//specific case
+	if (stat == Feature::RANGE)
+	{
+		double minValue = 0;
+		double maxValue = 0;
+
+		for (size_t k = 0; k < kNN; ++k)
+		{
+			unsigned index = pointsInNeighbourhood[k].pointIndex;
+			double v = sourceField->pointValue(index);
+
+			//track min and max values
+			if (k != 0)
+			{
+				if (v < minValue)
+					minValue = v;
+				else if (v > maxValue)
+					maxValue = v;
+			}
+			else
+			{
+				minValue = maxValue = v;
+			}
+		}
+
+		outputValue = maxValue - minValue;
+		return true;
+	}
+	else
+	{
+		bool withSums = (stat == Feature::MEAN || stat == Feature::STD);
+		bool storeValues = (stat == Feature::MODE || stat == Feature::SKEW);
+		double sum = 0.0;
+		double sum2 = 0.0;
+
+		CCLib::WeibullDistribution::ScalarContainer values;
+		if (storeValues)
+		{
+			try
+			{
+				values.resize(kNN);
+			}
+			catch (const std::bad_alloc&)
+			{
+				ccLog::Warning("Not enough memory");
+				return false;
+			}
+		}
+
+		for (unsigned k = 0; k < kNN; ++k)
+		{
+			unsigned index = pointsInNeighbourhood[k].pointIndex;
+			double v = sourceField->pointValue(index);
+
+			if (withSums)
+			{
+				//compute average and std. dev.
+				sum += v;
+				sum2 += v * v;
+			}
+
+			if (storeValues)
+			{
+				values[k] = static_cast<ScalarType>(v);
+			}
+		}
+
+		switch (stat)
+		{
+		case Feature::MEAN:
+		{
+			outputValue = sum / kNN;
+		}
+		break;
+
+		case Feature::MODE:
+		{
+			CCLib::WeibullDistribution w;
+			w.computeParameters(values);
+			outputValue = w.computeMode();
+		}
+		break;
+
+		case Feature::STD:
+		{
+			outputValue = sqrt(std::abs(sum2 * kNN - sum * sum)) / kNN;
+		}
+		break;
+
+		case Feature::RANGE:
+		{
+			//we can't be here
+			assert(false);
+		}
+		return false;
+
+		case Feature::SKEW:
+		{
+			CCLib::WeibullDistribution w;
+			w.computeParameters(values);
+			outputValue = w.computeSkewness();
+		}
+		break;
+
+		default:
+		{
+			ccLog::Warning("Unhandled STAT measure");
+			assert(false);
+		}
+		return false;
+
+		}
+	}
+
+	return true;
+}
+
+bool PointFeature::finish(const CorePoints& corePoints, QString& error)
+{
+	if (!scaled())
+	{
+		//nothing to do
+		return true;
+	}
+
+	if (!corePoints.cloud)
+	{
+		//invalid input
+		assert(false);
+		error = "internal error (no input core points)";
+		return false;
+	}
+
+	bool success = true;
+
+	if (statSF1)
+	{
+		statSF1->computeMinAndMax();
+	}
+
+	if (statSF2)
+	{
+		//now perform the math operation
+		if (op != Feature::NO_OPERATION)
+		{
+			if (!PerformMathOp(statSF1, statSF2, op))
+			{
+				error = "Failed to perform the MATH operation";
+				success = false;
+			}
+		}
+
+		if (keepStatSF2)
+		{
+			statSF2->computeMinAndMax();
+		}
+		else
+		{
+			int sfIndex2 = corePoints.cloud->getScalarFieldIndexByName(statSF2->getName());
+			if (sfIndex2 >= 0)
+			{
+				corePoints.cloud->deleteScalarField(sfIndex2);
+			}
+			else
+			{
+				assert(false);
+				statSF2->release();
+			}
+			statSF2 = nullptr;
+		}
+	}
+
+	return success;
 }
 
 QString PointFeature::toString() const

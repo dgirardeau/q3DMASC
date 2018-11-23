@@ -31,6 +31,8 @@ namespace masc
 	{
 	public:	//PointFeatureType
 
+		typedef QSharedPointer<PointFeature> Shared;
+
 		enum PointFeatureType
 		{
 			Invalid = 0
@@ -142,6 +144,11 @@ namespace masc
 		PointFeature(PointFeatureType p_type)
 			: type(p_type)
 			, sourceSFIndex(-1)
+			, field1(nullptr)
+			, field2(nullptr)
+			, statSF1(nullptr)
+			, statSF2(nullptr)
+			, keepStatSF2(false)
 		{
 			//auomatically set the right source for specific features
 			switch (type)
@@ -188,6 +195,12 @@ namespace masc
 		//! Returns the descriptor for this particular feature
 		virtual QString toString() const override;
 
+		//! Finishes the feature preparation (update the scalar field, etc.)
+		bool finish(const CorePoints& corePoints, QString& error);
+
+		//! Compute the associated 'stat' on a set of points (and with a given field)
+		bool computeStat(const CCLib::DgmOctree::NeighboursSet& pointsInNeighbourhood, const QSharedPointer<IScalarFieldWrapper>& sourceField, double& outputValue) const;
+
 	protected: //methods
 
 		//! Returns the 'source' field from a given cloud
@@ -202,5 +215,10 @@ namespace masc
 
 		//! Source scalar field index (if the feature source is 'ScalarField')
 		int sourceSFIndex;
+
+		//! For scaled features
+		QSharedPointer<IScalarFieldWrapper> field1, field2;
+		CCLib::ScalarField *statSF1, *statSF2;
+		bool keepStatSF2;
 	};
 }
