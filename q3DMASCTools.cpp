@@ -894,7 +894,8 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 			unsigned pointCount = corePoints.size();
 			if (progressCb)
 			{
-				progressCb->setInfo(qPrintable(QString("Computing fields for cloud %1\n(core points: %2)").arg(sourceCloud->getName()).arg(pointCount)));
+				progressCb->setMethodTitle("Point features");
+				progressCb->setInfo(qPrintable(QString("Computing %1 featrues on cloud %2\n(core points: %3)").arg(fas.features.size()).arg(sourceCloud->getName()).arg(pointCount)));
 			}
 			ccLog::Print(QString("Computing fields for cloud %1 (core points: %2)").arg(sourceCloud->getName()).arg(pointCount));
 			CCLib::NormalizedProgress nProgress(progressCb, pointCount);
@@ -980,21 +981,31 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 						break;
 					}
 
-					if (progressCb && !nProgress.oneStep())
-					{
-						//process cancelled by the user
-						ccLog::Warning("Process cancelled");
-						error = true;
-						break;
-					}
-				
 				} //for each scale
 			
+				if (progressCb && !nProgress.oneStep())
+				{
+					//process cancelled by the user
+					ccLog::Warning("Process cancelled");
+					error = true;
+					break;
+				}
+
 			} //for each point
 		
 		} //for each cloud
+	}
 
-		//now we can end 
+	for (const Feature::Shared& feature : features)
+	{
+		//we have to 'finish' the process for Point features
+		if (feature->getType() == Feature::Type::PointFeature && feature->scaled())
+		{
+			if (!qSharedPointerCast<PointFeature>(feature)->finish(corePoints, error))
+			{
+				return false;
+			}
+		}
 	}
 
 	return success;

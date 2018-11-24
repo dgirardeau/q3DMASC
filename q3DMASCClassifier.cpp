@@ -120,7 +120,7 @@ bool Classifier::classify(const Feature::Set& features, ccPointCloud* cloud, QSt
 	//look for the classification field
 	CCLib::ScalarField* classificationSF = nullptr;
 	int classifSFIdx = cloud->getScalarFieldIndexByName(LAS_FIELD_NAMES[LAS_CLASSIFICATION]); //LAS_FIELD_NAMES[LAS_CLASSIFICATION] = "Classification"
-	if (!classifSFIdx)
+	if (classifSFIdx < 0)
 	{
 		//create it if necessary
 		ccScalarField* _classificationSF = new ccScalarField(LAS_FIELD_NAMES[LAS_CLASSIFICATION]);
