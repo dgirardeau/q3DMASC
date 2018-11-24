@@ -193,6 +193,7 @@ bool Classifier::classify(const Feature::Set& features, ccPointCloud* cloud, QSt
 	}
 	CCLib::NormalizedProgress nProgress(pDlg.data(), cloud->size());
 
+	bool success = true;
 	for (unsigned i = 0; i < cloud->size(); ++i)
 	{
 		for (int fIndex = 0; fIndex < attributesPerSample; ++fIndex)
@@ -207,13 +208,21 @@ bool Classifier::classify(const Feature::Set& features, ccPointCloud* cloud, QSt
 		if (pDlg && !nProgress.oneStep())
 		{
 			//process cancelled by the user
-			classificationSF->computeMinAndMax();
-			return false;
+			success = false;
+			break;
 		}
 	}
 	classificationSF->computeMinAndMax();
 
-	return true;
+	cloud->setCurrentDisplayedScalarField(classifSFIdx);
+	cloud->showSF(true);
+	if (parentWidget && cloud->getDisplay())
+	{
+		cloud->getDisplay()->redraw();
+		QCoreApplication::processEvents();
+	}
+
+	return success;
 }
 
 bool Classifier::evaluate(const Feature::Set& features, CCLib::ReferenceCloud* testSubset, AccuracyMetrics& metrics, QString& errorMessage, QWidget* parentWidget/*=nullptr*/)
