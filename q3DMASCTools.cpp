@@ -35,6 +35,7 @@
 #include <QFile>
 #include <QFileInfo>
 #include <QDir>
+#include <QMutex>
 
 //system
 #include <assert.h>
@@ -900,7 +901,11 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 			ccLog::Print(QString("Computing fields for cloud %1 (core points: %2)").arg(sourceCloud->getName()).arg(pointCount));
 			CCLib::NormalizedProgress nProgress(progressCb, pointCount);
 
-			for (unsigned i = 0; i < pointCount; ++i)
+			QMutex mutex;
+#if defined(_OPENMP)
+#pragma omp parallel for
+#endif
+			for (int i = 0; i < static_cast<int>(pointCount); ++i)
 			{
 				//spherical neighborhood extraction structure
 				CCLib::DgmOctree::NearestNeighboursSphericalSearchStruct nNSS;
@@ -948,6 +953,12 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 					double outputValue = 0;
 					for (PointFeature::Shared& feature : fas.features)
 					{
+						if (feature->scale != fas.scales[scaleIndex])
+						{
+							//we use the current neighborhood only for the features with the corresponding scales!
+							continue;
+						}
+
 						if (feature->cloud1 == sourceCloud && feature->statSF1 && feature->field1)
 						{
 							if (!feature->computeStat(nNSS.pointsInNeighbourhood, feature->field1, outputValue))
@@ -983,12 +994,18 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 
 				} //for each scale
 			
-				if (progressCb && !nProgress.oneStep())
+				if (progressCb)
 				{
-					//process cancelled by the user
-					ccLog::Warning("Process cancelled");
-					error = true;
-					break;
+					mutex.lock();
+					bool cancelled = !nProgress.oneStep();
+					mutex.unlock();
+					if (cancelled)
+					{
+						//process cancelled by the user
+						ccLog::Warning("Process cancelled");
+						error = true;
+						break;
+					}
 				}
 
 			} //for each point

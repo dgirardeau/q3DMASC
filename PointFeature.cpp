@@ -33,6 +33,9 @@
 //system
 #include <assert.h>
 
+//Qt
+#include <QCoreApplication>
+
 static const char* s_echoRatioSFName = "EchoRat";
 static const char* s_NIRSFName = "NIR";
 static const char* s_M3C2SFName = "M3C2 distance";
@@ -583,10 +586,11 @@ static CCLib::ScalarField* ExtractStat(	const CorePoints& corePoints,
 	resultSF->computeMinAndMax();
 	int newSFIdx = corePoints.cloud->addScalarField(static_cast<ccScalarField*>(resultSF));
 	//update display
-	if (corePoints.cloud->getDisplay())
+	//if (corePoints.cloud->getDisplay())
 	{
 		corePoints.cloud->setCurrentDisplayedScalarField(newSFIdx);
-		corePoints.cloud->getDisplay()->redraw();
+		//corePoints.cloud->getDisplay()->redraw();
+		//QCoreApplication::processEvents();
 	}
 
 	return resultSF;
@@ -698,7 +702,7 @@ bool PointFeature::prepare(	const CorePoints& corePoints,
 		//	return false;
 		//}
 
-		//and the scalar fielda
+		//and the scalar field
 		assert(!statSF1);
 		statSF1 = PrepareSF(corePoints, qPrintable(resultSFName));
 		//CCLib::ScalarField* statSF1 = ExtractStat(corePoints, cloud1, field1.data(), scale, stat, qPrintable(resultSFName), progressCb);
@@ -802,10 +806,11 @@ bool PointFeature::prepare(	const CorePoints& corePoints,
 			resultSF->computeMinAndMax();
 			int newSFIdx = corePoints.cloud->addScalarField(static_cast<ccScalarField*>(resultSF));
 			//update display
-			if (corePoints.cloud->getDisplay())
+			//if (corePoints.cloud->getDisplay())
 			{
 				corePoints.cloud->setCurrentDisplayedScalarField(newSFIdx);
-				corePoints.cloud->getDisplay()->redraw();
+				//corePoints.cloud->getDisplay()->redraw();
+				//QCoreApplication::processEvents();
 			}
 		}
 
@@ -971,6 +976,15 @@ bool PointFeature::finish(const CorePoints& corePoints, QString& error)
 	if (statSF1)
 	{
 		statSF1->computeMinAndMax();
+
+		//update display
+		//if (corePoints.cloud->getDisplay())
+		{
+			int sfIndex1 = corePoints.cloud->getScalarFieldIndexByName(statSF1->getName());
+			corePoints.cloud->setCurrentDisplayedScalarField(sfIndex1);
+			//corePoints.cloud->getDisplay()->redraw();
+			//QCoreApplication::processEvents();
+		}
 	}
 
 	if (statSF2)
@@ -1030,6 +1044,16 @@ QString PointFeature::toString() const
 	}
 
 	description += "_" + cloud1Label;
+
+	if (cloud2 && !cloud2Label.isEmpty())
+	{
+		description += "_" + cloud2Label;
+
+		if (op != NO_OPERATION)
+		{
+			description += "_" + OpToString(op);
+		}
+	}
 
 	//Point features always have a scale equal to 0 by definition
 	return description;

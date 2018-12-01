@@ -274,6 +274,8 @@ void q3DMASCPlugin::doTrainAction()
 	QCoreApplication::processEvents();
 	pDlg.setAutoClose(true); //restore the default behavior of the progress dialog
 
+	m_app->redrawAll();
+
 	//randomly select the training points
 	QScopedPointer<CCLib::ReferenceCloud> trainSubset(new CCLib::ReferenceCloud(corePoints.cloud));
 	QScopedPointer<CCLib::ReferenceCloud> testSubset(new CCLib::ReferenceCloud(corePoints.cloud));

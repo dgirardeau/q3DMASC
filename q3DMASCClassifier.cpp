@@ -137,7 +137,6 @@ bool Classifier::classify(const Feature::Set& features, ccPointCloud* cloud, QSt
 	{
 		classificationSF = cloud->getScalarField(classifSFIdx);
 	}
-	cloud->setCurrentDisplayedScalarField(classifSFIdx);
 	assert(classificationSF);
 	classificationSF->fill(0); //0 = no classification?
 
@@ -549,12 +548,13 @@ bool Classifier::toFile(QString filename, QWidget* parentWidget/*=nullptr*/) con
 	pDlg.show();
 	QCoreApplication::processEvents();
 
-	m_rtrees->save(filename.toStdString());
+	cv::String cvFilename = filename.toStdString();
+	m_rtrees->save(cvFilename);
 	
 	pDlg.close();
 	QCoreApplication::processEvents();
 
-	ccLog::Print("Classifier file saved to: " + filename);
+	ccLog::Print("Classifier file saved to: " + QString::fromStdString(cvFilename));
 	return true;
 }
 
