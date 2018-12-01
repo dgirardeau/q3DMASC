@@ -29,6 +29,11 @@
 
 class ccPointCloud;
 
+namespace CCLib
+{
+	class ScalarField;
+};
+
 namespace masc
 {
 	//! Generic feature descriptor
@@ -138,6 +143,9 @@ namespace masc
 		//! Prepares the feature (compute the scalar field, etc.)
 		virtual bool prepare(const CorePoints& corePoints, QString& error, CCLib::GenericProgressCallback* progressCb = nullptr) = 0;
 
+		//! Finishes the feature preparation (update the scalar field, etc.)
+		virtual bool finish(const CorePoints& corePoints, QString& error) { /* does nothing by default*/return true; }
+
 		//! Returns whether the feature has an associated scale
 		inline bool scaled() const { return std::isfinite(scale); }
 
@@ -145,62 +153,34 @@ namespace masc
 		virtual bool checkValidity(QString &error) const
 		{
 			unsigned char cloudCount = (cloud1 ? (cloud2 ? 2 : 1) : 0);
-
 			if (cloudCount == 0)
 			{
 				error = "feature has no associated cloud";
 				return false;
 			}
 
-			if (scaled() && stat == NO_STAT)
+			if (stat != NO_STAT && getType() != Type::PointFeature)
 			{
-				error = "scaled features need a STAT measure to be defined";
+				error = "STAT measures can only be defined on Point features";
 				return false;
 			}
 
-			if (stat != NO_STAT)
+			if (op != NO_OPERATION && cloudCount < 2)
 			{
-				if (getType() != Type::PointFeature)
-				{
-					error = "STAT measures can only be defined on Point features";
-					return false;
-				}
-				if (!scaled())
-				{
-					error = "STAT measures need at least one scale to be defined";
-					return false;
-				}
-			}
-
-			if (op != NO_OPERATION)
-			{
-				if (!scaled())
-				{
-					error = "math operations can't be defined on scale-less features (SC0)";
-					return false;
-				}
-				if (getType() == Type::DualCloudFeature)
-				{
-					error = "math operations can't be defined on dual-cloud features";
-					return false;
-				}
-				if (cloudCount < 2)
-				{
-					error = "at least two clouds are required to apply math operations";
-					return false;
-				}
-			}
-			if (getType() == Feature::Type::DualCloudFeature || getType() == Feature::Type::ContextBasedFeature)
-			{
-				if (cloudCount < 2)
-				{
-					error = "at least two clouds are required to compute dual-cloud or context-based features";
-					return false;
-				}
+				error = "at least two clouds are required to apply math operations";
+				return false;
 			}
 
 			return true;
 		}
+
+	public: //helpers
+
+		//! Creates (or resets) a scalar field with the given name on the input core points cloud
+		static CCLib::ScalarField* PrepareSF(ccPointCloud* cloud, const char* resultSFName);
+
+		//! Performs a mathematical operation between two scalar fields (they must have the same size!)
+		static bool PerformMathOp(CCLib::ScalarField* sf1, const CCLib::ScalarField* sf2, Operation op);
 
 	public: //members
 

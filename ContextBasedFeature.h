@@ -77,13 +77,11 @@ namespace masc
 			scale = p_scale;
 		}
 
-		//! Returns the feature type
+		//inherited from Feature
 		virtual Type getType() const override { return Type::ContextBasedFeature; }
-		//! Clones this feature
 		virtual Feature::Shared clone() const override { return Feature::Shared(new ContextBasedFeature(*this)); }
-		//! Prepares the feature (compute the scalar field, etc.)
 		virtual bool prepare(const CorePoints& corePoints, QString& error, CCLib::GenericProgressCallback* progressCb = nullptr) override;
-		//! Returns the descriptor for this particular feature
+		virtual bool checkValidity(QString &error) const override;
 		virtual QString toString() const override
 		{
 			//use the default keyword + number of neighbors + the scale + the context class

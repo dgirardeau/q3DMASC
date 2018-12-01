@@ -751,6 +751,8 @@ bool Tools::LoadTrainingFile(	QString filename,
 		{
 			loadedClouds.push_back(it.value());
 		}
+
+		return true;
 	}
 	else
 	{
@@ -796,8 +798,9 @@ CCLib::ScalarField* Tools::RetrieveSF(const ccPointCloud* cloud, const QString& 
 struct FeaturesAndScales
 {
 	std::vector<double> scales;
-	std::vector<PointFeature::Shared> pointFeatures;
-	std::vector<NeighborhoodFeature::Shared> neighborhoodFeatures;
+	size_t featureCount = 0;
+	QMap<double, std::vector<PointFeature::Shared> > pointFeaturesPerScale;
+	QMap<double, std::vector<NeighborhoodFeature::Shared> > neighborhoodFeaturesPerScale;
 };
 
 bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features, QString& error, CCLib::GenericProgressCallback* progressCb/*=nullptr*/)
@@ -811,7 +814,7 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 
 	//gather all the scales that need to be extracted
 	QMap<ccPointCloud*, FeaturesAndScales> cloudsWithScaledFeatures;
-	
+	//and prepare the features (scalar fields, etc.) at the same time
 	for (const Feature::Shared& feature : features)
 	{
 		QString errorMessage("invalid pointer");
@@ -828,30 +831,73 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 			return false;
 		}
 
-		if (feature->getType() == Feature::Type::PointFeature && feature->scaled())
+		if (feature->scaled())
 		{
 			try
 			{
-				//build the scaled feature list attached to the first cloud
-				if (feature->cloud1)
+				switch (feature->getType())
 				{
-					FeaturesAndScales& fas = cloudsWithScaledFeatures[feature->cloud1];
-					fas.pointFeatures.push_back(qSharedPointerCast<PointFeature>(feature));
-					if (std::find(fas.scales.begin(), fas.scales.end(), feature->scale) == fas.scales.end())
+				//Point features
+				case Feature::Type::PointFeature:
+				{
+					//build the scaled feature list attached to the first cloud
+					if (feature->cloud1)
 					{
-						fas.scales.push_back(feature->scale);
+						FeaturesAndScales& fas = cloudsWithScaledFeatures[feature->cloud1];
+						fas.pointFeaturesPerScale[feature->scale].push_back(qSharedPointerCast<PointFeature>(feature));
+						++fas.featureCount;
+						if (std::find(fas.scales.begin(), fas.scales.end(), feature->scale) == fas.scales.end())
+						{
+							fas.scales.push_back(feature->scale);
+						}
+					}
+
+					//build the scaled feature list attached to the second cloud (if any)
+					if (feature->cloud2 && feature->cloud2 != feature->cloud1 && feature->op != Feature::NO_OPERATION)
+					{
+						FeaturesAndScales& fas = cloudsWithScaledFeatures[feature->cloud2];
+						++fas.featureCount;
+						fas.pointFeaturesPerScale[feature->scale].push_back(qSharedPointerCast<PointFeature>(feature));
+						if (std::find(fas.scales.begin(), fas.scales.end(), feature->scale) == fas.scales.end())
+						{
+							fas.scales.push_back(feature->scale);
+						}
 					}
 				}
+				break;
 
-				//build the scaled feature list attached to the second cloud (if any)
-				if (feature->cloud2 && feature->cloud2 != feature->cloud1 && feature->op != Feature::NO_OPERATION)
+				//Point features
+				case Feature::Type::NeighborhoodFeature:
 				{
-					FeaturesAndScales& fas = cloudsWithScaledFeatures[feature->cloud2];
-					fas.pointFeatures.push_back(qSharedPointerCast<PointFeature>(feature));
-					if (std::find(fas.scales.begin(), fas.scales.end(), feature->scale) == fas.scales.end())
+					//build the scaled feature list attached to the first cloud
+					if (feature->cloud1)
 					{
-						fas.scales.push_back(feature->scale);
+						FeaturesAndScales& fas = cloudsWithScaledFeatures[feature->cloud1];
+						fas.neighborhoodFeaturesPerScale[feature->scale].push_back(qSharedPointerCast<NeighborhoodFeature>(feature));
+						++fas.featureCount;
+						if (std::find(fas.scales.begin(), fas.scales.end(), feature->scale) == fas.scales.end())
+						{
+							fas.scales.push_back(feature->scale);
+						}
 					}
+
+					//build the scaled feature list attached to the second cloud (if any)
+					if (feature->cloud2 && feature->cloud2 != feature->cloud1 && feature->op != Feature::NO_OPERATION)
+					{
+						FeaturesAndScales& fas = cloudsWithScaledFeatures[feature->cloud2];
+						fas.neighborhoodFeaturesPerScale[feature->scale].push_back(qSharedPointerCast<NeighborhoodFeature>(feature));
+						++fas.featureCount;
+						if (std::find(fas.scales.begin(), fas.scales.end(), feature->scale) == fas.scales.end())
+						{
+							fas.scales.push_back(feature->scale);
+						}
+					}
+				}
+				break;
+
+				default:
+					assert(false);
+					break;
 				}
 			}
 			catch (const std::bad_alloc&)
@@ -860,6 +906,7 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 				return false;
 			}
 		}
+
 	}
 
 	bool success = true;
@@ -894,8 +941,7 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 			unsigned char octreeLevel = octree->findBestLevelForAGivenNeighbourhoodSizeExtraction(largestRadius);
 
 			unsigned pointCount = corePoints.size();
-			size_t featureCount = fas.pointFeatures.size() + fas.neighborhoodFeatures.size();
-			QString logMessage = QString("Computing %1 features on cloud %2\n(core points: %3)").arg(featureCount).arg(sourceCloud->getName()).arg(pointCount);
+			QString logMessage = QString("Computing %1 features on cloud %2\n(core points: %3)").arg(fas.featureCount).arg(sourceCloud->getName()).arg(pointCount);
 			if (progressCb)
 			{
 				progressCb->setMethodTitle("Compute features");
@@ -905,8 +951,10 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 			CCLib::NormalizedProgress nProgress(progressCb, pointCount);
 
 			QMutex mutex;
+#ifndef _DEBUG
 #if defined(_OPENMP)
 #pragma omp parallel for
+#endif
 #endif
 			for (int i = 0; i < static_cast<int>(pointCount); ++i)
 			{
@@ -953,14 +1001,9 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 						nNSS.pointsInNeighbourhood.resize(kNN);
 					}
 
-					for (PointFeature::Shared& feature : fas.pointFeatures)
+					//Point features
+					for (PointFeature::Shared& feature : fas.pointFeaturesPerScale[fas.scales[scaleIndex]])
 					{
-						if (feature->scale != fas.scales[scaleIndex])
-						{
-							//we use the current neighborhood only for the features with the corresponding scales!
-							continue;
-						}
-
 						if (feature->cloud1 == sourceCloud && feature->statSF1 && feature->field1)
 						{
 							double outputValue = 0;
@@ -988,6 +1031,39 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 
 							ScalarType v2 = static_cast<ScalarType>(outputValue);
 							feature->statSF2->setValue(i, v2);
+						}
+					}
+
+					//Neighborhhod features
+					for (NeighborhoodFeature::Shared& feature : fas.neighborhoodFeaturesPerScale[fas.scales[scaleIndex]])
+					{
+						if (feature->cloud1 == sourceCloud && feature->sf1)
+						{
+							double outputValue = 0;
+							if (!feature->computeValue(nNSS.pointsInNeighbourhood, nNSS.queryPoint, outputValue))
+							{
+								//an error occurred
+								success = false;
+								break;
+							}
+
+							ScalarType v1 = static_cast<ScalarType>(outputValue);
+							feature->sf1->setValue(i, v1);
+						}
+
+						if (feature->cloud2 == sourceCloud && feature->sf2)
+						{
+							assert(feature->op != Feature::NO_OPERATION);
+							double outputValue = 0;
+							if (!feature->computeValue(nNSS.pointsInNeighbourhood, nNSS.queryPoint, outputValue))
+							{
+								//an error occurred
+								success = false;
+								break;
+							}
+
+							ScalarType v2 = static_cast<ScalarType>(outputValue);
+							feature->sf2->setValue(i, v2);
 						}
 					}
 
@@ -1019,13 +1095,10 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 
 	for (const Feature::Shared& feature : features)
 	{
-		//we have to 'finish' the process for Point features
-		if (feature->getType() == Feature::Type::PointFeature && feature->scaled())
+		//we have to 'finish' the process for scaled features
+		if (feature->scaled() && !feature->finish(corePoints, error))
 		{
-			if (!qSharedPointerCast<PointFeature>(feature)->finish(corePoints, error))
-			{
-				return false;
-			}
+			return false;
 		}
 	}
 

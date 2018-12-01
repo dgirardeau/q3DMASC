@@ -27,6 +27,8 @@ namespace masc
 	{
 	public: //NeighborhoodFeatureType
 
+		typedef QSharedPointer<NeighborhoodFeature> Shared;
+
 		enum NeighborhoodFeatureType
 		{
 			Invalid = 0
@@ -143,21 +145,22 @@ namespace masc
 		//! Default constructor
 		NeighborhoodFeature(NeighborhoodFeatureType p_type)
 			: type(p_type)
+			, sf1(nullptr)
+			, sf2(nullptr)
+			, keepSF2(false)
 		{
 		}
 
-		//! Returns the feature type
+		//inherited from Feature
 		virtual Type getType() const override { return Type::NeighborhoodFeature; }
-		//! Clones this feature
 		virtual Feature::Shared clone() const override { return Feature::Shared(new NeighborhoodFeature(*this)); }
-		//! Prepares the feature (compute the scalar field, etc.)
 		virtual bool prepare(const CorePoints& corePoints, QString& error, CCLib::GenericProgressCallback* progressCb = nullptr) override;
-		//! Returns the descriptor for this particular feature
-		virtual QString toString() const override
-		{
-			//use the default keyword + the scale
-			return ToString(type) + "_SC" + QString::number(scale);
-		}
+		virtual bool finish(const CorePoints& corePoints, QString& error) override;
+		virtual bool checkValidity(QString &error) const override;
+		virtual QString toString() const override;
+
+		//! Compute the feature values on a set of points
+		bool computeValue(CCLib::DgmOctree::NeighboursSet& pointsInNeighbourhood, const CCVector3& queryPoint, double& outputValue) const;
 
 	public: //members
 
@@ -165,5 +168,9 @@ namespace masc
 		/** \warning different from the feature type
 		**/
 		NeighborhoodFeatureType type;
+
+		//! Feature values
+		CCLib::ScalarField *sf1, *sf2;
+		bool keepSF2;
 	};
 }

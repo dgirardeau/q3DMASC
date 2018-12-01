@@ -26,3 +26,26 @@ bool DualCloudFeature::prepare(	const CorePoints& corePoints,
 	//TODO
 	return false;
 }
+
+bool DualCloudFeature::checkValidity(QString &error) const
+{
+	if (!Feature::checkValidity(error))
+	{
+		return false;
+	}
+
+	unsigned char cloudCount = (cloud1 ? (cloud2 ? 2 : 1) : 0);
+	if (cloudCount < 2)
+	{
+		error = "at least two clouds are required to compute context-based features";
+		return false;
+	}
+
+	if (op != NO_OPERATION)
+	{
+		error = "math operations can't be defined on dual-cloud features";
+		return false;
+	}
+
+	return true;
+}

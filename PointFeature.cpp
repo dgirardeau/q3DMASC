@@ -54,6 +54,18 @@ bool PointFeature::checkValidity(QString &error) const
 
 	assert(cloud1);
 
+	if (scaled() && stat == NO_STAT)
+	{
+		error = "scaled point features need a STAT measure to be defined";
+		return false;
+	}
+
+	if (op != NO_OPERATION && !scaled())
+	{
+		error = "math operations can't be defined on scale-less point features (SC0)";
+		return false;
+	}
+	
 	switch (type)
 	{
 	case PointFeature::Intensity:
@@ -439,66 +451,6 @@ static bool ExtractStatFromSF(	const CCVector3& queryPoint,
 	return true;
 }
 
-static bool PrepareOctree(ccPointCloud* sourceCloud, CCLib::GenericProgressCallback* progressCb = nullptr)
-{
-	if (!sourceCloud)
-	{
-		//invalid input parameters
-		assert(false);
-		return false;
-	}
-
-	ccOctree::Shared octree = sourceCloud->getOctree();
-	if (!octree)
-	{
-		ccLog::Print(QString("Computing octree of cloud %1 (%2 points)").arg(sourceCloud->getName()).arg(sourceCloud->size()));
-		octree = sourceCloud->computeOctree(progressCb);
-		if (!octree)
-		{
-			ccLog::Warning("Failed to compute octree");
-			return nullptr;
-		}
-	}
-
-	return true;
-}
-
-static CCLib::ScalarField* PrepareSF(const CorePoints& corePoints, const char* resultSFName)
-{
-	if (!corePoints.cloud || !resultSFName)
-	{
-		//invalid input parameters
-		assert(false);
-		return nullptr;
-	}
-
-	CCLib::ScalarField* resultSF = nullptr;
-	int sfIdx = corePoints.cloud->getScalarFieldIndexByName(resultSFName);
-	if (sfIdx >= 0)
-	{
-		resultSF = corePoints.cloud->getScalarField(sfIdx);
-	}
-	else
-	{
-		ccScalarField* newSF = new ccScalarField(resultSFName);
-		if (!newSF->resizeSafe(corePoints.cloud->size()))
-		{
-			ccLog::Warning("Not enough memory");
-			newSF->release();
-			return nullptr;
-		}
-		corePoints.cloud->addScalarField(newSF);
-
-		resultSF = newSF;
-
-	}
-
-	assert(resultSF);
-	resultSF->fill(NAN_VALUE);
-
-	return resultSF;
-}
-
 static CCLib::ScalarField* ExtractStat(	const CorePoints& corePoints, 
 										ccPointCloud* sourceCloud,
 										const IScalarFieldWrapper* sourceField,
@@ -596,45 +548,6 @@ static CCLib::ScalarField* ExtractStat(	const CorePoints& corePoints,
 	return resultSF;
 }
 
-static bool PerformMathOp(CCLib::ScalarField* sf1, const CCLib::ScalarField* sf2, Feature::Operation op)
-{
-	if (!sf1 || !sf2 || sf1->size() != sf2->size() || op == Feature::NO_OPERATION)
-	{
-		//invalid input parameters
-		return false;
-	}
-
-	for (unsigned i = 0; i < sf1->size(); ++i)
-	{
-		ScalarType s1 = sf1->getValue(i);
-		ScalarType s2 = sf2->getValue(i);
-		ScalarType s = NAN_VALUE;
-		switch (op)
-		{
-		case Feature::MINUS:
-			s = s1 - s2;
-			break;
-		case Feature::PLUS:
-			s = s1 + s2;
-			break;
-		case Feature::DIVIDE:
-			if (std::abs(s2) > std::numeric_limits<ScalarType>::epsilon())
-				s = s1 / s2;
-			break;
-		case Feature::MULTIPLY:
-			s = s1 * s2;
-			break;
-		default:
-			assert(false);
-			break;
-		}
-		sf1->setValue(i, s);
-	}
-	sf1->computeMinAndMax();
-
-	return true;
-}
-
 bool PointFeature::prepare(	const CorePoints& corePoints,
 							QString& error,
 							CCLib::GenericProgressCallback* progressCb/*=nullptr*/)
@@ -683,6 +596,7 @@ bool PointFeature::prepare(	const CorePoints& corePoints,
 			{
 				assert(false);
 				ccLog::Warning("Feature has a second cloud associated but no MATH operation is defined");
+				return false;
 			}
 		}
 
@@ -695,20 +609,11 @@ bool PointFeature::prepare(	const CorePoints& corePoints,
 		}
 		resultSFName += "@" + QString::number(scale);
 
-		//prepare the octree
-		//if (!PrepareOctree(cloud1, progressCb))
-		//{
-		//	error = "Failed to compute octree (not enough memory?)";
-		//	return false;
-		//}
-
 		//and the scalar field
 		assert(!statSF1);
-		statSF1 = PrepareSF(corePoints, qPrintable(resultSFName));
-		//CCLib::ScalarField* statSF1 = ExtractStat(corePoints, cloud1, field1.data(), scale, stat, qPrintable(resultSFName), progressCb);
+		statSF1 = PrepareSF(corePoints.cloud, qPrintable(resultSFName));
 		if (!statSF1)
 		{
-			//error = QString("Failed to extract stat. from field '%1' @ scale %2").arg(field1->getName()).arg(scale);
 			error = QString("Failed to prepare scalar field for field '%1' @ scale %2").arg(field1->getName()).arg(scale);
 			return false;
 		}
@@ -719,35 +624,13 @@ bool PointFeature::prepare(	const CorePoints& corePoints,
 			QString resultSFName2 = cloud2Label + "." + field2->getName() + QString("_") + Feature::StatToString(stat) + "@" + QString::number(scale);
 			keepStatSF2 = (corePoints.cloud->getScalarFieldIndexByName(qPrintable(resultSFName2)) >= 0); //we remember that the scalar field was already existing!
 			
-			//prepare the octree
-			//if (!PrepareOctree(cloud2, progressCb))
-			//{
-			//	error = "Failed to compute octree (not enough memory?)";
-			//	return false;
-			//}
-
 			assert(!statSF2);
-			statSF2 = PrepareSF(corePoints, qPrintable(resultSFName2));
-			//statSF2 = ExtractStat(corePoints, cloud2, field2.data(), scale, stat, qPrintable(resultSFName2), progressCb);
+			statSF2 = PrepareSF(corePoints.cloud, qPrintable(resultSFName2));
 			if (!statSF2)
 			{
-				error = QString("Failed to extract stat. from field '%1' @ scale %2").arg(field2->getName()).arg(scale);
+				error = QString("Failed to prepare scalar field for field '%1' @ scale %2").arg(field2->getName()).arg(scale);
 				return false;
 			}
-
-			//now perform the math operation
-			//if (!PerformMathOp(statSF1, statSF2, op))
-			//{
-			//	error = "Failed to perform the MATH operation";
-			//	return false;
-			//}
-
-			//if (sfIndex2 < 0)
-			//{
-			//	//release some memory
-			//	sfIndex2 = corePoints.cloud->getScalarFieldIndexByName(qPrintable(resultSFName2));
-			//	corePoints.cloud->deleteScalarField(sfIndex2);
-			//}
 		}
 
 		return true;

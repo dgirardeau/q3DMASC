@@ -184,19 +184,13 @@ namespace masc
 			}
 		}
 
-		//! Returns the feature type
+		//inherited from Feature
 		virtual Type getType() const override { return Type::PointFeature; }
-		//! Clones this feature
 		virtual Feature::Shared clone() const override { return Feature::Shared(new PointFeature(*this)); }
-		//! Prepares the feature (compute the scalar field, etc.)
 		virtual bool prepare(const CorePoints& corePoints, QString& error, CCLib::GenericProgressCallback* progressCb = nullptr) override;
-		//! Checks the feature definition validity
+		virtual bool finish(const CorePoints& corePoints, QString& error) override;
 		virtual bool checkValidity(QString &error) const override;
-		//! Returns the descriptor for this particular feature
 		virtual QString toString() const override;
-
-		//! Finishes the feature preparation (update the scalar field, etc.)
-		bool finish(const CorePoints& corePoints, QString& error);
 
 		//! Compute the associated 'stat' on a set of points (and with a given field)
 		bool computeStat(const CCLib::DgmOctree::NeighboursSet& pointsInNeighbourhood, const QSharedPointer<IScalarFieldWrapper>& sourceField, double& outputValue) const;
