@@ -796,7 +796,8 @@ CCLib::ScalarField* Tools::RetrieveSF(const ccPointCloud* cloud, const QString& 
 struct FeaturesAndScales
 {
 	std::vector<double> scales;
-	std::vector<PointFeature::Shared> features;
+	std::vector<PointFeature::Shared> pointFeatures;
+	std::vector<NeighborhoodFeature::Shared> neighborhoodFeatures;
 };
 
 bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features, QString& error, CCLib::GenericProgressCallback* progressCb/*=nullptr*/)
@@ -835,7 +836,7 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 				if (feature->cloud1)
 				{
 					FeaturesAndScales& fas = cloudsWithScaledFeatures[feature->cloud1];
-					fas.features.push_back(qSharedPointerCast<PointFeature>(feature));
+					fas.pointFeatures.push_back(qSharedPointerCast<PointFeature>(feature));
 					if (std::find(fas.scales.begin(), fas.scales.end(), feature->scale) == fas.scales.end())
 					{
 						fas.scales.push_back(feature->scale);
@@ -846,7 +847,7 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 				if (feature->cloud2 && feature->cloud2 != feature->cloud1 && feature->op != Feature::NO_OPERATION)
 				{
 					FeaturesAndScales& fas = cloudsWithScaledFeatures[feature->cloud2];
-					fas.features.push_back(qSharedPointerCast<PointFeature>(feature));
+					fas.pointFeatures.push_back(qSharedPointerCast<PointFeature>(feature));
 					if (std::find(fas.scales.begin(), fas.scales.end(), feature->scale) == fas.scales.end())
 					{
 						fas.scales.push_back(feature->scale);
@@ -893,12 +894,14 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 			unsigned char octreeLevel = octree->findBestLevelForAGivenNeighbourhoodSizeExtraction(largestRadius);
 
 			unsigned pointCount = corePoints.size();
+			size_t featureCount = fas.pointFeatures.size() + fas.neighborhoodFeatures.size();
+			QString logMessage = QString("Computing %1 features on cloud %2\n(core points: %3)").arg(featureCount).arg(sourceCloud->getName()).arg(pointCount);
 			if (progressCb)
 			{
-				progressCb->setMethodTitle("Point features");
-				progressCb->setInfo(qPrintable(QString("Computing %1 featrues on cloud %2\n(core points: %3)").arg(fas.features.size()).arg(sourceCloud->getName()).arg(pointCount)));
+				progressCb->setMethodTitle("Compute features");
+				progressCb->setInfo(qPrintable(logMessage));
 			}
-			ccLog::Print(QString("Computing fields for cloud %1 (core points: %2)").arg(sourceCloud->getName()).arg(pointCount));
+			ccLog::Print(logMessage);
 			CCLib::NormalizedProgress nProgress(progressCb, pointCount);
 
 			QMutex mutex;
@@ -950,8 +953,7 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 						nNSS.pointsInNeighbourhood.resize(kNN);
 					}
 
-					double outputValue = 0;
-					for (PointFeature::Shared& feature : fas.features)
+					for (PointFeature::Shared& feature : fas.pointFeatures)
 					{
 						if (feature->scale != fas.scales[scaleIndex])
 						{
@@ -961,6 +963,7 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 
 						if (feature->cloud1 == sourceCloud && feature->statSF1 && feature->field1)
 						{
+							double outputValue = 0;
 							if (!feature->computeStat(nNSS.pointsInNeighbourhood, feature->field1, outputValue))
 							{
 								//an error occurred
@@ -975,6 +978,7 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 						if (feature->cloud2 == sourceCloud &&feature->statSF2 && feature->field2)
 						{
 							assert(feature->op != Feature::NO_OPERATION);
+							double outputValue = 0;
 							if (!feature->computeStat(nNSS.pointsInNeighbourhood, feature->field2, outputValue))
 							{
 								//an error occurred
