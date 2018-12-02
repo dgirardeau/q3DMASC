@@ -47,8 +47,8 @@ namespace masc
 			, Zmin
 			, ANISO
 			, FOM
-			, LINEF
-			, ORIENF
+			//, LINEF
+			//, ORIENF
 		};
 
 		static QString ToString(NeighborhoodFeatureType type)
@@ -87,10 +87,10 @@ namespace masc
 				return "ANISO";
 			case FOM:
 				return "FOM";
-			case LINEF:
-				return "LINEF";
-			case ORIENF:
-				return "ORIENF";
+			//case LINEF:
+			//	return "LINEF";
+			//case ORIENF:
+			//	return "ORIENF";
 			default:
 				assert(false);
 				break;
@@ -131,10 +131,10 @@ namespace masc
 				return ANISO;
 			else if (token == "FOM")
 				return FOM;
-			else if (token == "LINEF")
-				return LINEF;
-			else if (token == "ORIENF")
-				return ORIENF;
+			//else if (token == "LINEF")
+			//	return LINEF;
+			//else if (token == "ORIENF")
+			//	return ORIENF;
 
 			assert(false);
 			return Invalid;

@@ -199,64 +199,42 @@ bool NeighborhoodFeature::computeValue(CCLib::DgmOctree::NeighboursSet& pointsIn
 	case SPHER:
 	case LINEA:
 	case PLANA:
+	{
+		CCLib::Neighbourhood::GeomFeature f;
+		switch (type)
+		{
+		case PCA1:
+			f = CCLib::Neighbourhood::PCA1;
+			break;
+		case PCA2:
+			f = CCLib::Neighbourhood::PCA2;
+			break;
+		case SPHER:
+			f = CCLib::Neighbourhood::Sphericity;
+			break;
+		case LINEA:
+			f = CCLib::Neighbourhood::Linearity;
+			break;
+		case PLANA:
+			f = CCLib::Neighbourhood::Planarity;
+			break;
+		default:
+			//impossible
+			assert(false);
+			return false;
+		}
+
+		CCLib::DgmOctreeReferenceCloud neighboursCloud(&pointsInNeighbourhood, static_cast<unsigned>(kNN));
+		CCLib::Neighbourhood Z(&neighboursCloud);
+		outputValue = Z.computeFeature(f);
+	}
+	break;
+
 	case FOM:
-	case LINEF:
-	case ORIENF:
-	if (kNN >= 6)
 	{
 		CCLib::DgmOctreeReferenceCloud neighboursCloud(&pointsInNeighbourhood, static_cast<unsigned>(kNN));
 		CCLib::Neighbourhood Z(&neighboursCloud);
-		CCLib::SquareMatrixd eigVectors;
-		std::vector<double> eigValues;
-		if (Jacobi<double>::ComputeEigenValuesAndVectors(Z.computeCovarianceMatrix(), eigVectors, eigValues, true))
-		{
-			Jacobi<double>::SortEigenValuesAndVectors(eigVectors, eigValues); //decreasing order of their associated eigenvalues
-			switch (type)
-			{
-			case PCA1:
-				outputValue = eigValues[0] / (eigValues[0] + eigValues[1] + eigValues[2]);
-				break;
-			case PCA2:
-				outputValue = eigValues[1] / (eigValues[0] + eigValues[1] + eigValues[2]);
-				break;
-			case SPHER:
-				if (std::abs(eigValues[0]) > std::numeric_limits<double>::epsilon())
-					outputValue = eigValues[2] / eigValues[0];
-				break;
-			case LINEA:
-				if (std::abs(eigValues[0]) > std::numeric_limits<double>::epsilon())
-					outputValue = (eigValues[0] - eigValues[1]) / eigValues[0];
-				break;
-			case PLANA:
-				if (std::abs(eigValues[0]) > std::numeric_limits<double>::epsilon())
-					outputValue = (eigValues[1] - eigValues[2]) / eigValues[0];
-				break;
-			case FOM:
-			{
-				double m1 = 0.0, m2 = 0.0;
-				CCVector3 e2(eigVectors.m_values[0][1], eigVectors.m_values[1][1], eigVectors.m_values[2][1]);
-				for (size_t i = 0; i < kNN; ++i)
-				{
-					double dotProd = (*pointsInNeighbourhood[i].point - queryPoint).dot(e2);
-					m1 += dotProd;
-					m2 += dotProd * dotProd;
-				}
-				outputValue = (m1 * m1) / m2;
-			}
-			case LINEF:
-			case ORIENF:
-				//can't compute these values yet!
-				break;
-			default:
-				//impossible
-				assert(false);
-				break;
-			}
-		}
-		else
-		{
-			return false;
-		}
+		outputValue = Z.computeMomentOrder1(queryPoint);
 	}
 	break;
 
@@ -282,13 +260,25 @@ bool NeighborhoodFeature::computeValue(CCLib::DgmOctree::NeighboursSet& pointsIn
 	}
 	break;
 
-	case ROUGH:
-
 	case NBPTS:
 		outputValue = static_cast<double>(kNN);
 		break;
 
+	case ROUGH:
+	{
+		CCLib::DgmOctreeReferenceCloud neighboursCloud(&pointsInNeighbourhood, static_cast<unsigned>(kNN));
+		CCLib::Neighbourhood Z(&neighboursCloud);
+		outputValue = Z.computeRoughness(queryPoint);
+	}
+	break;
+
 	case CURV:
+	{
+		CCLib::DgmOctreeReferenceCloud neighboursCloud(&pointsInNeighbourhood, static_cast<unsigned>(kNN));
+		CCLib::Neighbourhood Z(&neighboursCloud);
+		outputValue = Z.computeCurvature(queryPoint, CCLib::Neighbourhood::MEAN_CURV); //TODO: is it really the default one?
+	}
+	break;
 
 	case ZRANGE:
 	case Zmax:
@@ -347,9 +337,11 @@ bool NeighborhoodFeature::computeValue(CCLib::DgmOctree::NeighboursSet& pointsIn
 	}
 	break;
 
+	//case LINEF:
+	//case ORIENF:
 	default:
 	{
-		ccLog::Warning("Unhandled STAT measure");
+		ccLog::Warning("Unhandled feature");
 		assert(false);
 		return false;
 	}
