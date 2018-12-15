@@ -30,6 +30,13 @@ bool NeighborhoodFeature::checkValidity(QString &error) const
 		return false;
 	}
 
+	if (type == Invalid)
+	{
+		assert(false);
+		error = "invalid feature type";
+		return false;
+	}
+
 	if (stat != Feature::NO_STAT)
 	{
 		error = "Neighborhood features shouldn't be associated to a STAT measure";
@@ -77,7 +84,7 @@ bool NeighborhoodFeature::prepare(	const CorePoints& corePoints,
 	sf1 = PrepareSF(corePoints.cloud, qPrintable(resultSFName));
 	if (!sf1)
 	{
-		error = QString("Failed to prepare scalar %1 @ scale %2").arg(cloud1Label).arg(scale);
+		error = QString("Failed to prepare scalar %1 @ scale %2").arg(resultSFName).arg(scale);
 		return false;
 	}
 	sourceName = sf1->getName();

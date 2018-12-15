@@ -183,7 +183,19 @@ static bool CreateFeaturesFromCommand(const QString& command, int lineNumber, co
 			if (contextBasedFeatureType != ContextBasedFeature::Invalid)
 			{
 				//we have a context-based feature
-				feature = ContextBasedFeature::Shared(new ContextBasedFeature(contextBasedFeatureType));
+				QString featureStr = ContextBasedFeature::ToString(contextBasedFeatureType);
+				int kNN = 1;
+				if (featureStr.length() < typeStr.length())
+				{
+					bool ok = false;
+					kNN = typeStr.mid(featureStr.length()).toInt(&ok);
+					if (!ok || kNN <= 0)
+					{
+						ccLog::Warning(QString("Malformed file: expecting a valid and positive number after '%1' on line #%2").arg(featureStr).arg(lineNumber));
+						return false;
+					}
+				}
+				feature = ContextBasedFeature::Shared(new ContextBasedFeature(contextBasedFeatureType, kNN));
 				break;
 			}
 
@@ -297,6 +309,24 @@ static bool CreateFeaturesFromCommand(const QString& command, int lineNumber, co
 					{
 						feature->cloud2 = it.value();
 						feature->cloud2Label = key;
+
+						if (feature && feature->getType() == Feature::Type::ContextBasedFeature)
+						{
+							//context cloud is always the second one for context based features
+							//and the class is just after the cloud name
+							if (i + 1 < tokens.size())
+							{
+								bool ok = false;
+								int classLabel = tokens[i + 1].toInt(&ok);
+								if (!ok)
+								{
+									ccLog::Warning(QString("Malformed file: expecting a class number after the context cloud '%1' on line #%2").arg(token).arg(lineNumber));
+									return false;
+								}
+								qSharedPointerCast<ContextBasedFeature>(feature)->ctxClassLabel = classLabel;
+								++i;
+							}
+						}
 					}
 					else
 					{
@@ -801,9 +831,10 @@ struct FeaturesAndScales
 	size_t featureCount = 0;
 	QMap<double, std::vector<PointFeature::Shared> > pointFeaturesPerScale;
 	QMap<double, std::vector<NeighborhoodFeature::Shared> > neighborhoodFeaturesPerScale;
+	QMap<double, std::vector<ContextBasedFeature::Shared> > contextBasedFeaturesPerScale;
 };
 
-bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features, QString& error, CCLib::GenericProgressCallback* progressCb/*=nullptr*/)
+bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features, QString& errorStr, CCLib::GenericProgressCallback* progressCb/*=nullptr*/)
 {
 	if (features.empty() || !corePoints.origin)
 	{
@@ -820,12 +851,12 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 		QString errorMessage("invalid pointer");
 		if (!feature || !feature->checkValidity(errorMessage))
 		{
-			error = "Invalid rule/feature: " + error;
+			errorStr = "Invalid rule/feature: " + errorMessage;
 			return false;
 		}
 
 		//prepare the feature
-		if (!feature->prepare(corePoints, error, progressCb))
+		if (!feature->prepare(corePoints, errorStr, progressCb))
 		{
 			//something failed (error should be up to date)
 			return false;
@@ -866,7 +897,7 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 				}
 				break;
 
-				//Point features
+				//Neighborhood features
 				case Feature::Type::NeighborhoodFeature:
 				{
 					//build the scaled feature list attached to the first cloud
@@ -895,6 +926,23 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 				}
 				break;
 
+				//Context-based features
+				case Feature::Type::ContextBasedFeature:
+				{
+					//build the scaled feature list attached to the second cloud (the 'context' cloud)
+					if (feature->cloud2)
+					{
+						FeaturesAndScales& fas = cloudsWithScaledFeatures[feature->cloud2];
+						fas.contextBasedFeaturesPerScale[feature->scale].push_back(qSharedPointerCast<ContextBasedFeature>(feature));
+						++fas.featureCount;
+						if (std::find(fas.scales.begin(), fas.scales.end(), feature->scale) == fas.scales.end())
+						{
+							fas.scales.push_back(feature->scale);
+						}
+					}
+				}
+				break;
+
 				default:
 					assert(false);
 					break;
@@ -902,7 +950,7 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 			}
 			catch (const std::bad_alloc&)
 			{
-				error = "Not enough memory";
+				errorStr = "Not enough memory";
 				return false;
 			}
 		}
@@ -914,7 +962,8 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 	//if we have scaled features
 	if (!cloudsWithScaledFeatures.empty())
 	{
-		for (QMap<ccPointCloud*, FeaturesAndScales>::iterator it = cloudsWithScaledFeatures.begin(); it != cloudsWithScaledFeatures.end(); ++it)
+		//for each cloud
+		for (QMap<ccPointCloud*, FeaturesAndScales>::iterator it = cloudsWithScaledFeatures.begin(); success && it != cloudsWithScaledFeatures.end(); ++it)
 		{
 			FeaturesAndScales& fas = it.value();
 			ccPointCloud* sourceCloud = it.key();
@@ -930,7 +979,7 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 				octree = sourceCloud->computeOctree(progressCb);
 				if (!octree)
 				{
-					error = "Failed to compute octree (not enough memory?)";
+					errorStr = "Failed to compute octree (not enough memory?)";
 					return false;
 				}
 			}
@@ -970,106 +1019,121 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 
 				//we extract the point's neighbors
 				unsigned kNN = octree->findNeighborsInASphereStartingFromCell(nNSS, largestRadius, true);
-				if (kNN == 0)
+				if (kNN != 0)
 				{
-					//nothing todo
-					continue;
-				}
-				nNSS.pointsInNeighbourhood.resize(kNN);
+					nNSS.pointsInNeighbourhood.resize(kNN);
 
-				//for each scale (from the largest to the smallest)
-				for (size_t scaleIndex = 0; scaleIndex < fas.scales.size(); ++scaleIndex)
-				{
-					if (scaleIndex != 0)
+					//for each scale (from the largest to the smallest)
+					for (size_t scaleIndex = 0; scaleIndex < fas.scales.size(); ++scaleIndex)
 					{
-						double radius = fas.scales[fas.scales.size() - 1 - scaleIndex] / 2; //scale is the diameter!
-						double sqRadius = radius * radius;
-						//remove the farthest points
-						for (; kNN > 0; --kNN)
+						if (scaleIndex != 0)
 						{
-							if (nNSS.pointsInNeighbourhood[kNN - 1].squareDistd <= sqRadius)
+							double radius = fas.scales[fas.scales.size() - 1 - scaleIndex] / 2; //scale is the diameter!
+							double sqRadius = radius * radius;
+							//remove the farthest points
+							for (; kNN > 0; --kNN)
 							{
+								if (nNSS.pointsInNeighbourhood[kNN - 1].squareDistd <= sqRadius)
+								{
+									break;
+								}
+							}
+
+							if (kNN == 0)
+							{
+								//no need to go further
 								break;
+							}
+							nNSS.pointsInNeighbourhood.resize(kNN);
+						}
+
+						//Point features
+						for (PointFeature::Shared& feature : fas.pointFeaturesPerScale[fas.scales[scaleIndex]])
+						{
+							if (feature->cloud1 == sourceCloud && feature->statSF1 && feature->field1)
+							{
+								double outputValue = 0;
+								if (!feature->computeStat(nNSS.pointsInNeighbourhood, feature->field1, outputValue))
+								{
+									//an error occurred
+									success = false;
+									break;
+								}
+
+								ScalarType v1 = static_cast<ScalarType>(outputValue);
+								feature->statSF1->setValue(i, v1);
+							}
+
+							if (feature->cloud2 == sourceCloud && feature->statSF2 && feature->field2)
+							{
+								assert(feature->op != Feature::NO_OPERATION);
+								double outputValue = 0;
+								if (!feature->computeStat(nNSS.pointsInNeighbourhood, feature->field2, outputValue))
+								{
+									//an error occurred
+									success = false;
+									break;
+								}
+
+								ScalarType v2 = static_cast<ScalarType>(outputValue);
+								feature->statSF2->setValue(i, v2);
 							}
 						}
 
-						if (kNN == 0)
+						//Neighborhhod features
+						for (NeighborhoodFeature::Shared& feature : fas.neighborhoodFeaturesPerScale[fas.scales[scaleIndex]])
 						{
-							//no need to go further
+							if (feature->cloud1 == sourceCloud && feature->sf1)
+							{
+								double outputValue = 0;
+								if (!feature->computeValue(nNSS.pointsInNeighbourhood, nNSS.queryPoint, outputValue))
+								{
+									//an error occurred
+									success = false;
+									break;
+								}
+
+								ScalarType v1 = static_cast<ScalarType>(outputValue);
+								feature->sf1->setValue(i, v1);
+							}
+
+							if (feature->cloud2 == sourceCloud && feature->sf2)
+							{
+								assert(feature->op != Feature::NO_OPERATION);
+								double outputValue = 0;
+								if (!feature->computeValue(nNSS.pointsInNeighbourhood, nNSS.queryPoint, outputValue))
+								{
+									//an error occurred
+									success = false;
+									break;
+								}
+
+								ScalarType v2 = static_cast<ScalarType>(outputValue);
+								feature->sf2->setValue(i, v2);
+							}
+						}
+
+						//Context-based features
+						for (ContextBasedFeature::Shared& feature : fas.contextBasedFeaturesPerScale[fas.scales[scaleIndex]])
+						{
+							if (feature->cloud2 == sourceCloud && feature->sf)
+							{
+								ScalarType outputValue = 0;
+								if (!feature->computeValue(nNSS.pointsInNeighbourhood, nNSS.queryPoint, outputValue))
+								{
+									//an error occurred
+									success = false;
+									break;
+								}
+
+								feature->sf->setValue(i, outputValue);
+							}
+						}
+
+						if (!success)
+						{
 							break;
 						}
-						nNSS.pointsInNeighbourhood.resize(kNN);
-					}
-
-					//Point features
-					for (PointFeature::Shared& feature : fas.pointFeaturesPerScale[fas.scales[scaleIndex]])
-					{
-						if (feature->cloud1 == sourceCloud && feature->statSF1 && feature->field1)
-						{
-							double outputValue = 0;
-							if (!feature->computeStat(nNSS.pointsInNeighbourhood, feature->field1, outputValue))
-							{
-								//an error occurred
-								success = false;
-								break;
-							}
-
-							ScalarType v1 = static_cast<ScalarType>(outputValue);
-							feature->statSF1->setValue(i, v1);
-						}
-
-						if (feature->cloud2 == sourceCloud &&feature->statSF2 && feature->field2)
-						{
-							assert(feature->op != Feature::NO_OPERATION);
-							double outputValue = 0;
-							if (!feature->computeStat(nNSS.pointsInNeighbourhood, feature->field2, outputValue))
-							{
-								//an error occurred
-								success = false;
-								break;
-							}
-
-							ScalarType v2 = static_cast<ScalarType>(outputValue);
-							feature->statSF2->setValue(i, v2);
-						}
-					}
-
-					//Neighborhhod features
-					for (NeighborhoodFeature::Shared& feature : fas.neighborhoodFeaturesPerScale[fas.scales[scaleIndex]])
-					{
-						if (feature->cloud1 == sourceCloud && feature->sf1)
-						{
-							double outputValue = 0;
-							if (!feature->computeValue(nNSS.pointsInNeighbourhood, nNSS.queryPoint, outputValue))
-							{
-								//an error occurred
-								success = false;
-								break;
-							}
-
-							ScalarType v1 = static_cast<ScalarType>(outputValue);
-							feature->sf1->setValue(i, v1);
-						}
-
-						if (feature->cloud2 == sourceCloud && feature->sf2)
-						{
-							assert(feature->op != Feature::NO_OPERATION);
-							double outputValue = 0;
-							if (!feature->computeValue(nNSS.pointsInNeighbourhood, nNSS.queryPoint, outputValue))
-							{
-								//an error occurred
-								success = false;
-								break;
-							}
-
-							ScalarType v2 = static_cast<ScalarType>(outputValue);
-							feature->sf2->setValue(i, v2);
-						}
-					}
-
-					if (!success)
-					{
-						break;
 					}
 
 				} //for each scale
@@ -1083,7 +1147,8 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 					{
 						//process cancelled by the user
 						ccLog::Warning("Process cancelled");
-						error = true;
+						errorStr = "Process cancelled";
+						success = false;
 						break;
 					}
 				}
@@ -1096,7 +1161,7 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 	for (const Feature::Shared& feature : features)
 	{
 		//we have to 'finish' the process for scaled features
-		if (feature->scaled() && !feature->finish(corePoints, error))
+		if (feature->scaled() && !feature->finish(corePoints, errorStr))
 		{
 			return false;
 		}

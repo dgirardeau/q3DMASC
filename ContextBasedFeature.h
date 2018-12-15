@@ -27,6 +27,8 @@ namespace masc
 	{
 	public: //ContextBasedFeatureType
 
+		typedef QSharedPointer<ContextBasedFeature> Shared;
+
 		enum ContextBasedFeatureType
 		{
 			Invalid = 0
@@ -59,7 +61,6 @@ namespace masc
 			else if (token.startsWith("DH"))
 				return DH;
 
-			assert(false);
 			return Invalid;
 		}
 
@@ -67,12 +68,13 @@ namespace masc
 
 		//! Default constructor
 		ContextBasedFeature(ContextBasedFeatureType p_type,
-							int p_kNN = 0,
+							int p_kNN = 1,
 							double p_scale = std::numeric_limits<double>::quiet_NaN(),
 							int p_ctxClassLabel = 0)
 			: type(p_type)
 			, kNN(p_kNN)
 			, ctxClassLabel(p_ctxClassLabel)
+			, sf(nullptr)
 		{
 			scale = p_scale;
 		}
@@ -81,12 +83,14 @@ namespace masc
 		virtual Type getType() const override { return Type::ContextBasedFeature; }
 		virtual Feature::Shared clone() const override { return Feature::Shared(new ContextBasedFeature(*this)); }
 		virtual bool prepare(const CorePoints& corePoints, QString& error, CCLib::GenericProgressCallback* progressCb = nullptr) override;
+		virtual bool finish(const CorePoints& corePoints, QString& error) override;
 		virtual bool checkValidity(QString &error) const override;
-		virtual QString toString() const override
-		{
-			//use the default keyword + number of neighbors + the scale + the context class
-			return ToString(type) + QString::number(kNN) + "_SC" + QString::number(scale) + "CTX" + QString::number(ctxClassLabel);
-		}
+		virtual QString toString() const override;
+
+		//! Compute the feature value on a set of points
+		bool computeValue(CCLib::DgmOctree::NeighboursSet& pointsInNeighbourhood, const CCVector3& queryPoint, ScalarType& outputValue) const;
+
+	public: //members
 
 		//! Neighborhood feature type
 		/** \warning different from the feature type
@@ -97,5 +101,7 @@ namespace masc
 		int kNN;
 		//! Context class (label)
 		int ctxClassLabel;
+		//! The computed scalar
+		CCLib::ScalarField* sf;
 	};
 }

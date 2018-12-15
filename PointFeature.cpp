@@ -52,6 +52,13 @@ bool PointFeature::checkValidity(QString &error) const
 		return false;
 	}
 
+	if (type == Invalid)
+	{
+		assert(false);
+		error = "invalid feature type";
+		return false;
+	}
+
 	assert(cloud1);
 
 	if (scaled() && stat == NO_STAT)

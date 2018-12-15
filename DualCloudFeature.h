@@ -54,7 +54,6 @@ namespace masc
 			if (token == "IDIFF")
 				return IDIFF;
 
-			assert(false);
 			return Invalid;
 		}
 

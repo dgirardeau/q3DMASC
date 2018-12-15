@@ -136,7 +136,6 @@ namespace masc
 			//else if (token == "ORIENF")
 			//	return ORIENF;
 
-			assert(false);
 			return Invalid;
 		}
 
@@ -159,7 +158,7 @@ namespace masc
 		virtual bool checkValidity(QString &error) const override;
 		virtual QString toString() const override;
 
-		//! Compute the feature values on a set of points
+		//! Compute the feature value on a set of points
 		bool computeValue(CCLib::DgmOctree::NeighboursSet& pointsInNeighbourhood, const CCVector3& queryPoint, double& outputValue) const;
 
 	public: //members
