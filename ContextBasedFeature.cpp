@@ -87,6 +87,7 @@ bool ContextBasedFeature::prepare(	const CorePoints& corePoints,
 
 		//now extract the neighborhoods
 		unsigned char octreeLevel = octree->findBestLevelForAGivenPopulationPerCell(static_cast<unsigned>(std::min(3, kNN)));
+		ccLog::Print(QString("[Initial octree level] level = %1").arg(octreeLevel));
 
 		unsigned pointCount = corePoints.size();
 		QString logMessage = QString("Computing %1 on cloud %2 with context cloud %3\n(core points: %4)").arg(typeStr).arg(corePoints.cloud->getName()).arg(cloud2Label).arg(pointCount);
@@ -100,6 +101,8 @@ bool ContextBasedFeature::prepare(	const CorePoints& corePoints,
 
 		QMutex mutex;
 		bool error = false;
+		double meanNeighborhoodSize = 0;
+		int tenth = pointCount / 10;
 #ifndef _DEBUG
 #if defined(_OPENMP)
 #pragma omp parallel for
@@ -113,7 +116,8 @@ bool ContextBasedFeature::prepare(	const CorePoints& corePoints,
 
 			ScalarType s = NAN_VALUE;
 			
-			if (octree->findPointNeighbourhood(P, &Yk, static_cast<unsigned>(kNN), octreeLevel, maxSquareDist) >= kNN)
+			int neighborhoodSize = 0;
+			if (octree->findPointNeighbourhood(P, &Yk, static_cast<unsigned>(kNN), octreeLevel, maxSquareDist, 0, &neighborhoodSize) >= kNN)
 			{
 				CCVector3d sumQ(0, 0, 0);
 				for (int k = 0; k < kNN; ++k)
@@ -129,6 +133,29 @@ bool ContextBasedFeature::prepare(	const CorePoints& corePoints,
 				case DH:
 					s = static_cast<ScalarType>(sqrt(pow(P->x - sumQ.x / kNN, 2.0) + pow(P->y - sumQ.y / kNN, 2.0)));
 					break;
+				}
+
+				if (i && (i % tenth) == 0)
+				{
+					meanNeighborhoodSize /= tenth;
+					if (meanNeighborhoodSize < 1.1)
+					{
+						if (octreeLevel + 1 < CCLib::DgmOctree::MAX_OCTREE_LEVEL)
+							++octreeLevel;
+					}
+					else while (meanNeighborhoodSize >= 2.0)
+					{
+						if (octreeLevel <= 5)
+							break;
+						--octreeLevel;
+						meanNeighborhoodSize /= 2.0;
+					}
+					ccLog::Print(QString("[Adaptative octree level] Mean neighborhood size: %1 --> new level = %2").arg(meanNeighborhoodSize).arg(octreeLevel));
+					meanNeighborhoodSize = 0;
+				}
+				else
+				{
+					meanNeighborhoodSize += neighborhoodSize;
 				}
 			}
 
