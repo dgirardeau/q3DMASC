@@ -20,6 +20,7 @@
 
 //Local
 #include "CorePoints.h"
+#include "ScalarFieldCollector.h"
 
 //Qt
 #include <QString>
@@ -141,7 +142,7 @@ namespace masc
 		virtual Feature::Shared clone() const = 0;
 
 		//! Prepares the feature (compute the scalar field, etc.)
-		virtual bool prepare(const CorePoints& corePoints, QString& error, CCLib::GenericProgressCallback* progressCb = nullptr) = 0;
+		virtual bool prepare(const CorePoints& corePoints, QString& error, CCLib::GenericProgressCallback* progressCb = nullptr, SFCollector* generatedScalarFields = nullptr) = 0;
 
 		//! Finishes the feature preparation (update the scalar field, etc.)
 		virtual bool finish(const CorePoints& corePoints, QString& error) { /* does nothing by default*/return true; }
@@ -177,7 +178,7 @@ namespace masc
 	public: //helpers
 
 		//! Creates (or resets) a scalar field with the given name on the input core points cloud
-		static CCLib::ScalarField* PrepareSF(ccPointCloud* cloud, const char* resultSFName);
+		static CCLib::ScalarField* PrepareSF(ccPointCloud* cloud, const char* resultSFName, SFCollector* generatedScalarFields = nullptr);
 
 		//! Performs a mathematical operation between two scalar fields (they must have the same size!)
 		static bool PerformMathOp(CCLib::ScalarField* sf1, const CCLib::ScalarField* sf2, Operation op);

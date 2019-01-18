@@ -54,7 +54,8 @@ bool NeighborhoodFeature::checkValidity(QString &error) const
 
 bool NeighborhoodFeature::prepare(	const CorePoints& corePoints,
 									QString& error,
-									CCLib::GenericProgressCallback* progressCb/*=nullptr*/)
+									CCLib::GenericProgressCallback* progressCb/*=nullptr*/,
+									SFCollector* generatedScalarFields/*=nullptr*/)
 {
 	if (!cloud1 || !corePoints.cloud)
 	{

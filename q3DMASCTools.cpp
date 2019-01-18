@@ -834,7 +834,7 @@ struct FeaturesAndScales
 	QMap<double, std::vector<ContextBasedFeature::Shared> > contextBasedFeaturesPerScale;
 };
 
-bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features, QString& errorStr, CCLib::GenericProgressCallback* progressCb/*=nullptr*/)
+bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features, QString& errorStr, CCLib::GenericProgressCallback* progressCb/*=nullptr*/, SFCollector* generatedScalarFields/*=nullptr*/)
 {
 	if (features.empty() || !corePoints.origin)
 	{

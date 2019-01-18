@@ -25,7 +25,7 @@
 
 using namespace masc;
 
-CCLib::ScalarField* Feature::PrepareSF(ccPointCloud* cloud, const char* resultSFName)
+CCLib::ScalarField* Feature::PrepareSF(ccPointCloud* cloud, const char* resultSFName, SFCollector* generatedScalarFields/*=nullptr*/)
 {
 	if (!cloud || !resultSFName)
 	{
@@ -50,6 +50,12 @@ CCLib::ScalarField* Feature::PrepareSF(ccPointCloud* cloud, const char* resultSF
 			return nullptr;
 		}
 		cloud->addScalarField(newSF);
+		
+		if (generatedScalarFields)
+		{
+			//track the generated scalar-field
+			generatedScalarFields->push(cloud, newSF);
+		}
 
 		resultSF = newSF;
 

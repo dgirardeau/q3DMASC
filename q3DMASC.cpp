@@ -22,6 +22,7 @@
 #include "q3DMASCClassifier.h"
 #include "q3DMASCTools.h"
 #include "qClassify3DMASCDialog.h"
+#include "q3DMASCCommands.h"
 
 //qCC_db
 #include <ccPointCloud.h>
@@ -134,11 +135,15 @@ void q3DMASCPlugin::doClassifyAction()
 	Classify3DMASCDialog classifDlg(m_app);
 	classifDlg.setCloudRoles(cloudLabels);
 	classifDlg.classifierFileLineEdit->setText(inputFilename);
+	static bool s_keepAttributes = false;
+	classifDlg.keepAttributesCheckBox->setChecked(s_keepAttributes);
 	if (!classifDlg.exec())
 	{
 		//process cancelled by the user
 		return;
 	}
+
+	s_keepAttributes = classifDlg.keepAttributesCheckBox->isChecked();
 
 	masc::Tools::NamedClouds clouds;
 	QString mainCloudLabel;
@@ -159,9 +164,11 @@ void q3DMASCPlugin::doClassifyAction()
 	ccProgressDialog pDlg(true, m_app->getMainWindow());
 	pDlg.setAutoClose(false); //we don't want the progress dialog to 'pop' for each feature
 	QString error;
-	if (!masc::Tools::PrepareFeatures(corePoints, features, error, &pDlg))
+	SFCollector generatedScalarFields;
+	if (!masc::Tools::PrepareFeatures(corePoints, features, error, &pDlg, &generatedScalarFields))
 	{
 		m_app->dispToConsole(error, ccMainAppInterface::ERR_CONSOLE_MESSAGE);
+		generatedScalarFields.clear();
 		return;
 	}
 	pDlg.close();
@@ -174,7 +181,13 @@ void q3DMASCPlugin::doClassifyAction()
 		if (!classifier.classify(features, corePoints.cloud, errorMessage, m_app->getMainWindow()))
 		{
 			m_app->dispToConsole(errorMessage, ccMainAppInterface::ERR_CONSOLE_MESSAGE);
+			generatedScalarFields.clear();
 			return;
+		}
+
+		if (!s_keepAttributes)
+		{
+			generatedScalarFields.clear();
 		}
 	}
 }
@@ -338,5 +351,6 @@ void q3DMASCPlugin::registerCommands(ccCommandLineInterface* cmd)
 		assert(false);
 		return;
 	}
-	//cmd->registerCommand(ccCommandLineInterface::Command::Shared(new CommandCanupoClassif));
+	
+	cmd->registerCommand(ccCommandLineInterface::Command::Shared(new Command3DMASCClassif));
 }

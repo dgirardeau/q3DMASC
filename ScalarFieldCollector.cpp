@@ -15,38 +15,44 @@
 //#                                                                        #
 //##########################################################################
 
-#include "DualCloudFeature.h"
+#include "ScalarFieldCollector.h"
 
-using namespace masc;
+//qCC_db
+#include <ccPointCloud.h>
 
-bool DualCloudFeature::prepare(	const CorePoints& corePoints,
-								QString& error,
-								CCLib::GenericProgressCallback* progressCb/*=nullptr*/,
-								SFCollector* generatedScalarFields/*=nullptr*/)
+//CCLib
+#include <ScalarField.h>
+
+//system
+#include <assert.h>
+
+void SFCollector::push(ccPointCloud* cloud, CCLib::ScalarField* sf)
 {
-	//TODO
-	return false;
+	(*this)[cloud].insert(sf);
 }
 
-bool DualCloudFeature::checkValidity(QString &error) const
+void SFCollector::clear()
 {
-	if (!Feature::checkValidity(error))
+	for (QMap< ccPointCloud*, std::set<CCLib::ScalarField*> >::iterator it = begin(); it != end(); ++it)
 	{
-		return false;
+		ccPointCloud* cloud = it.key();
+		std::set<CCLib::ScalarField*>& sfs = it.value();
+
+		for (CCLib::ScalarField* sf : sfs)
+		{
+			int sfIdx = cloud->getScalarFieldIndexByName(sf->getName());
+			if (sfIdx >= 0)
+			{
+				cloud->deleteScalarField(sfIdx);
+			}
+			else
+			{
+				ccLog::Warning(QString("[SFCollector] Scalar field '%1' can't be found anymore").arg(sf->getName()));
+			}
+		}
+
+		sfs.clear();
 	}
 
-	unsigned char cloudCount = (cloud1 ? (cloud2 ? 2 : 1) : 0);
-	if (cloudCount < 2)
-	{
-		error = "at least two clouds are required to compute context-based features";
-		return false;
-	}
-
-	if (op != NO_OPERATION)
-	{
-		error = "math operations can't be defined on dual-cloud features";
-		return false;
-	}
-
-	return true;
+	clear();
 }

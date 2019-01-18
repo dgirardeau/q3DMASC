@@ -458,106 +458,10 @@ static bool ExtractStatFromSF(	const CCVector3& queryPoint,
 	return true;
 }
 
-static CCLib::ScalarField* ExtractStat(	const CorePoints& corePoints, 
-										ccPointCloud* sourceCloud,
-										const IScalarFieldWrapper* sourceField,
-										double scale,
-										Feature::Stat stat,
-										const char* resultSFName,
-										CCLib::GenericProgressCallback* progressCb = nullptr)
-{
-	if (!corePoints.cloud || !sourceCloud || !sourceField || scale <= 0.0 || stat == Feature::NO_STAT || !resultSFName)
-	{
-		//invalid input parameters
-		assert(false);
-		return nullptr;
-	}
-
-	ccOctree::Shared octree = sourceCloud->getOctree();
-	if (!octree)
-	{
-		ccLog::Print(QString("Computing octree of cloud %1 (%2 points)").arg(sourceCloud->getName()).arg(sourceCloud->size()));
-		octree = sourceCloud->computeOctree(progressCb);
-		if (!octree)
-		{
-			ccLog::Warning("Failed to compute octree");
-			return nullptr;
-		}
-	}
-
-	CCLib::ScalarField* resultSF = nullptr;
-	int sfIdx = corePoints.cloud->getScalarFieldIndexByName(resultSFName);
-	if (sfIdx >= 0)
-	{
-		resultSF = corePoints.cloud->getScalarField(sfIdx);
-	}
-	else
-	{
-		resultSF = new ccScalarField(resultSFName);
-		if (!resultSF->resizeSafe(corePoints.cloud->size()))
-		{
-			ccLog::Warning("Not enough memory");
-			resultSF->release();
-			return nullptr;
-		}
-	}
-	resultSF->fill(NAN_VALUE);
-
-	PointCoordinateType radius = static_cast<PointCoordinateType>(scale / 2);
-	unsigned char octreeLevel = octree->findBestLevelForAGivenNeighbourhoodSizeExtraction(radius); //scale is the diameter!
-
-	unsigned pointCount = corePoints.size();
-	if (progressCb)
-	{
-		progressCb->setInfo(qPrintable(QString("Computing field: %1\n(core points: %2)").arg(resultSFName).arg(pointCount)));
-	}
-	ccLog::Print(QString("Computing field: %1 (core points: %2)").arg(resultSFName).arg(pointCount));
-	CCLib::NormalizedProgress nProgress(progressCb, pointCount);
-
-	for (unsigned i = 0; i < pointCount; ++i)
-	{
-		double outputValue = 0;
-		if (!ExtractStatFromSF(	*corePoints.cloud->getPoint(i),
-								octree.data(),
-								octreeLevel,
-								stat,
-								*sourceField,
-								radius,
-								outputValue))
-		{
-			//unexpected error
-			resultSF->release();
-			return nullptr;
-		}
-
-		ScalarType v = static_cast<ScalarType>(outputValue);
-		resultSF->setValue(i, v);
-
-		if (progressCb && !nProgress.oneStep())
-		{
-			//process cancelled by the user
-			ccLog::Warning("Process cancelled");
-			resultSF->release();
-			return nullptr;
-		}
-	}
-
-	resultSF->computeMinAndMax();
-	int newSFIdx = corePoints.cloud->addScalarField(static_cast<ccScalarField*>(resultSF));
-	//update display
-	//if (corePoints.cloud->getDisplay())
-	{
-		corePoints.cloud->setCurrentDisplayedScalarField(newSFIdx);
-		//corePoints.cloud->getDisplay()->redraw();
-		//QCoreApplication::processEvents();
-	}
-
-	return resultSF;
-}
-
 bool PointFeature::prepare(	const CorePoints& corePoints,
 							QString& error,
-							CCLib::GenericProgressCallback* progressCb/*=nullptr*/)
+							CCLib::GenericProgressCallback* progressCb/*=nullptr*/,
+							SFCollector* generatedScalarFields/*=nullptr*/)
 {
 	if (!cloud1 || !corePoints.cloud)
 	{
@@ -695,6 +599,13 @@ bool PointFeature::prepare(	const CorePoints& corePoints,
 			}
 			resultSF->computeMinAndMax();
 			int newSFIdx = corePoints.cloud->addScalarField(static_cast<ccScalarField*>(resultSF));
+
+			if (generatedScalarFields)
+			{
+				//track the generated scalar-field
+				generatedScalarFields->push(corePoints.cloud, resultSF);
+			}
+
 			//update display
 			//if (corePoints.cloud->getDisplay())
 			{

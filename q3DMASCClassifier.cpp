@@ -202,7 +202,7 @@ bool Classifier::classify(const Feature::Set& features, ccPointCloud* cloud, QSt
 		}
 		
 		float predictedClass = m_rtrees->predict(test_data.row(0));
-		classificationSF->setValue(i, static_cast<ScalarType>(predictedClass));
+		classificationSF->setValue(i, static_cast<int>(predictedClass));
 
 		if (pDlg && !nProgress.oneStep())
 		{

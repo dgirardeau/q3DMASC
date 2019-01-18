@@ -38,27 +38,10 @@
       <string>Data</string>
      </property>
      <layout class="QGridLayout" name="gridLayout">
-      <item row="0" column="1">
-       <widget class="QLabel" name="label_4">
-        <property name="text">
-         <string>Cloud</string>
-        </property>
-       </widget>
-      </item>
       <item row="0" column="0">
        <widget class="QLabel" name="label_3">
         <property name="text">
          <string>Role</string>
-        </property>
-       </widget>
-      </item>
-      <item row="5" column="1">
-       <widget class="QComboBox" name="cloud3ComboBox">
-        <property name="sizePolicy">
-         <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-          <horstretch>0</horstretch>
-          <verstretch>0</verstretch>
-         </sizepolicy>
         </property>
        </widget>
       </item>
@@ -89,6 +72,13 @@
         </property>
        </widget>
       </item>
+      <item row="0" column="1">
+       <widget class="QLabel" name="label_4">
+        <property name="text">
+         <string>Cloud</string>
+        </property>
+       </widget>
+      </item>
       <item row="4" column="0">
        <widget class="QRadioButton" name="cloud2RadioButton">
         <property name="text">
@@ -103,19 +93,36 @@
         </property>
        </widget>
       </item>
+      <item row="5" column="1">
+       <widget class="QComboBox" name="cloud3ComboBox">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+       </widget>
+      </item>
+      <item row="6" column="1">
+       <widget class="QLabel" name="warningLabel">
+        <property name="styleSheet">
+         <string notr="true">color:red;</string>
+        </property>
+        <property name="text">
+         <string>Assign each role to the right cloud, and select the role of the cloud to be classified</string>
+        </property>
+        <property name="alignment">
+         <set>Qt::AlignCenter</set>
+        </property>
+       </widget>
+      </item>
      </layout>
     </widget>
    </item>
    <item>
-    <widget class="QLabel" name="warningLabel">
-     <property name="styleSheet">
-      <string notr="true">color:red;</string>
-     </property>
+    <widget class="QCheckBox" name="keepAttributesCheckBox">
      <property name="text">
-      <string>Assign each role to the right cloud, and select the role of the cloud to be classified</string>
-     </property>
-     <property name="alignment">
-      <set>Qt::AlignCenter</set>
+      <string>Keep attributes on completion</string>
      </property>
     </widget>
    </item>

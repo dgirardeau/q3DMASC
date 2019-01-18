@@ -24,7 +24,8 @@ using namespace masc;
 
 bool ContextBasedFeature::prepare(	const CorePoints& corePoints,
 									QString& error,
-									CCLib::GenericProgressCallback* progressCb/*=nullptr*/)
+									CCLib::GenericProgressCallback* progressCb/*=nullptr*/,
+									SFCollector* generatedScalarFields/*=nullptr*/)
 {
 	if (!cloud1 || !corePoints.cloud)
 	{
@@ -62,7 +63,7 @@ bool ContextBasedFeature::prepare(	const CorePoints& corePoints,
 
 	//and the scalar field
 	assert(!sf);
-	sf = PrepareSF(corePoints.cloud, qPrintable(resultSFName));
+	sf = PrepareSF(corePoints.cloud, qPrintable(resultSFName), generatedScalarFields);
 	if (!sf)
 	{
 		error = QString("Failed to prepare scalar %1 @ scale %2").arg(resultSFName).arg(scale);
@@ -117,7 +118,7 @@ bool ContextBasedFeature::prepare(	const CorePoints& corePoints,
 			ScalarType s = NAN_VALUE;
 			
 			int neighborhoodSize = 0;
-			if (octree->findPointNeighbourhood(P, &Yk, static_cast<unsigned>(kNN), octreeLevel, maxSquareDist, 0, &neighborhoodSize) >= kNN)
+			if (octree->findPointNeighbourhood(P, &Yk, static_cast<unsigned>(kNN), octreeLevel, maxSquareDist, 0, &neighborhoodSize) >= static_cast<unsigned>(kNN))
 			{
 				CCVector3d sumQ(0, 0, 0);
 				for (int k = 0; k < kNN; ++k)

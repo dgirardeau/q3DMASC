@@ -187,7 +187,7 @@ namespace masc
 		//inherited from Feature
 		virtual Type getType() const override { return Type::PointFeature; }
 		virtual Feature::Shared clone() const override { return Feature::Shared(new PointFeature(*this)); }
-		virtual bool prepare(const CorePoints& corePoints, QString& error, CCLib::GenericProgressCallback* progressCb = nullptr) override;
+		virtual bool prepare(const CorePoints& corePoints, QString& error, CCLib::GenericProgressCallback* progressCb = nullptr, SFCollector* generatedScalarFields = nullptr) override;
 		virtual bool finish(const CorePoints& corePoints, QString& error) override;
 		virtual bool checkValidity(QString &error) const override;
 		virtual QString toString() const override;

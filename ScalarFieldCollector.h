@@ -1,3 +1,5 @@
+#pragma once
+
 //##########################################################################
 //#                                                                        #
 //#                     CLOUDCOMPARE PLUGIN: q3DMASC                       #
@@ -15,38 +17,27 @@
 //#                                                                        #
 //##########################################################################
 
-#include "DualCloudFeature.h"
+//Qt
+#include <QMap>
 
-using namespace masc;
+//system
+#include <set>
 
-bool DualCloudFeature::prepare(	const CorePoints& corePoints,
-								QString& error,
-								CCLib::GenericProgressCallback* progressCb/*=nullptr*/,
-								SFCollector* generatedScalarFields/*=nullptr*/)
+class ccPointCloud;
+
+namespace CCLib
 {
-	//TODO
-	return false;
-}
+	class ScalarField;
+};
 
-bool DualCloudFeature::checkValidity(QString &error) const
+//! SF collector
+/** For tracking the creation and removing a set of scalar fields
+**/
+class SFCollector : QMap< ccPointCloud*, std::set<CCLib::ScalarField*> >
 {
-	if (!Feature::checkValidity(error))
-	{
-		return false;
-	}
+	public:
 
-	unsigned char cloudCount = (cloud1 ? (cloud2 ? 2 : 1) : 0);
-	if (cloudCount < 2)
-	{
-		error = "at least two clouds are required to compute context-based features";
-		return false;
-	}
+		void push(ccPointCloud* cloud, CCLib::ScalarField* sf);
 
-	if (op != NO_OPERATION)
-	{
-		error = "math operations can't be defined on dual-cloud features";
-		return false;
-	}
-
-	return true;
-}
+		void clear();
+};
