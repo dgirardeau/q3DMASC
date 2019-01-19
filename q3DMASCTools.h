@@ -36,7 +36,7 @@ namespace masc
 	{
 	public:
 
-		static bool LoadTrainingFile(QString filename, Feature::Set& rawFeatures, std::vector<ccPointCloud*>& loadedClouds, CorePoints& corePoints);
+		static bool LoadTrainingFile(QString filename, Feature::Set& rawFeatures, std::vector<ccPointCloud*>& loadedClouds, CorePoints& corePoints, TrainParameters& parameters);
 
 		static bool SaveClassifier(QString filename, const Feature::Set& features, const masc::Classifier& classifier, QWidget* parent = nullptr);
 

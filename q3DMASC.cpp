@@ -22,6 +22,7 @@
 #include "q3DMASCClassifier.h"
 #include "q3DMASCTools.h"
 #include "qClassify3DMASCDialog.h"
+#include "qTrain3DMASCDialog.h"
 #include "q3DMASCCommands.h"
 
 //qCC_db
@@ -198,13 +199,6 @@ void q3DMASCPlugin::doTrainAction()
 	if (!ShowTrainDisclaimer(m_app))
 		return;
 
-	masc::TrainParameters params;
-	if (params.testDataRatio < 0 || params.testDataRatio > 0.99f)
-	{
-		m_app->dispToConsole("Invalid test data ratio", ccMainAppInterface::ERR_CONSOLE_MESSAGE);
-		return;
-	}
-
 	QString inputFilename;
 	{
 		QSettings settings;
@@ -220,10 +214,12 @@ void q3DMASCPlugin::doTrainAction()
 		settings.endGroup();
 	}
 
+	static masc::TrainParameters s_params;
+
 	std::vector<ccPointCloud*> loadedClouds;
 	masc::CorePoints corePoints;
 	masc::Feature::Set features;
-	if (!masc::Tools::LoadTrainingFile(inputFilename, features, loadedClouds, corePoints))
+	if (!masc::Tools::LoadTrainingFile(inputFilename, features, loadedClouds, corePoints, s_params))
 	{
 		while (!loadedClouds.empty())
 		{
@@ -289,58 +285,86 @@ void q3DMASCPlugin::doTrainAction()
 
 	m_app->redrawAll();
 
-	//randomly select the training points
-	QScopedPointer<CCLib::ReferenceCloud> trainSubset(new CCLib::ReferenceCloud(corePoints.cloud));
-	QScopedPointer<CCLib::ReferenceCloud> testSubset(new CCLib::ReferenceCloud(corePoints.cloud));
-	if (!masc::Tools::RandomSubset(corePoints.cloud, params.testDataRatio, testSubset.data(), trainSubset.data()))
+	while (true)
 	{
-		m_app->dispToConsole("Not enough memory", ccMainAppInterface::ERR_CONSOLE_MESSAGE);
-		return;
-	}
-
-	//train the classifier
-	masc::Classifier classifier;
-	{
-		QString errorMessage;
-		if (!classifier.train(corePoints.cloud, params.rt, features, errorMessage, trainSubset.data(), m_app->getMainWindow()))
+		Train3DMASCDialog trainDlg(m_app->getMainWindow());
+		trainDlg.maxDepthSpinBox->setValue(s_params.rt.maxDepth);
+		trainDlg.maxTreeCountSpinBox->setValue(s_params.rt.maxTreeCount);
+		trainDlg.activeVarCountSpinBox->setValue(s_params.rt.activeVarCount);
+		trainDlg.minSampleCountSpinBox->setValue(s_params.rt.minSampleCount);
+		trainDlg.testDataRatioSpinBox->setValue(static_cast<int>(s_params.testDataRatio * 100));
+		if (!trainDlg.exec())
 		{
-			m_app->dispToConsole(errorMessage, ccMainAppInterface::ERR_CONSOLE_MESSAGE);
 			return;
 		}
 
-		QString outputFilename;
+		s_params.rt.maxDepth = trainDlg.maxDepthSpinBox->value();
+		s_params.rt.maxTreeCount = trainDlg.maxTreeCountSpinBox->value();
+		s_params.rt.activeVarCount = trainDlg.activeVarCountSpinBox->value();
+		s_params.rt.minSampleCount = trainDlg.minSampleCountSpinBox->value();
+		s_params.testDataRatio = trainDlg.testDataRatioSpinBox->value() / 100.0f;
+		if (s_params.testDataRatio < 0 || s_params.testDataRatio > 0.99f)
 		{
-			QSettings settings;
-			settings.beginGroup("3DMASC");
-			QString outputPath = settings.value("FilePath", QCoreApplication::applicationDirPath()).toString();
-			outputFilename = QFileDialog::getSaveFileName(m_app->getMainWindow(), "Save 3DMASC classifier", outputPath, "*.txt");
-			if (outputFilename.isNull())
+			assert(false);
+			m_app->dispToConsole("Invalid test data ratio", ccMainAppInterface::ERR_CONSOLE_MESSAGE);
+			return;
+		}
+
+		//randomly select the training points
+		QScopedPointer<CCLib::ReferenceCloud> trainSubset(new CCLib::ReferenceCloud(corePoints.cloud));
+		QScopedPointer<CCLib::ReferenceCloud> testSubset(new CCLib::ReferenceCloud(corePoints.cloud));
+		if (!masc::Tools::RandomSubset(corePoints.cloud, s_params.testDataRatio, testSubset.data(), trainSubset.data()))
+		{
+			m_app->dispToConsole("Not enough memory", ccMainAppInterface::ERR_CONSOLE_MESSAGE);
+			return;
+		}
+
+		//train the classifier
+		masc::Classifier classifier;
+		{
+			QString errorMessage;
+			if (!classifier.train(corePoints.cloud, s_params.rt, features, errorMessage, trainSubset.data(), m_app->getMainWindow()))
 			{
-				//process cancelled by the user
+				m_app->dispToConsole(errorMessage, ccMainAppInterface::ERR_CONSOLE_MESSAGE);
 				return;
 			}
-			settings.setValue("FilePath", QFileInfo(outputFilename).absolutePath());
-			settings.endGroup();
+
+			QString outputFilename;
+			{
+				QSettings settings;
+				settings.beginGroup("3DMASC");
+				QString outputPath = settings.value("FilePath", QCoreApplication::applicationDirPath()).toString();
+				outputFilename = QFileDialog::getSaveFileName(m_app->getMainWindow(), "Save 3DMASC classifier", outputPath, "*.txt");
+				if (outputFilename.isNull())
+				{
+					//process cancelled by the user
+					return;
+				}
+				settings.setValue("FilePath", QFileInfo(outputFilename).absolutePath());
+				settings.endGroup();
+			}
+
+			//save the classifier
+			if (masc::Tools::SaveClassifier(outputFilename, features, classifier, m_app->getMainWindow()))
+			{
+				m_app->dispToConsole("Classifier succesfully saved to " + outputFilename, ccMainAppInterface::STD_CONSOLE_MESSAGE);
+			}
 		}
 
-		//save the classifier
-		if (masc::Tools::SaveClassifier(outputFilename, features, classifier, m_app->getMainWindow()))
+		//test classifier
 		{
-			m_app->dispToConsole("Classifier succesfully saved to " + outputFilename, ccMainAppInterface::STD_CONSOLE_MESSAGE);
-		}
-	}
+			masc::Classifier::AccuracyMetrics metrics;
+			QString errorMessage;
+			if (!classifier.evaluate(features, testSubset.data(), metrics, errorMessage, m_app->getMainWindow()))
+			{
+				m_app->dispToConsole(errorMessage, ccMainAppInterface::ERR_CONSOLE_MESSAGE);
+				return;
+			}
 
-	//test classifier
-	{
-		masc::Classifier::AccuracyMetrics metrics;
-		QString errorMessage;
-		if (!classifier.evaluate(features, testSubset.data(), metrics, errorMessage, m_app->getMainWindow()))
-		{
-			m_app->dispToConsole(errorMessage, ccMainAppInterface::ERR_CONSOLE_MESSAGE);
-			return;
+			m_app->dispToConsole(QString("Correct = %1 / %2 --> accuracy = %3").arg(metrics.goodGuess).arg(metrics.sampleCount).arg(metrics.ratio), ccMainAppInterface::STD_CONSOLE_MESSAGE);
 		}
 
-		m_app->dispToConsole(QString("Correct = %1 / %2 --> accuracy = %3").arg(metrics.goodGuess).arg(metrics.sampleCount).arg(metrics.ratio), ccMainAppInterface::STD_CONSOLE_MESSAGE);
+		break;
 	}
 }
 

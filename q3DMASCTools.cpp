@@ -609,6 +609,7 @@ static bool LoadFileCommon(	const QString& filename,
 							std::vector<Feature::Shared>& rawFeatures,
 							masc::CorePoints* corePoints = nullptr,
 							masc::Classifier* classifier = nullptr,
+							TrainParameters* parameters = nullptr,
 							QWidget* parent = nullptr)
 {
 	QFileInfo fi(filename);
@@ -730,6 +731,47 @@ static bool LoadFileCommon(	const QString& filename,
 					return false;
 				}
 			}
+			else if (upperLine.startsWith("PARAM_")) //parameter
+			{
+				if (parameters) //no need to actually read the parameters if the caller didn't requested them
+				{
+					QStringList tokens = upperLine.split("=");
+					if (tokens.size() != 2)
+					{
+						ccLog::Warning(QString("Line #%1: malformed parameter command (expecting param_XXX=Y)").arg(lineNumber));
+						return false;
+					}
+					bool ok = false;
+					if (tokens[0] == "PARAM_MAX_DEPTH")
+					{
+						parameters->rt.maxDepth = tokens[1].toInt(&ok);
+					}
+					else if (tokens[0] == "PARAM_MAX_TREE_COUNT")
+					{
+						parameters->rt.maxTreeCount = tokens[1].toInt(&ok);
+					}
+					else if (tokens[0] == "PARAM_ACTIVE_VAR_COUNT")
+					{
+						parameters->rt.activeVarCount = tokens[1].toInt(&ok);
+					}
+					else if (tokens[0] == "PARAM_MIN_SAMPLE_COUNT")
+					{
+						parameters->rt.minSampleCount = tokens[1].toInt(&ok);
+					}
+					else if (tokens[0] == "PARAM_TEST_DATA_RATIO")
+					{
+						parameters->testDataRatio = tokens[1].toFloat(&ok);
+					}
+					else
+					{
+						ccLog::Warning(QString("Line #%1: unrecognized parameter: ").arg(lineNumber) + tokens[0]);
+					}
+					if (!ok)
+					{
+						ccLog::Warning(QString("Line #%1: invalid value for parameter ").arg(lineNumber) + tokens[0]);
+					}
+				}
+			}
 			else
 			{
 				ccLog::Warning(QString("Line #%1: unrecognized token/command: ").arg(lineNumber) + (line.length() < 10 ? line : line.left(10) + "..."));
@@ -750,16 +792,17 @@ static bool LoadFileCommon(	const QString& filename,
 
 bool Tools::LoadClassifier(QString filename, const NamedClouds& clouds, Feature::Set& rawFeatures, masc::Classifier& classifier, QWidget* parent/*=nullptr*/)
 {
-	return LoadFileCommon(filename, const_cast<NamedClouds&>(clouds), true, rawFeatures, nullptr, &classifier, parent);
+	return LoadFileCommon(filename, const_cast<NamedClouds&>(clouds), true, rawFeatures, nullptr, &classifier, nullptr, parent);
 }
 
 bool Tools::LoadTrainingFile(	QString filename,
 								Feature::Set& rawFeatures,
 								std::vector<ccPointCloud*>& loadedClouds,
-								CorePoints& corePoints)
+								CorePoints& corePoints,
+								TrainParameters& parameters)
 {
 	NamedClouds clouds;
-	if (LoadFileCommon(filename, clouds, false, rawFeatures, &corePoints, nullptr, nullptr))
+	if (LoadFileCommon(filename, clouds, false, rawFeatures, &corePoints, nullptr, &parameters, nullptr))
 	{
 		try
 		{
