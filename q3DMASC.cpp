@@ -279,9 +279,9 @@ void q3DMASCPlugin::doTrainAction()
 		delete group;
 		return;
 	}
+	pDlg.setAutoClose(true); //restore the default behavior of the progress dialog
 	pDlg.close();
 	QCoreApplication::processEvents();
-	pDlg.setAutoClose(true); //restore the default behavior of the progress dialog
 
 	m_app->redrawAll();
 
