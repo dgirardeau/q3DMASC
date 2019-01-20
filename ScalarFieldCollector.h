@@ -39,5 +39,5 @@ class SFCollector : QMap< ccPointCloud*, std::set<CCLib::ScalarField*> >
 
 		void push(ccPointCloud* cloud, CCLib::ScalarField* sf);
 
-		void clear();
+		void releaseAllSFs();
 };

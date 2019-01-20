@@ -898,7 +898,7 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 		}
 
 		//prepare the feature
-		if (!feature->prepare(corePoints, errorStr, progressCb))
+		if (!feature->prepare(corePoints, errorStr, progressCb, generatedScalarFields))
 		{
 			//something failed (error should be up to date)
 			return false;

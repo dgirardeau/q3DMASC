@@ -61,9 +61,13 @@ struct Command3DMASCClassif : public ccCommandLineInterface::Command
 		}
 
 		QString classifierFilename = cmd.arguments().front();
+		cmd.print("Classifier filename: " + classifierFilename);
+		QCoreApplication::processEvents();
 		cmd.arguments().pop_front();
 
 		QString cloudRolesStr = cmd.arguments().front();
+		cmd.print("Cloud roles: " + cloudRolesStr);
+		QCoreApplication::processEvents();
 		cmd.arguments().pop_front();
 
 		//process the cloud roles description
@@ -74,7 +78,8 @@ struct Command3DMASCClassif : public ccCommandLineInterface::Command
 		for (const QString& token : tokens)
 		{
 			QStringList subTokens = token.split("=");
-			if (subTokens.size() != 2)
+			int subTokenCount = subTokens.size();
+			if (subTokenCount != 2)
 			{
 				return cmd.error("Malformed cloud roles description (expecting: \"PC1=1 PC2=3 CTX=2\" for instance)");
 			}
@@ -89,7 +94,7 @@ struct Command3DMASCClassif : public ccCommandLineInterface::Command
 			{
 				return cmd.error(QString("Cloud index %1 exceeds the number of loaded clouds (=%2)").arg(cloudIndex).arg(cmd.clouds().size()));
 			}
-			cloudPerRole.insert(role, cmd.clouds()[cloudIndex].pc);
+			cloudPerRole.insert(role, cmd.clouds()[cloudIndex-1].pc);
 
 			if (mainCloudRole.isEmpty())
 			{
@@ -142,28 +147,28 @@ struct Command3DMASCClassif : public ccCommandLineInterface::Command
 		SFCollector generatedScalarFields;
 		if (!masc::Tools::PrepareFeatures(corePoints, features, errorMessage, pDlg.data(), &generatedScalarFields))
 		{
-			generatedScalarFields.clear();
+			generatedScalarFields.releaseAllSFs();
 			return cmd.error(errorMessage);
 		}
 
 		if (pDlg)
 		{
+			pDlg->setAutoClose(true); //restore the default behavior of the progress dialog
 			pDlg->close();
 			QCoreApplication::processEvents();
-			pDlg->setAutoClose(true); //restore the default behavior of the progress dialog
 		}
 
 		//apply classifier
 		{
 			if (!classifier.classify(features, corePoints.cloud, errorMessage, cmd.widgetParent()))
 			{
-				generatedScalarFields.clear();
+				generatedScalarFields.releaseAllSFs();
 				return cmd.error(errorMessage);
 			}
 
 			if (!keepAttributes)
 			{
-				generatedScalarFields.clear();
+				generatedScalarFields.releaseAllSFs();
 			}
 		}
 

@@ -169,7 +169,7 @@ void q3DMASCPlugin::doClassifyAction()
 	if (!masc::Tools::PrepareFeatures(corePoints, features, error, &progressDlg, &generatedScalarFields))
 	{
 		m_app->dispToConsole(error, ccMainAppInterface::ERR_CONSOLE_MESSAGE);
-		generatedScalarFields.clear();
+		generatedScalarFields.releaseAllSFs();
 		return;
 	}
 	progressDlg.close();
@@ -182,13 +182,13 @@ void q3DMASCPlugin::doClassifyAction()
 		if (!classifier.classify(features, corePoints.cloud, errorMessage, m_app->getMainWindow()))
 		{
 			m_app->dispToConsole(errorMessage, ccMainAppInterface::ERR_CONSOLE_MESSAGE);
-			generatedScalarFields.clear();
+			generatedScalarFields.releaseAllSFs();
 			return;
 		}
 
 		if (!s_keepAttributes)
 		{
-			generatedScalarFields.clear();
+			generatedScalarFields.releaseAllSFs();
 		}
 	}
 }

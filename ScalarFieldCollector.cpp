@@ -31,7 +31,7 @@ void SFCollector::push(ccPointCloud* cloud, CCLib::ScalarField* sf)
 	(*this)[cloud].insert(sf);
 }
 
-void SFCollector::clear()
+void SFCollector::releaseAllSFs()
 {
 	for (QMap< ccPointCloud*, std::set<CCLib::ScalarField*> >::iterator it = begin(); it != end(); ++it)
 	{

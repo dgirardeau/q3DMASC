@@ -522,7 +522,7 @@ bool PointFeature::prepare(	const CorePoints& corePoints,
 
 		//and the scalar field
 		assert(!statSF1);
-		statSF1 = PrepareSF(corePoints.cloud, qPrintable(resultSFName));
+		statSF1 = PrepareSF(corePoints.cloud, qPrintable(resultSFName), generatedScalarFields);
 		if (!statSF1)
 		{
 			error = QString("Failed to prepare scalar field for field '%1' @ scale %2").arg(field1->getName()).arg(scale);
@@ -536,7 +536,7 @@ bool PointFeature::prepare(	const CorePoints& corePoints,
 			keepStatSF2 = (corePoints.cloud->getScalarFieldIndexByName(qPrintable(resultSFName2)) >= 0); //we remember that the scalar field was already existing!
 			
 			assert(!statSF2);
-			statSF2 = PrepareSF(corePoints.cloud, qPrintable(resultSFName2));
+			statSF2 = PrepareSF(corePoints.cloud, qPrintable(resultSFName2), generatedScalarFields);
 			if (!statSF2)
 			{
 				error = QString("Failed to prepare scalar field for field '%1' @ scale %2").arg(field2->getName()).arg(scale);
