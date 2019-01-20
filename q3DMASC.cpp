@@ -162,19 +162,19 @@ void q3DMASCPlugin::doClassifyAction()
 	corePoints.origin = corePoints.cloud = clouds[mainCloudLabel];
 
 	//prepare the main cloud
-	ccProgressDialog pDlg(true, m_app->getMainWindow());
-	pDlg.setAutoClose(false); //we don't want the progress dialog to 'pop' for each feature
+	ccProgressDialog progressDlg(true, m_app->getMainWindow());
+	progressDlg.setAutoClose(false); //we don't want the progress dialog to 'pop' for each feature
 	QString error;
 	SFCollector generatedScalarFields;
-	if (!masc::Tools::PrepareFeatures(corePoints, features, error, &pDlg, &generatedScalarFields))
+	if (!masc::Tools::PrepareFeatures(corePoints, features, error, &progressDlg, &generatedScalarFields))
 	{
 		m_app->dispToConsole(error, ccMainAppInterface::ERR_CONSOLE_MESSAGE);
 		generatedScalarFields.clear();
 		return;
 	}
-	pDlg.close();
+	progressDlg.close();
 	QCoreApplication::processEvents();
-	pDlg.setAutoClose(true); //restore the default behavior of the progress dialog
+	progressDlg.setAutoClose(true); //restore the default behavior of the progress dialog
 
 	//apply classifier
 	{
@@ -192,6 +192,15 @@ void q3DMASCPlugin::doClassifyAction()
 		}
 	}
 }
+
+struct FeatureSelection
+{
+	FeatureSelection(masc::Feature::Shared f = masc::Feature::Shared(nullptr)) : feature(f) {}
+	masc::Feature::Shared feature;
+	bool selected = true;
+	bool prepared = false;
+	float importance = std::numeric_limits<float>::quiet_NaN();
+};
 
 void q3DMASCPlugin::doTrainAction()
 {
@@ -236,8 +245,32 @@ void q3DMASCPlugin::doTrainAction()
 		group->addChild(pc);
 	}
 
-	ccProgressDialog pDlg(true, m_app->getMainWindow());
-	if (!corePoints.prepare(&pDlg))
+	//show the training dialog for the first time
+	Train3DMASCDialog trainDlg(m_app->getMainWindow());
+	trainDlg.maxDepthSpinBox->setValue(s_params.rt.maxDepth);
+	trainDlg.maxTreeCountSpinBox->setValue(s_params.rt.maxTreeCount);
+	trainDlg.activeVarCountSpinBox->setValue(s_params.rt.activeVarCount);
+	trainDlg.minSampleCountSpinBox->setValue(s_params.rt.minSampleCount);
+	trainDlg.testDataRatioSpinBox->setValue(static_cast<int>(s_params.testDataRatio * 100));
+
+	//display the loaded features and let the user select the ones to use
+	trainDlg.setResultText("Select features and press 'Run'");
+	std::vector<FeatureSelection> originalFeatures;
+	originalFeatures.reserve(features.size());
+	for (const masc::Feature::Shared& f : features)
+	{
+		originalFeatures.push_back(FeatureSelection(f));
+		trainDlg.addFeature(f->toString(), originalFeatures.back().importance, originalFeatures.back().selected);
+	}
+	if (!trainDlg.exec())
+	{
+		return;
+	}
+	assert(!trainDlg.shouldSaveClassifier()); //the save button should be disabled at this point
+
+	//compute the core points (if necessary)
+	ccProgressDialog progressDlg(true, m_app->getMainWindow());
+	if (!corePoints.prepare(&progressDlg))
 	{
 		m_app->dispToConsole("Failed to compute/prepare the core points!", ccMainAppInterface::ERR_CONSOLE_MESSAGE);
 		delete group;
@@ -271,33 +304,64 @@ void q3DMASCPlugin::doTrainAction()
 	m_app->addToDB(group);
 	QCoreApplication::processEvents();
 
-	pDlg.setAutoClose(false); //we don't want the progress dialog to 'pop' for each feature
-	QString error;
-	if (!masc::Tools::PrepareFeatures(corePoints, features, error, &pDlg))
-	{
-		m_app->dispToConsole(error, ccMainAppInterface::ERR_CONSOLE_MESSAGE);
-		delete group;
-		return;
-	}
-	pDlg.setAutoClose(true); //restore the default behavior of the progress dialog
-	pDlg.close();
-	QCoreApplication::processEvents();
+	//train / test subsets
+	QScopedPointer<CCLib::ReferenceCloud> trainSubset(new CCLib::ReferenceCloud(corePoints.cloud));
+	QScopedPointer<CCLib::ReferenceCloud> testSubset(new CCLib::ReferenceCloud(corePoints.cloud));
+	float previousTrainSubsetRatio = -1.0f;
 
-	m_app->redrawAll();
-
-	while (true)
+	for (int iteration = 0; ; ++iteration)
 	{
-		Train3DMASCDialog trainDlg(m_app->getMainWindow());
-		trainDlg.maxDepthSpinBox->setValue(s_params.rt.maxDepth);
-		trainDlg.maxTreeCountSpinBox->setValue(s_params.rt.maxTreeCount);
-		trainDlg.activeVarCountSpinBox->setValue(s_params.rt.activeVarCount);
-		trainDlg.minSampleCountSpinBox->setValue(s_params.rt.minSampleCount);
-		trainDlg.testDataRatioSpinBox->setValue(static_cast<int>(s_params.testDataRatio * 100));
-		if (!trainDlg.exec())
+		//look for selected features
+		features.clear();
+		masc::Feature::Set toPrepare;
+		for (size_t i = 0; i < originalFeatures.size(); ++i)
 		{
-			return;
+			originalFeatures[i].selected = trainDlg.isFeatureSelected(i);
+
+			//if the feature is selected
+			if (originalFeatures[i].selected)
+			{
+				if (!originalFeatures[i].prepared)
+				{
+					//we should prepare it first!
+					toPrepare.push_back(originalFeatures[i].feature);
+				}
+				features.push_back(originalFeatures[i].feature);
+			}
 		}
 
+		if (features.empty())
+		{
+			m_app->dispToConsole("No feature selected!", ccMainAppInterface::ERR_CONSOLE_MESSAGE);
+			continue;
+		}
+
+		//prepare the features
+		if (!toPrepare.empty())
+		{
+			progressDlg.setAutoClose(false); //we don't want the progress dialog to 'pop' for each feature
+			QString error;
+			if (!masc::Tools::PrepareFeatures(corePoints, toPrepare, error, &progressDlg))
+			{
+				m_app->dispToConsole(error, ccMainAppInterface::ERR_CONSOLE_MESSAGE);
+				return;
+			}
+			progressDlg.setAutoClose(true); //restore the default behavior of the progress dialog
+			progressDlg.close();
+			QCoreApplication::processEvents();
+			m_app->redrawAll();
+
+			//flag the prepared features as 'prepared' ;)
+			for (FeatureSelection& fs : originalFeatures)
+			{
+				if (fs.selected && !fs.prepared)
+					fs.prepared = true;
+			}
+		}
+
+		masc::Classifier classifier;
+
+		//retrieve parameters
 		s_params.rt.maxDepth = trainDlg.maxDepthSpinBox->value();
 		s_params.rt.maxTreeCount = trainDlg.maxTreeCountSpinBox->value();
 		s_params.rt.activeVarCount = trainDlg.activeVarCountSpinBox->value();
@@ -307,64 +371,116 @@ void q3DMASCPlugin::doTrainAction()
 		{
 			assert(false);
 			m_app->dispToConsole("Invalid test data ratio", ccMainAppInterface::ERR_CONSOLE_MESSAGE);
-			return;
 		}
-
-		//randomly select the training points
-		QScopedPointer<CCLib::ReferenceCloud> trainSubset(new CCLib::ReferenceCloud(corePoints.cloud));
-		QScopedPointer<CCLib::ReferenceCloud> testSubset(new CCLib::ReferenceCloud(corePoints.cloud));
-		if (!masc::Tools::RandomSubset(corePoints.cloud, s_params.testDataRatio, testSubset.data(), trainSubset.data()))
+		else
 		{
-			m_app->dispToConsole("Not enough memory", ccMainAppInterface::ERR_CONSOLE_MESSAGE);
-			return;
-		}
-
-		//train the classifier
-		masc::Classifier classifier;
-		{
-			QString errorMessage;
-			if (!classifier.train(corePoints.cloud, s_params.rt, features, errorMessage, trainSubset.data(), m_app->getMainWindow()))
+			if (previousTrainSubsetRatio != s_params.testDataRatio)
 			{
-				m_app->dispToConsole(errorMessage, ccMainAppInterface::ERR_CONSOLE_MESSAGE);
-				return;
-			}
-
-			QString outputFilename;
-			{
-				QSettings settings;
-				settings.beginGroup("3DMASC");
-				QString outputPath = settings.value("FilePath", QCoreApplication::applicationDirPath()).toString();
-				outputFilename = QFileDialog::getSaveFileName(m_app->getMainWindow(), "Save 3DMASC classifier", outputPath, "*.txt");
-				if (outputFilename.isNull())
+				//randomly select the training points
+				testSubset->clear();
+				trainSubset->clear();
+				if (!masc::Tools::RandomSubset(corePoints.cloud, s_params.testDataRatio, testSubset.data(), trainSubset.data()))
 				{
-					//process cancelled by the user
+					m_app->dispToConsole("Not enough memory", ccMainAppInterface::ERR_CONSOLE_MESSAGE);
 					return;
 				}
-				settings.setValue("FilePath", QFileInfo(outputFilename).absolutePath());
-				settings.endGroup();
+				previousTrainSubsetRatio = s_params.testDataRatio;
 			}
 
-			//save the classifier
-			if (masc::Tools::SaveClassifier(outputFilename, features, classifier, m_app->getMainWindow()))
+			//train the classifier
 			{
-				m_app->dispToConsole("Classifier succesfully saved to " + outputFilename, ccMainAppInterface::STD_CONSOLE_MESSAGE);
+				QString errorMessage;
+				if (!classifier.train(corePoints.cloud, s_params.rt, features, errorMessage, trainSubset.data(), m_app, m_app->getMainWindow()))
+				{
+					m_app->dispToConsole(errorMessage, ccMainAppInterface::ERR_CONSOLE_MESSAGE);
+					return;
+				}
+				trainDlg.setFirstRunDone();
+				trainDlg.shouldSaveClassifier();
+			}
+
+			//test the trained classifier
+			{
+				masc::Classifier::AccuracyMetrics metrics;
+				QString errorMessage;
+				if (!classifier.evaluate(features, testSubset.data(), metrics, errorMessage, m_app->getMainWindow()))
+				{
+					m_app->dispToConsole(errorMessage, ccMainAppInterface::ERR_CONSOLE_MESSAGE);
+					return;
+				}
+
+				QString resultText = QString("Correct guess = %1 / %2 --> accuracy = %3").arg(metrics.goodGuess).arg(metrics.sampleCount).arg(metrics.ratio);
+				m_app->dispToConsole(resultText, ccMainAppInterface::STD_CONSOLE_MESSAGE);
+				trainDlg.setResultText(resultText);
+
+				cv::Mat importanceMat = classifier.getVarImportance();
+				//m_app->dispToConsole(QString("Var importance size = %1 x %2").arg(importanceMat.rows).arg(importanceMat.cols));
+				assert(static_cast<int>(features.size()) == importanceMat.rows);
+				int selectedFeatureIndex = 0;
+				for (size_t i = 0; i < originalFeatures.size(); ++i)
+				{
+					if (originalFeatures[i].selected)
+					{
+						//m_app->dispToConsole(QString("Feature #%1 importance = %2").arg(i + 1).arg(importanceMat.at<float>(i, 0)));
+						assert(selectedFeatureIndex < importanceMat.rows);
+						originalFeatures[i].importance = importanceMat.at<float>(selectedFeatureIndex, 0);
+						++selectedFeatureIndex;
+					}
+					else
+					{
+						originalFeatures[i].importance = std::numeric_limits<float>::quiet_NaN();
+					}
+					trainDlg.setFeatureImportance(i, originalFeatures[i].importance);
+				}
 			}
 		}
 
-		//test classifier
+		while (true)
 		{
-			masc::Classifier::AccuracyMetrics metrics;
-			QString errorMessage;
-			if (!classifier.evaluate(features, testSubset.data(), metrics, errorMessage, m_app->getMainWindow()))
+			if (!trainDlg.exec())
 			{
-				m_app->dispToConsole(errorMessage, ccMainAppInterface::ERR_CONSOLE_MESSAGE);
+				//the dialog can be closed
 				return;
 			}
 
-			m_app->dispToConsole(QString("Correct = %1 / %2 --> accuracy = %3").arg(metrics.goodGuess).arg(metrics.sampleCount).arg(metrics.ratio), ccMainAppInterface::STD_CONSOLE_MESSAGE);
+			//if the save button has been clicked
+			if (trainDlg.shouldSaveClassifier())
+			{
+				//ask for the output filename
+				QString outputFilename;
+				{
+					QSettings settings;
+					settings.beginGroup("3DMASC");
+					QString outputPath = settings.value("FilePath", QCoreApplication::applicationDirPath()).toString();
+					outputFilename = QFileDialog::getSaveFileName(m_app->getMainWindow(), "Save 3DMASC classifier", outputPath, "*.txt");
+					if (outputFilename.isNull())
+					{
+						//process cancelled by the user
+						continue;
+					}
+					settings.setValue("FilePath", QFileInfo(outputFilename).absolutePath());
+					settings.endGroup();
+				}
+
+				//save the classifier
+				if (masc::Tools::SaveClassifier(outputFilename, features, classifier, m_app->getMainWindow()))
+				{
+					m_app->dispToConsole("Classifier succesfully saved to " + outputFilename, ccMainAppInterface::STD_CONSOLE_MESSAGE);
+					trainDlg.setClassifierSaved();
+				}
+				else
+				{
+					m_app->dispToConsole("Failed to save classifier file");
+				}
+			}
+			else //we will run the classifier another time
+			{
+				//stop the local loop
+				break;
+			}
 		}
 
-		break;
+		//we are going to restart the classification process
 	}
 }
 

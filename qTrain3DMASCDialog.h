@@ -32,4 +32,29 @@ public:
 	//! Default constructor
 	Train3DMASCDialog(QWidget* parent = nullptr);
 
+	void clearResults();
+
+	//! Adds a feature (entry) to the results table
+	/** \return the row index
+	**/
+	int addFeature(QString name, float importance, bool isChecked = true);
+
+	void setResultText(QString text);
+	void setFirstRunDone();
+	inline void setClassifierSaved() { classifierSaved = true; saveRequested = false; }
+
+	bool isFeatureSelected(size_t index) const;
+	void setFeatureImportance(size_t index, float importance);
+	
+	inline bool shouldSaveClassifier() const { return saveRequested; }
+
+protected slots:
+
+	void onClose();
+	void onSave();
+
+protected: //members
+
+	bool classifierSaved;
+	bool saveRequested;
 };

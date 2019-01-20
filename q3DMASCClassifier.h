@@ -31,6 +31,7 @@
 #include <opencv2/ml.hpp>
 
 class QWidget;
+class ccMainAppInterface;
 
 //! 3DMASC classifier
 namespace masc
@@ -43,7 +44,13 @@ namespace masc
 		Classifier();
 
 		//! Train the classifier
-		bool train(const ccPointCloud* cloud, const RandomTreesParams& params, const Feature::Set& features, QString& errorMessage, CCLib::ReferenceCloud* trainSubset = nullptr, QWidget* parentWidget = nullptr);
+		bool train(	const ccPointCloud* cloud,
+					const RandomTreesParams& params,
+					const Feature::Set& features,
+					QString& errorMessage,
+					CCLib::ReferenceCloud* trainSubset = nullptr,
+					ccMainAppInterface* app = nullptr,
+					QWidget* parentWidget = nullptr);
 
 		//! Classifier accuracy metrics
 		struct AccuracyMetrics
@@ -66,6 +73,8 @@ namespace masc
 		bool toFile(QString filename, QWidget* parentWidget = nullptr) const;
 		//! Loads the classifier from file
 		bool fromFile(QString filename, QWidget* parentWidget = nullptr);
+
+		inline cv::Mat getVarImportance() const { return m_rtrees->getVarImportance(); }
 
 	protected:
 

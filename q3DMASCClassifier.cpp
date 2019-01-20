@@ -29,6 +29,9 @@
 //qCC_io
 #include <LASFields.h>
 
+//qCC_plugins
+#include <ccMainAppInterface.h>
+
 //Qt
 #include <QCoreApplication>
 #include <QProgressDialog>
@@ -360,6 +363,7 @@ bool Classifier::train(	const ccPointCloud* cloud,
 						const Feature::Set& features,
 						QString& errorMessage,
 						CCLib::ReferenceCloud* trainSubset/*=nullptr*/,
+						ccMainAppInterface* app/*=nullptr*/,
 						QWidget* parentWidget/*=nullptr*/)
 {
 	if (features.empty())
@@ -397,7 +401,10 @@ bool Classifier::train(	const ccPointCloud* cloud,
 	int sampleCount = static_cast<int>(trainSubset ? trainSubset->size() : cloud->size());
 	int attributesPerSample = static_cast<int>(features.size());
 
-	ccLog::Print(QString("[3DMASC] Training data: %1 samples with %2 feature(s)").arg(sampleCount).arg(attributesPerSample));
+	if (app)
+	{
+		app->dispToConsole(QString("[3DMASC] Training data: %1 samples with %2 feature(s)").arg(sampleCount).arg(attributesPerSample));
+	}
 
 	cv::Mat training_data, train_labels;
 	try
@@ -528,6 +535,17 @@ bool Classifier::train(	const ccPointCloud* cloud,
 		errorMessage = QObject::tr("Training failed for an unknown reason...");
 		m_rtrees.release();
 		return false;
+	}
+
+	if (app)
+	{
+		cv::Mat mat = m_rtrees->getVarImportance();
+		app->dispToConsole(QString("Var importance size = %1 x %2").arg(mat.rows).arg(mat.cols));
+		assert(attributesPerSample == mat.rows);
+		for (int i = 0; i < mat.rows; ++i)
+		{
+			app->dispToConsole(QString("Feature #%1 importance = %2").arg(i + 1).arg(mat.at<float>(i, 0)));
+		}
 	}
 
 	return true;

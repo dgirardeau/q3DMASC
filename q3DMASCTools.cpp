@@ -632,7 +632,7 @@ static bool LoadFileCommon(	const QString& filename,
 		std::vector<double> scales;
 
 		QTextStream stream(&file);
-		for (int lineNumber = 0; ; ++lineNumber)
+		for (int lineNumber = 1; ; ++lineNumber)
 		{
 			QString line = stream.readLine();
 			if (line.isNull())
@@ -640,7 +640,6 @@ static bool LoadFileCommon(	const QString& filename,
 				//eof
 				break;
 			}
-			++lineNumber;
 
 			if (line.startsWith("#"))
 			{
