@@ -36,13 +36,13 @@ namespace masc
 	{
 	public:
 
-		static bool LoadTrainingFile(QString filename, Feature::Set& rawFeatures, std::vector<ccPointCloud*>& loadedClouds, CorePoints& corePoints, TrainParameters& parameters);
+		typedef QMap<QString, ccPointCloud* > NamedClouds;
+
+		static bool LoadTrainingFile(QString filename, Feature::Set& rawFeatures, NamedClouds& loadedClouds, CorePoints& corePoints, TrainParameters& parameters);
 
 		static bool SaveClassifier(QString filename, const Feature::Set& features, const masc::Classifier& classifier, QWidget* parent = nullptr);
 
 		static bool LoadClassifierCloudLabels(QString filename, QSet<QString>& labels);
-
-		typedef QMap<QString, ccPointCloud* > NamedClouds;
 
 		static bool LoadClassifier(QString filename, const NamedClouds& clouds, Feature::Set& rawFeatures, masc::Classifier& classifier, QWidget* parent = nullptr);
 

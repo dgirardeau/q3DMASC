@@ -796,38 +796,23 @@ bool Tools::LoadClassifier(QString filename, const NamedClouds& clouds, Feature:
 
 bool Tools::LoadTrainingFile(	QString filename,
 								Feature::Set& rawFeatures,
-								std::vector<ccPointCloud*>& loadedClouds,
+								NamedClouds& loadedClouds,
 								CorePoints& corePoints,
 								TrainParameters& parameters)
 {
-	NamedClouds clouds;
-	if (LoadFileCommon(filename, clouds, false, rawFeatures, &corePoints, nullptr, &parameters, nullptr))
+	bool cloudsWereProvided = !loadedClouds.empty();
+	if (LoadFileCommon(filename, loadedClouds, cloudsWereProvided, rawFeatures, &corePoints, nullptr, &parameters, nullptr))
 	{
-		try
-		{
-			loadedClouds.reserve(loadedClouds.size() + clouds.size());
-		}
-		catch (const std::bad_alloc&)
-		{
-			ccLog::Warning("Not enough memory");
-			//release some memory
-			for (NamedClouds::const_iterator it = clouds.begin(); it != clouds.end(); ++it)
-			{
-				delete it.value();
-			}
-			return false;
-		}
-
-		//otherwise transfer the clouds to the 'loadedClouds' vector
-		for (NamedClouds::const_iterator it = clouds.begin(); it != clouds.end(); ++it)
-		{
-			loadedClouds.push_back(it.value());
-		}
-
 		return true;
 	}
 	else
 	{
+		if (!cloudsWereProvided)
+		{
+			//delete the already loaded clouds (if any)
+			for (NamedClouds::const_iterator it = loadedClouds.begin(); it != loadedClouds.end(); ++it)
+				delete it.value();
+		}
 		return false;
 	}
 }

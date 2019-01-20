@@ -34,6 +34,7 @@
 #include <QtCore>
 #include <QApplication>
 #include <QFileDialog>
+#include <QMessageBox>
 
 q3DMASCPlugin::q3DMASCPlugin(QObject* parent/*=0*/)
 	: QObject(parent)
@@ -223,26 +224,65 @@ void q3DMASCPlugin::doTrainAction()
 		settings.endGroup();
 	}
 
-	static masc::TrainParameters s_params;
+	//load the cloud labels (PC1, PC2, CTX, etc.)
+	QSet<QString> cloudLabels;
+	if (!masc::Tools::LoadClassifierCloudLabels(inputFilename, cloudLabels))
+	{
+		m_app->dispToConsole("Failed to read classifier file (see Console)", ccMainAppInterface::ERR_CONSOLE_MESSAGE);
+		return;
+	}
+	if (cloudLabels.empty())
+	{
+		m_app->dispToConsole("Invalid classifier file (no cloud label defined)", ccMainAppInterface::ERR_CONSOLE_MESSAGE);
+		return;
+	}
 
-	std::vector<ccPointCloud*> loadedClouds;
+	static bool s_keepAttributes = false;
+	masc::Tools::NamedClouds loadedClouds;
+
+	bool useCloudsFromDB = (QMessageBox::question(m_app->getMainWindow(), "Use clouds in DB", "Use clouds in db (yes) or clouds specified in the file(no)?", QMessageBox::Yes, QMessageBox::No) == QMessageBox::Yes);
+	if (useCloudsFromDB)
+	{
+		if (cloudLabels.size() > 3)
+		{
+			m_app->dispToConsole("This classifier uses more than 3 different clouds (the GUI version cannot handle it)", ccMainAppInterface::WRN_CONSOLE_MESSAGE);
+			return;
+		}
+
+		//now show a dialog where the user will be able to set the cloud roles
+		Classify3DMASCDialog classifDlg(m_app, true);
+		classifDlg.setWindowTitle("3DMASC Train");
+		classifDlg.setCloudRoles(cloudLabels);
+		classifDlg.classifierFileLineEdit->setText(inputFilename);
+		classifDlg.keepAttributesCheckBox->setChecked(s_keepAttributes);
+		if (!classifDlg.exec())
+		{
+			//process cancelled by the user
+			return;
+		}
+		s_keepAttributes = classifDlg.keepAttributesCheckBox->isChecked();
+
+		QString mainCloudLabel;
+		classifDlg.getClouds(loadedClouds, mainCloudLabel);
+	}
+
+	static masc::TrainParameters s_params;
 	masc::CorePoints corePoints;
 	masc::Feature::Set features;
 	if (!masc::Tools::LoadTrainingFile(inputFilename, features, loadedClouds, corePoints, s_params))
 	{
-		while (!loadedClouds.empty())
-		{
-			delete loadedClouds.back();
-			loadedClouds.pop_back();
-		}
+		m_app->dispToConsole("Failed to load the training file", ccMainAppInterface::ERR_CONSOLE_MESSAGE);
 		return;
 	}
 
-	//add the loaded clouds to the main DB (so that we don't need to handle them anymore)
 	ccHObject* group = new ccHObject("3DMASC");
-	for (ccPointCloud* pc : loadedClouds)
+	if (!useCloudsFromDB)
 	{
-		group->addChild(pc);
+		//add the loaded clouds to the main DB (so that we don't need to handle them anymore)
+		for (masc::Tools::NamedClouds::const_iterator it = loadedClouds.begin(); it != loadedClouds.end(); ++it)
+		{
+			group->addChild(it.value());
+		}
 	}
 
 	//show the training dialog for the first time
@@ -264,6 +304,7 @@ void q3DMASCPlugin::doTrainAction()
 	}
 	if (!trainDlg.exec())
 	{
+		delete group;
 		return;
 	}
 	assert(!trainDlg.shouldSaveClassifier()); //the save button should be disabled at this point
@@ -301,13 +342,23 @@ void q3DMASCPlugin::doTrainAction()
 		corePoints.cloud->setName(QString("Core points (%1)").arg(corePointsName));
 		group->addChild(corePoints.cloud);
 	}
-	m_app->addToDB(group);
-	QCoreApplication::processEvents();
+	if (group->getChildrenNumber() != 0)
+	{
+		m_app->addToDB(group);
+		QCoreApplication::processEvents();
+	}
+	else
+	{
+		delete group;
+		group = nullptr;
+	}
 
 	//train / test subsets
 	QScopedPointer<CCLib::ReferenceCloud> trainSubset(new CCLib::ReferenceCloud(corePoints.cloud));
 	QScopedPointer<CCLib::ReferenceCloud> testSubset(new CCLib::ReferenceCloud(corePoints.cloud));
 	float previousTrainSubsetRatio = -1.0f;
+
+	SFCollector generatedScalarFields;
 
 	for (int iteration = 0; ; ++iteration)
 	{
@@ -341,9 +392,10 @@ void q3DMASCPlugin::doTrainAction()
 		{
 			progressDlg.setAutoClose(false); //we don't want the progress dialog to 'pop' for each feature
 			QString error;
-			if (!masc::Tools::PrepareFeatures(corePoints, toPrepare, error, &progressDlg))
+			if (!masc::Tools::PrepareFeatures(corePoints, toPrepare, error, &progressDlg, &generatedScalarFields))
 			{
 				m_app->dispToConsole(error, ccMainAppInterface::ERR_CONSOLE_MESSAGE);
+				generatedScalarFields.releaseAllSFs();
 				return;
 			}
 			progressDlg.setAutoClose(true); //restore the default behavior of the progress dialog
@@ -382,6 +434,7 @@ void q3DMASCPlugin::doTrainAction()
 				if (!masc::Tools::RandomSubset(corePoints.cloud, s_params.testDataRatio, testSubset.data(), trainSubset.data()))
 				{
 					m_app->dispToConsole("Not enough memory", ccMainAppInterface::ERR_CONSOLE_MESSAGE);
+					generatedScalarFields.releaseAllSFs();
 					return;
 				}
 				previousTrainSubsetRatio = s_params.testDataRatio;
@@ -393,6 +446,7 @@ void q3DMASCPlugin::doTrainAction()
 				if (!classifier.train(corePoints.cloud, s_params.rt, features, errorMessage, trainSubset.data(), m_app, m_app->getMainWindow()))
 				{
 					m_app->dispToConsole(errorMessage, ccMainAppInterface::ERR_CONSOLE_MESSAGE);
+					generatedScalarFields.releaseAllSFs();
 					return;
 				}
 				trainDlg.setFirstRunDone();
@@ -406,6 +460,7 @@ void q3DMASCPlugin::doTrainAction()
 				if (!classifier.evaluate(features, testSubset.data(), metrics, errorMessage, m_app->getMainWindow()))
 				{
 					m_app->dispToConsole(errorMessage, ccMainAppInterface::ERR_CONSOLE_MESSAGE);
+					generatedScalarFields.releaseAllSFs();
 					return;
 				}
 
@@ -440,6 +495,10 @@ void q3DMASCPlugin::doTrainAction()
 			if (!trainDlg.exec())
 			{
 				//the dialog can be closed
+				if (!s_keepAttributes)
+				{
+					generatedScalarFields.releaseAllSFs();
+				}
 				return;
 			}
 

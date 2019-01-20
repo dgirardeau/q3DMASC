@@ -58,7 +58,7 @@ static ccPointCloud* GetCloudFromCombo(QComboBox* comboBox, ccHObject* dbRoot)
 	return static_cast<ccPointCloud*>(item);
 }
 
-Classify3DMASCDialog::Classify3DMASCDialog(ccMainAppInterface* app)
+Classify3DMASCDialog::Classify3DMASCDialog(ccMainAppInterface* app, bool trainMode/*=false*/)
 	: QDialog(app ? app->getMainWindow() : 0)
 	, Ui::Classify3DMASCDialog()
 	, m_app(app)
@@ -95,8 +95,14 @@ Classify3DMASCDialog::Classify3DMASCDialog(ccMainAppInterface* app)
 
 		if (cloudCount == 0 && app)
 		{
-			app->dispToConsole("You need at least 1 loaded cloud to classify it...", ccMainAppInterface::ERR_CONSOLE_MESSAGE);
+			app->dispToConsole(QString("You need at least 1 loaded cloud to ") + (trainMode ? "train a classifier" : "classify it..."), ccMainAppInterface::ERR_CONSOLE_MESSAGE);
 		}
+	}
+
+	if (trainMode)
+	{
+		label->setText(tr("Trainer file"));
+		warningLabel->setVisible(false);
 	}
 
 	onCloudChanged(0);

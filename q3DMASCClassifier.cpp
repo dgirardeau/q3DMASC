@@ -537,17 +537,6 @@ bool Classifier::train(	const ccPointCloud* cloud,
 		return false;
 	}
 
-	if (app)
-	{
-		cv::Mat mat = m_rtrees->getVarImportance();
-		app->dispToConsole(QString("Var importance size = %1 x %2").arg(mat.rows).arg(mat.cols));
-		assert(attributesPerSample == mat.rows);
-		for (int i = 0; i < mat.rows; ++i)
-		{
-			app->dispToConsole(QString("Feature #%1 importance = %2").arg(i + 1).arg(mat.at<float>(i, 0)));
-		}
-	}
-
 	return true;
 }
 

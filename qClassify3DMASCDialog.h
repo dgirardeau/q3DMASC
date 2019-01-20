@@ -33,7 +33,7 @@ class Classify3DMASCDialog : public QDialog, public Ui::Classify3DMASCDialog
 public:
 
 	//! Default constructor
-	Classify3DMASCDialog(ccMainAppInterface* app);
+	Classify3DMASCDialog(ccMainAppInterface* app, bool trainMode = false);
 
 	//! Sets the clouds roles
 	void setCloudRoles(const QSet<QString>& roles);
