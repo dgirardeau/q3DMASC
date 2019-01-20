@@ -462,7 +462,7 @@ bool Classifier::train(	const ccPointCloud* cloud,
 	m_rtrees = cv::ml::RTrees::create();
 	m_rtrees->setMaxDepth(params.maxDepth);
 	m_rtrees->setMinSampleCount(params.minSampleCount);
-	m_rtrees->setCalculateVarImportance(params.calcVarImportance);
+	m_rtrees->setCalculateVarImportance(true);
 	m_rtrees->setActiveVarCount(params.activeVarCount);
 	cv::TermCriteria terminationCriteria(cv::TermCriteria::MAX_ITER, params.maxTreeCount, std::numeric_limits<double>::epsilon());
 	m_rtrees->setTermCriteria(terminationCriteria);
