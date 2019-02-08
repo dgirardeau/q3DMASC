@@ -831,7 +831,7 @@ QString PointFeature::toString() const
 	//special case for the 'SF' type
 	if (type == SF)
 	{
-		//'SF#' + sf index
+		//'SF' + sf index
 		description += QString::number(sourceSFIndex);
 	}
 

@@ -87,7 +87,7 @@ bool ContextBasedFeature::prepare(	const CorePoints& corePoints,
 		}
 
 		//now extract the neighborhoods
-		unsigned char octreeLevel = octree->findBestLevelForAGivenPopulationPerCell(static_cast<unsigned>(std::min(3, kNN)));
+		unsigned char octreeLevel = octree->findBestLevelForAGivenPopulationPerCell(static_cast<unsigned>(std::max(3, kNN)));
 		ccLog::Print(QString("[Initial octree level] level = %1").arg(octreeLevel));
 
 		unsigned pointCount = corePoints.size();
@@ -138,20 +138,20 @@ bool ContextBasedFeature::prepare(	const CorePoints& corePoints,
 
 				if (i && (i % tenth) == 0)
 				{
-					meanNeighborhoodSize /= tenth;
-					if (meanNeighborhoodSize < 1.1)
+					double density = meanNeighborhoodSize / tenth;
+					if (density < 1.1)
 					{
 						if (octreeLevel + 1 < CCLib::DgmOctree::MAX_OCTREE_LEVEL)
 							++octreeLevel;
 					}
-					else while (meanNeighborhoodSize >= 2.0)
+					else while (density > 2.9)
 					{
 						if (octreeLevel <= 5)
 							break;
 						--octreeLevel;
-						meanNeighborhoodSize /= 2.0;
+						density /= 2.0;
 					}
-					ccLog::Print(QString("[Adaptative octree level] Mean neighborhood size: %1 --> new level = %2").arg(meanNeighborhoodSize).arg(octreeLevel));
+					ccLog::Print(QString("[Adaptative octree level] Mean neighborhood size: %1 --> new level = %2").arg(meanNeighborhoodSize / tenth).arg(octreeLevel));
 					meanNeighborhoodSize = 0;
 				}
 				else

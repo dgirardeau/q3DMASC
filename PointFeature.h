@@ -91,7 +91,7 @@ namespace masc
 			case PCV:
 				return "PCV";
 			case SF:
-				return "SF#";
+				return "SF";
 			default:
 				assert(false);
 				break;

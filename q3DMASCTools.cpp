@@ -152,7 +152,7 @@ static bool CreateFeaturesFromCommand(const QString& command, int lineNumber, co
 				//we have a point feature
 				PointFeature* pointFeature = new PointFeature(pointFeatureType);
 
-				//specific case: 'SF#'
+				//specific case: 'SF'
 				if (pointFeatureType == PointFeature::SF)
 				{
 					QString sfIndexStr = typeStr.mid(2);
