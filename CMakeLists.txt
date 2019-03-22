@@ -5,7 +5,7 @@ option( INSTALL_Q3DMASC_PLUGIN "Check to install q3DMASC plugin" OFF )
 if (INSTALL_Q3DMASC_PLUGIN)
 
 #New classification plugin (Dimitri Lague/OSUR)
-project( Q3DMASC_PLUGIN_DLL )
+project( Q3DMASC_PLUGIN )
 
 	#need OpenCV
 	find_package( OpenCV REQUIRED )
