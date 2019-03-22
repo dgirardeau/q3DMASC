@@ -116,9 +116,9 @@ namespace masc
 				return LINEA;
 			else if (token == "PLANA")
 				return PLANA;
-			else if (token == "DipAng")
+			else if (token == "DIPANG")
 				return DipAng;
-			else if (token == "DipDir")
+			else if (token == "DIPDIR")
 				return DipDir;
 			else if (token == "ROUGH")
 				return ROUGH;
@@ -128,9 +128,9 @@ namespace masc
 				return CURV;
 			else if (token == "ZRANGE")
 				return ZRANGE;
-			else if (token == "Zmax")
+			else if (token == "ZMAX")
 				return Zmax;
-			else if (token == "Zmin")
+			else if (token == "ZMIN")
 				return Zmin;
 			else if (token == "ANISO")
 				return ANISO;
