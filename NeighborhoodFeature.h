@@ -34,6 +34,7 @@ namespace masc
 			Invalid = 0
 			, PCA1
 			, PCA2
+			, PCA3
 			, SPHER
 			, LINEA
 			, PLANA
@@ -61,6 +62,8 @@ namespace masc
 				return "PCA1";
 			case PCA2:
 				return "PCA2";
+			case PCA3:
+				return "PCA3";
 			case SPHER:
 				return "SPHER";
 			case LINEA:
@@ -105,6 +108,8 @@ namespace masc
 				return PCA1;
 			else if (token == "PCA2")
 				return PCA2;
+			else if (token == "PCA3")
+				return PCA3;
 			else if (token == "SPHER")
 				return SPHER;
 			else if (token == "LINEA")

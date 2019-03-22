@@ -204,6 +204,7 @@ bool NeighborhoodFeature::computeValue(CCLib::DgmOctree::NeighboursSet& pointsIn
 	//features relying on the PCA
 	case PCA1:
 	case PCA2:
+	case PCA3:
 	case SPHER:
 	case LINEA:
 	case PLANA:
@@ -216,6 +217,9 @@ bool NeighborhoodFeature::computeValue(CCLib::DgmOctree::NeighboursSet& pointsIn
 			break;
 		case PCA2:
 			f = CCLib::Neighbourhood::PCA2;
+			break;
+		case PCA3:
+			f = CCLib::Neighbourhood::SurfaceVariation;
 			break;
 		case SPHER:
 			f = CCLib::Neighbourhood::Sphericity;
