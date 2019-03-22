@@ -372,7 +372,7 @@ static bool ExtractStatFromSF(	const CCVector3& queryPoint,
 	else
 	{
 		bool withSums = (stat == Feature::MEAN || stat == Feature::STD);
-		bool storeValues = (stat == Feature::MODE || stat == Feature::SKEW);
+		bool storeValues = (stat == Feature::MEDIAN || stat == Feature::MODE || stat == Feature::SKEW);
 		double sum = 0.0;
 		double sum2 = 0.0;
 
@@ -421,6 +421,14 @@ static bool ExtractStatFromSF(	const CCVector3& queryPoint,
 			CCLib::WeibullDistribution w;
 			w.computeParameters(values);
 			outputValue = w.computeMode();
+		}
+		break;
+
+		case Feature::MEDIAN:
+		{
+			size_t medianIndex = values.size() / 2;
+			std::nth_element(values.begin(), values.begin() + medianIndex, values.end());
+			outputValue = values[medianIndex];
 		}
 		break;
 
@@ -670,7 +678,7 @@ bool PointFeature::computeStat(const CCLib::DgmOctree::NeighboursSet& pointsInNe
 	else
 	{
 		bool withSums = (stat == Feature::MEAN || stat == Feature::STD);
-		bool storeValues = (stat == Feature::MODE || stat == Feature::SKEW);
+		bool storeValues = (stat == Feature::MEDIAN || stat == Feature::MODE || stat == Feature::SKEW);
 		double sum = 0.0;
 		double sum2 = 0.0;
 
@@ -719,6 +727,14 @@ bool PointFeature::computeStat(const CCLib::DgmOctree::NeighboursSet& pointsInNe
 			CCLib::WeibullDistribution w;
 			w.computeParameters(values);
 			outputValue = w.computeMode();
+		}
+		break;
+
+		case Feature::MEDIAN:
+		{
+			size_t medianIndex = values.size() / 2;
+			std::nth_element(values.begin(), values.begin() + medianIndex, values.end());
+			outputValue = values[medianIndex];
 		}
 		break;
 

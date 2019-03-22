@@ -65,6 +65,7 @@ namespace masc
 			NO_STAT,
 			MEAN,
 			MODE, //number with the highest frequency
+			MEDIAN,
 			STD,
 			RANGE,
 			SKEW //(SKEW = (MEAN - MODE)/STD)
@@ -78,6 +79,8 @@ namespace masc
 				return "MEAN";
 			case MODE:
 				return "MODE";
+			case MEDIAN:
+				return "MEDIAN";
 			case STD:
 				return "STD";
 			case RANGE:

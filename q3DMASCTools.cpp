@@ -269,6 +269,11 @@ static bool CreateFeaturesFromCommand(const QString& command, int lineNumber, co
 				feature->stat = Feature::MODE;
 				statDefined = true;
 			}
+			else if (token == "MEDIAN")
+			{
+				feature->stat = Feature::MEDIAN;
+				statDefined = true;
+			}
 			else if (token == "STD")
 			{
 				feature->stat = Feature::STD;
