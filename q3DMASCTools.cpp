@@ -25,10 +25,12 @@
 
 //qCC_io
 #include <FileIOFilter.h>
-#include <LASFields.h>
 //qCC_db
 #include <ccScalarField.h>
 #include <ccPointCloud.h>
+
+//qPDALIO
+#include "../../core/IO/qPDALIO/src/LASFields.h"
 
 //Qt
 #include <QTextStream>

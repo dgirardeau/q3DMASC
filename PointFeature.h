@@ -193,12 +193,12 @@ namespace masc
 		virtual QString toString() const override;
 
 		//! Compute the associated 'stat' on a set of points (and with a given field)
-		bool computeStat(const CCLib::DgmOctree::NeighboursSet& pointsInNeighbourhood, const QSharedPointer<IScalarFieldWrapper>& sourceField, double& outputValue) const;
+		bool computeStat(const CCLib::DgmOctree::NeighboursSet& pointsInNeighbourhood, const IScalarFieldWrapper::Shared& sourceField, double& outputValue) const;
 
 	protected: //methods
 
 		//! Returns the 'source' field from a given cloud
-		QSharedPointer<IScalarFieldWrapper> retrieveField(ccPointCloud* cloud, QString& error);
+		IScalarFieldWrapper::Shared retrieveField(ccPointCloud* cloud, QString& error);
 
 	public:	//members
 
@@ -210,9 +210,15 @@ namespace masc
 		//! Source scalar field index (if the feature source is 'ScalarField')
 		int sourceSFIndex;
 
+		//! First cloud 'source' field
+		IScalarFieldWrapper::Shared field1;
+
+		//! Second cloud 'source' field (if any)
+		IScalarFieldWrapper::Shared field2;
+
 		//! For scaled features
-		QSharedPointer<IScalarFieldWrapper> field1, field2;
 		CCLib::ScalarField *statSF1, *statSF2;
+		
 		bool keepStatSF2;
 	};
 }

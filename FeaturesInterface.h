@@ -21,6 +21,7 @@
 //Local
 #include "CorePoints.h"
 #include "ScalarFieldCollector.h"
+#include "ScalarFieldWrappers.h"
 
 //Qt
 #include <QString>
@@ -183,8 +184,14 @@ namespace masc
 		//! Creates (or resets) a scalar field with the given name on the input core points cloud
 		static CCLib::ScalarField* PrepareSF(ccPointCloud* cloud, const char* resultSFName, SFCollector* generatedScalarFields = nullptr);
 
+		//! Performs a mathematical operation between two scalars
+		static ScalarType PerformMathOp(double s1, double s2, Operation op);
+
 		//! Performs a mathematical operation between two scalar fields (they must have the same size!)
 		static bool PerformMathOp(CCLib::ScalarField* sf1, const CCLib::ScalarField* sf2, Operation op);
+
+		//! Performs a mathematical operation between two scalar fields (they must have the same size!)
+		static bool PerformMathOp(const IScalarFieldWrapper& sf1, const IScalarFieldWrapper& sf2, Operation op, CCLib::ScalarField* outSF);
 
 	public: //members
 

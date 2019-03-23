@@ -67,11 +67,37 @@ CCLib::ScalarField* Feature::PrepareSF(ccPointCloud* cloud, const char* resultSF
 	return resultSF;
 }
 
+ScalarType Feature::PerformMathOp(double s1, double s2, Operation op)
+{
+	ScalarType s = NAN_VALUE;
+	switch (op)
+	{
+	case Feature::MINUS:
+		s = static_cast<ScalarType>(s1 - s2);
+		break;
+	case Feature::PLUS:
+		s = static_cast<ScalarType>(s1 + s2);
+		break;
+	case Feature::DIVIDE:
+		if (std::abs(s2) > std::numeric_limits<ScalarType>::epsilon())
+			s = static_cast<ScalarType>(s1 / s2);
+		break;
+	case Feature::MULTIPLY:
+		s = static_cast<ScalarType>(s1 * s2);
+		break;
+	default:
+		assert(false);
+		break;
+	}
+	return s;
+}
+
 bool Feature::PerformMathOp(CCLib::ScalarField* sf1, const CCLib::ScalarField* sf2, Feature::Operation op)
 {
 	if (!sf1 || !sf2 || sf1->size() != sf2->size() || op == Feature::NO_OPERATION)
 	{
 		//invalid input parameters
+		assert(false);
 		return false;
 	}
 
@@ -79,29 +105,31 @@ bool Feature::PerformMathOp(CCLib::ScalarField* sf1, const CCLib::ScalarField* s
 	{
 		ScalarType s1 = sf1->getValue(i);
 		ScalarType s2 = sf2->getValue(i);
-		ScalarType s = NAN_VALUE;
-		switch (op)
-		{
-		case Feature::MINUS:
-			s = s1 - s2;
-			break;
-		case Feature::PLUS:
-			s = s1 + s2;
-			break;
-		case Feature::DIVIDE:
-			if (std::abs(s2) > std::numeric_limits<ScalarType>::epsilon())
-				s = s1 / s2;
-			break;
-		case Feature::MULTIPLY:
-			s = s1 * s2;
-			break;
-		default:
-			assert(false);
-			break;
-		}
+		ScalarType s = PerformMathOp(s1, s2, op);
 		sf1->setValue(i, s);
 	}
 	sf1->computeMinAndMax();
+
+	return true;
+}
+
+bool Feature::PerformMathOp(const IScalarFieldWrapper& sf1, const IScalarFieldWrapper& sf2, Operation op, CCLib::ScalarField* outSF)
+{
+	if (!outSF || sf1.size() != sf2.size() || sf1.size() != outSF->size() || op == Feature::NO_OPERATION)
+	{
+		//invalid input parameters
+		assert(false);
+		return false;
+	}
+
+	for (unsigned i = 0; i < sf1.size(); ++i)
+	{
+		double s1 = sf1.pointValue(i);
+		double s2 = sf2.pointValue(i);
+		ScalarType s = PerformMathOp(s1, s2, op);
+		outSF->setValue(i, s);
+	}
+	outSF->computeMinAndMax();
 
 	return true;
 }

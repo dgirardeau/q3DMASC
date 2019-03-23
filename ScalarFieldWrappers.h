@@ -22,9 +22,13 @@
 //CCLib
 #include <ScalarField.h>
 
+//Qt
+#include <QSharedPointer>
+
 class IScalarFieldWrapper
 {
 public:
+	using Shared = QSharedPointer<IScalarFieldWrapper>;
 	virtual double pointValue(unsigned index) const = 0;
 	virtual bool isValid() const = 0;
 	virtual QString getName() const = 0;

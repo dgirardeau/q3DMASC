@@ -26,8 +26,8 @@
 #include <ccProgressDialog.h>
 #include <ccLog.h>
 
-//qCC_io
-#include <LASFields.h>
+//qPDALIO
+#include "../../core/IO/qPDALIO/src/LASFields.h"
 
 //qCC_plugins
 #include <ccMainAppInterface.h>
@@ -48,9 +48,9 @@ bool Classifier::isValid() const
 	return (m_rtrees && m_rtrees->isTrained());
 }
 
-static QSharedPointer<IScalarFieldWrapper> GetSource(const Feature::Shared& f, const ccPointCloud* cloud)
+static IScalarFieldWrapper::Shared GetSource(const Feature::Shared& f, const ccPointCloud* cloud)
 {
-	QSharedPointer<IScalarFieldWrapper> source(nullptr);
+	IScalarFieldWrapper::Shared source(nullptr);
 	if (!f)
 	{
 		assert(false);
@@ -70,7 +70,7 @@ static QSharedPointer<IScalarFieldWrapper> GetSource(const Feature::Shared& f, c
 		else
 		{
 			ccLog::Warning(QObject::tr("Internal error: unknwon scalar field '%1'").arg(f->sourceName));
-			return QSharedPointer<IScalarFieldWrapper>(nullptr);
+			return IScalarFieldWrapper::Shared(nullptr);
 		}
 	}
 	break;
@@ -161,7 +161,7 @@ bool Classifier::classify(const Feature::Set& features, ccPointCloud* cloud, QSt
 	}
 
 	//create the field wrappers
-	std::vector< QSharedPointer<IScalarFieldWrapper> > wrappers;
+	std::vector< IScalarFieldWrapper::Shared > wrappers;
 	{
 		wrappers.reserve(attributesPerSample);
 		for (int fIndex = 0; fIndex < attributesPerSample; ++fIndex)
@@ -173,7 +173,7 @@ bool Classifier::classify(const Feature::Set& features, ccPointCloud* cloud, QSt
 				return false;
 			}
 
-			QSharedPointer<IScalarFieldWrapper> source = GetSource(f, cloud);
+			IScalarFieldWrapper::Shared source = GetSource(f, cloud);
 			if (!source || !source->isValid())
 			{
 				assert(false);
@@ -307,7 +307,7 @@ bool Classifier::evaluate(const Feature::Set& features, CCLib::ReferenceCloud* t
 			return false;
 		}
 
-		QSharedPointer<IScalarFieldWrapper> source = GetSource(f, cloud);
+		IScalarFieldWrapper::Shared source = GetSource(f, cloud);
 		if (!source || !source->isValid())
 		{
 			assert(false);
@@ -440,7 +440,7 @@ bool Classifier::train(	const ccPointCloud* cloud,
 	{
 		const Feature::Shared &f = features[fIndex];
 
-		QSharedPointer<IScalarFieldWrapper> source = GetSource(f, cloud);
+		IScalarFieldWrapper::Shared source = GetSource(f, cloud);
 		if (!source || !source->isValid())
 		{
 			assert(false);
