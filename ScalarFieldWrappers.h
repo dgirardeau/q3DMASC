@@ -28,7 +28,7 @@ public:
 	virtual double pointValue(unsigned index) const = 0;
 	virtual bool isValid() const = 0;
 	virtual QString getName() const = 0;
-	virtual unsigned size() const = 0;
+	virtual size_t size() const = 0;
 };
 
 class ScalarFieldWrapper : public IScalarFieldWrapper
@@ -41,7 +41,7 @@ public:
 	virtual inline double pointValue(unsigned index) const override { return m_sf->at(index); }
 	virtual inline bool isValid() const { return m_sf != nullptr; }
 	virtual inline QString getName() const { return m_sf->getName(); }
-	virtual unsigned size() const { return m_sf->size(); }
+	virtual size_t size() const override { return m_sf->size(); }
 
 protected:
 	CCLib::ScalarField* m_sf;
@@ -65,7 +65,7 @@ public:
 	}
 	virtual inline bool isValid() const { return (m_sfp != nullptr && m_sfq != nullptr); }
 	virtual inline QString getName() const { return m_name; }
-	virtual inline unsigned size() const { return std::min(m_sfp->size(), m_sfq->size()); }
+	virtual inline size_t size() const override { return std::min(m_sfp->size(), m_sfq->size()); }
 
 protected:
 	CCLib::ScalarField *m_sfp, *m_sfq;
@@ -91,7 +91,7 @@ public:
 	}
 	virtual inline bool isValid() const { return m_cloud != nullptr && m_cloud->hasNormals(); }
 	virtual inline QString getName() const { static const char s_names[][14] = { "Norm dip", "Norm dip dir." }; return s_names[m_mode]; }
-	virtual inline unsigned size() const { return m_cloud->size(); }
+	virtual inline size_t size() const override { return m_cloud->size(); }
 
 protected:
 	const ccPointCloud* m_cloud;
@@ -111,7 +111,7 @@ public:
 	virtual inline double pointValue(unsigned index) const override { return m_cloud->getPoint(index)->u[m_dim]; }
 	virtual inline bool isValid() const { return m_cloud != nullptr; }
 	virtual inline QString getName() const { static const char s_names[][5] = { "DimX", "DimY", "DimZ" }; return s_names[m_dim]; }
-	virtual inline unsigned size() const { return m_cloud->size(); }
+	virtual inline size_t size() const override { return m_cloud->size(); }
 
 protected:
 	const ccPointCloud* m_cloud;
@@ -131,7 +131,7 @@ public:
 	virtual inline double pointValue(unsigned index) const override { return m_cloud->getPointColor(index).rgb[m_band]; }
 	virtual inline bool isValid() const { return m_cloud != nullptr && m_cloud->hasColors(); }
 	virtual inline QString getName() const { static const char s_names[][6] = { "Red", "Green", "Blue" }; return s_names[m_band]; }
-	virtual inline unsigned size() const { return m_cloud->size(); }
+	virtual inline size_t size() const override { return m_cloud->size(); }
 
 protected:
 	const ccPointCloud* m_cloud;
