@@ -245,6 +245,7 @@ bool Classifier::evaluate(const Feature::Set& features, CCLib::ReferenceCloud* t
 	}
 	if (!testSubset)
 	{
+		assert(false);
 		errorMessage = QObject::tr("No test subset provided");
 		return false;
 	}

@@ -158,6 +158,13 @@ void q3DMASCPlugin::doClassifyAction()
 		return;
 	}
 
+	if (clouds.contains("TEST"))
+	{
+		//remove the test cloud (if any)
+		delete clouds["TEST"];
+		clouds.remove("TEST");
+	}
+
 	//the 'main cloud' is the cloud that should be classified
 	masc::CorePoints corePoints;
 	corePoints.origin = corePoints.cloud = clouds[mainCloudLabel];
@@ -317,6 +324,7 @@ void q3DMASCPlugin::doTrainAction()
 		delete group;
 		return;
 	}
+	
 	if (corePoints.cloud != corePoints.origin)
 	{
 		//auto-hide the other clouds
@@ -342,6 +350,7 @@ void q3DMASCPlugin::doTrainAction()
 		corePoints.cloud->setName(QString("Core points (%1)").arg(corePointsName));
 		group->addChild(corePoints.cloud);
 	}
+	
 	if (group->getChildrenNumber() != 0)
 	{
 		m_app->addToDB(group);
@@ -353,10 +362,19 @@ void q3DMASCPlugin::doTrainAction()
 		group = nullptr;
 	}
 
+	//test role
+	ccPointCloud* testCloud = nullptr;
+	if (loadedClouds.contains("TEST"))
+	{
+		testCloud = loadedClouds["TEST"];
+		loadedClouds.remove("TEST");
+	}
+
+
 	//train / test subsets
 	QScopedPointer<CCLib::ReferenceCloud> trainSubset(new CCLib::ReferenceCloud(corePoints.cloud));
 	QScopedPointer<CCLib::ReferenceCloud> testSubset(new CCLib::ReferenceCloud(corePoints.cloud));
-	float previousTrainSubsetRatio = -1.0f;
+	float previousTestSubsetRatio = -1.0f;
 
 	SFCollector generatedScalarFields;
 
@@ -418,15 +436,30 @@ void q3DMASCPlugin::doTrainAction()
 		s_params.rt.maxTreeCount = trainDlg.maxTreeCountSpinBox->value();
 		s_params.rt.activeVarCount = trainDlg.activeVarCountSpinBox->value();
 		s_params.rt.minSampleCount = trainDlg.minSampleCountSpinBox->value();
-		s_params.testDataRatio = trainDlg.testDataRatioSpinBox->value() / 100.0f;
-		if (s_params.testDataRatio < 0 || s_params.testDataRatio > 0.99f)
+		float testDataRatio = s_params.testDataRatio = trainDlg.testDataRatioSpinBox->value() / 100.0f;
+		QScopedPointer<CCLib::ReferenceCloud> testSubset2;
+		if (testCloud)
+		{
+			m_app->dispToConsole("Test data cloud provided (ignoring test data ratio)", ccMainAppInterface::WRN_CONSOLE_MESSAGE);
+			testDataRatio = 0.0f;
+			testSubset2.reset(new CCLib::ReferenceCloud(testCloud));
+			if (!testSubset2->reserve(testCloud->size()))
+			{
+				m_app->dispToConsole("Not enough memory to evaluate the classifier", ccMainAppInterface::ERR_CONSOLE_MESSAGE);
+				generatedScalarFields.releaseAllSFs();
+				return;
+			}
+			testSubset2->addPointIndex(0, testCloud->size());
+		}
+
+		if (s_params.testDataRatio < 0.0f || s_params.testDataRatio > 0.99f)
 		{
 			assert(false);
 			m_app->dispToConsole("Invalid test data ratio", ccMainAppInterface::ERR_CONSOLE_MESSAGE);
 		}
 		else
 		{
-			if (previousTrainSubsetRatio != s_params.testDataRatio)
+			if (previousTestSubsetRatio != s_params.testDataRatio)
 			{
 				//randomly select the training points
 				testSubset->clear();
@@ -437,7 +470,7 @@ void q3DMASCPlugin::doTrainAction()
 					generatedScalarFields.releaseAllSFs();
 					return;
 				}
-				previousTrainSubsetRatio = s_params.testDataRatio;
+				previousTestSubsetRatio = s_params.testDataRatio;
 			}
 
 			//train the classifier
@@ -457,7 +490,7 @@ void q3DMASCPlugin::doTrainAction()
 			{
 				masc::Classifier::AccuracyMetrics metrics;
 				QString errorMessage;
-				if (!classifier.evaluate(features, testSubset.data(), metrics, errorMessage, m_app->getMainWindow()))
+				if (!classifier.evaluate(features, testSubset2 ? testSubset2.data() : testSubset.data(), metrics, errorMessage, m_app->getMainWindow()))
 				{
 					m_app->dispToConsole(errorMessage, ccMainAppInterface::ERR_CONSOLE_MESSAGE);
 					generatedScalarFields.releaseAllSFs();

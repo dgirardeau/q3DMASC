@@ -131,6 +131,13 @@ struct Command3DMASCClassif : public ccCommandLineInterface::Command
 			return cmd.error("Classified cloud not loaded/defined?!");
 		}
 
+		//remove the test cloud (if any)
+		if (cloudPerRole.contains("TEST"))
+		{
+			delete cloudPerRole["TEST"];
+			cloudPerRole.remove("TEST");
+		}
+
 		//the 'main cloud' is the cloud that should be classified
 		masc::CorePoints corePoints;
 		corePoints.origin = corePoints.cloud = cloudPerRole[mainCloudRole];

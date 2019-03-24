@@ -694,6 +694,19 @@ static bool LoadFileCommon(	const QString& filename,
 					return false;
 				}
 			}
+			else if (upperLine.startsWith("TEST:")) //test cloud
+			{
+				if (cloudsAreProvided)
+				{
+					//no need to load the clouds in this case
+					continue;
+				}
+				QString command = line.mid(5);
+				if (!ReadCloud("TEST=" + command, clouds, fi.absoluteDir(), lineNumber)) //add the TEST keyword so that the cloud will be loaded as the TEST cloud
+				{
+					return false;
+				}
+			}
 			else if (upperLine.startsWith("CORE_POINTS:")) //core points
 			{
 				if (!corePoints)
