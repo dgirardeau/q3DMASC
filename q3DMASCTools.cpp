@@ -155,7 +155,7 @@ bool Tools::LoadClassifierCloudLabels(QString filename, QSet<QString>& labels, Q
 	return true;
 }
 
-static bool CreateFeaturesFromCommand(const QString& command, int lineNumber, const Tools::NamedClouds& clouds, std::vector<Feature::Shared>& rawFeatures, std::vector<double>& scales)
+static bool CreateFeaturesFromCommand(const QString& command, QString corePointsRole, int lineNumber, const Tools::NamedClouds& clouds, std::vector<Feature::Shared>& rawFeatures, std::vector<double>& scales)
 {
 	QStringList tokens = command.split('_');
 	if (tokens.empty())
@@ -771,7 +771,7 @@ static bool LoadFileCommon(	const QString& filename,
 			{
 				QString command = line.mid(8);
 
-				if (!CreateFeaturesFromCommand(command, lineNumber, clouds, rawFeatures, scales))
+				if (!CreateFeaturesFromCommand(command, corePoints ? corePoints->role : QString(), lineNumber, clouds, rawFeatures, scales))
 				{
 					//error message already issued
 					//return false;

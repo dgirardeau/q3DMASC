@@ -24,6 +24,8 @@
 //System
 #include <assert.h>
 
+static const int FeatureImportanceColumn = 1;
+
 Train3DMASCDialog::Train3DMASCDialog(QWidget* parent/*=nullptr*/)
 	: QDialog(parent)
 	, Ui::Train3DMASCDialog()
@@ -79,6 +81,11 @@ bool Train3DMASCDialog::isFeatureSelected(size_t index) const
 	return (tableWidget->item(static_cast<int>(index), 0)->checkState() == Qt::Checked);
 }
 
+void Train3DMASCDialog::sortByFeatureImportance()
+{
+	tableWidget->sortByColumn(FeatureImportanceColumn, Qt::AscendingOrder);
+}
+
 void Train3DMASCDialog::setFeatureImportance(size_t index, float importance)
 {
 	if (static_cast<int>(index) >= tableWidget->rowCount())
@@ -89,11 +96,11 @@ void Train3DMASCDialog::setFeatureImportance(size_t index, float importance)
 
 	if (!std::isnan(importance))
 	{
-		tableWidget->item(static_cast<int>(index), 1)->setText(QString::number(importance));
+		tableWidget->item(static_cast<int>(index), FeatureImportanceColumn)->setText(QString::number(importance));
 	}
 	else
 	{
-		tableWidget->item(static_cast<int>(index), 1)->setText(QString());
+		tableWidget->item(static_cast<int>(index), FeatureImportanceColumn)->setText(QString());
 	}
 }
 

@@ -546,6 +546,8 @@ void q3DMASCPlugin::doTrainAction()
 					}
 					trainDlg.setFeatureImportance(i, originalFeatures[i].importance);
 				}
+
+				trainDlg.sortByFeatureImportance();
 			}
 		}
 

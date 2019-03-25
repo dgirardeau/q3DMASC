@@ -45,6 +45,7 @@ public:
 
 	bool isFeatureSelected(size_t index) const;
 	void setFeatureImportance(size_t index, float importance);
+	void sortByFeatureImportance();
 	
 	inline bool shouldSaveClassifier() const { return saveRequested; }
 
