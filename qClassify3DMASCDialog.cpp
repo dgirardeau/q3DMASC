@@ -84,6 +84,7 @@ Classify3DMASCDialog::Classify3DMASCDialog(ccMainAppInterface* app, bool trainMo
 				cloud1ComboBox->addItem(name, uniqueID);
 				cloud2ComboBox->addItem(name, uniqueID);
 				cloud3ComboBox->addItem(name, uniqueID);
+				testCloudComboBox->addItem(name, uniqueID);
 				++cloudCount;
 			}
 		}
@@ -92,6 +93,7 @@ Classify3DMASCDialog::Classify3DMASCDialog(ccMainAppInterface* app, bool trainMo
 		cloud1ComboBox->setCurrentIndex(cloudCount > 0 ? (cloudCount > 2 ? 1 : 0) : -1);
 		cloud2ComboBox->setCurrentIndex(cloudCount > 1 ? (cloudCount > 2 ? 2 : 1) : -1);
 		cloud3ComboBox->setCurrentIndex(cloudCount > 2 ? 0 : -1);
+		testCloudComboBox->setCurrentIndex(-1);
 
 		if (cloudCount == 0 && app)
 		{
@@ -108,7 +110,7 @@ Classify3DMASCDialog::Classify3DMASCDialog(ccMainAppInterface* app, bool trainMo
 	onCloudChanged(0);
 }
 
-void Classify3DMASCDialog::setCloudRoles(const QSet<QString>& roles)
+void Classify3DMASCDialog::setCloudRoles(const QSet<QString>& roles, QString corePointsLabel)
 {
 	int index = 0;
 	for (const QString& role : roles)
@@ -117,13 +119,18 @@ void Classify3DMASCDialog::setCloudRoles(const QSet<QString>& roles)
 		{
 		case 0:
 			cloud1RadioButton->setText(role);
-			cloud1RadioButton->setChecked(true);
+			if (corePointsLabel.isEmpty() || corePointsLabel == role)
+				cloud1RadioButton->setChecked(true);
 			break;
 		case 1:
 			cloud2RadioButton->setText(role);
+			if (corePointsLabel == role)
+				cloud2RadioButton->setChecked(true);
 			break;
 		case 2:
 			cloud3RadioButton->setText(role);
+			if (corePointsLabel == role)
+				cloud3RadioButton->setChecked(true);
 			break;
 		default:
 			//this dialog can't handle more than 3 roles!
@@ -151,7 +158,7 @@ void Classify3DMASCDialog::setCloudRoles(const QSet<QString>& roles)
 	}
 }
 
-void Classify3DMASCDialog::getClouds(QMap<QString, ccPointCloud*>& clouds, QString& mainCloud)
+void Classify3DMASCDialog::getClouds(QMap<QString, ccPointCloud*>& clouds, QString& mainCloud) const
 {
 	if (!m_app)
 	{
@@ -182,6 +189,10 @@ void Classify3DMASCDialog::getClouds(QMap<QString, ccPointCloud*>& clouds, QStri
 		{
 			mainCloud = cloud3RadioButton->text();
 		}
+	}
+	if (testCloudComboBox->currentIndex() >= 0)
+	{
+		clouds.insert("TEST", GetCloudFromCombo(testCloudComboBox, m_app->dbRootObject()));
 	}
 }
 

@@ -42,7 +42,7 @@ namespace masc
 
 		static bool SaveClassifier(QString filename, const Feature::Set& features, const masc::Classifier& classifier, QWidget* parent = nullptr);
 
-		static bool LoadClassifierCloudLabels(QString filename, QSet<QString>& labels);
+		static bool LoadClassifierCloudLabels(QString filename, QSet<QString>& labels, QString& corePointsLabel, bool& filenamesSpecified);
 
 		static bool LoadClassifier(QString filename, const NamedClouds& clouds, Feature::Set& rawFeatures, masc::Classifier& classifier, QWidget* parent = nullptr);
 

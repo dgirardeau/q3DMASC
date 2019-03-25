@@ -121,9 +121,8 @@ bool Classifier::classify(const Feature::Set& features, ccPointCloud* cloud, QSt
 	}
 
 	//look for the classification field
-	CCLib::ScalarField* classificationSF = nullptr;
-	int classifSFIdx = cloud->getScalarFieldIndexByName(LAS_FIELD_NAMES[LAS_CLASSIFICATION]); //LAS_FIELD_NAMES[LAS_CLASSIFICATION] = "Classification"
-	if (classifSFIdx < 0)
+	CCLib::ScalarField* classificationSF = GetClassificationSF(cloud);
+	if (!classificationSF)
 	{
 		//create it if necessary
 		ccScalarField* _classificationSF = new ccScalarField(LAS_FIELD_NAMES[LAS_CLASSIFICATION]);
@@ -133,12 +132,7 @@ bool Classifier::classify(const Feature::Set& features, ccPointCloud* cloud, QSt
 			errorMessage = QObject::tr("Not enough memory");
 			return false;
 		}
-		classifSFIdx = cloud->addScalarField(_classificationSF);
 		classificationSF = _classificationSF;
-	}
-	else
-	{
-		classificationSF = cloud->getScalarField(classifSFIdx);
 	}
 	assert(classificationSF);
 	classificationSF->fill(0); //0 = no classification?
@@ -216,8 +210,13 @@ bool Classifier::classify(const Feature::Set& features, ccPointCloud* cloud, QSt
 	}
 	classificationSF->computeMinAndMax();
 
-	cloud->setCurrentDisplayedScalarField(classifSFIdx);
-	cloud->showSF(true);
+	//show the classification field by default
+	{
+		int classifSFIdx = cloud->getScalarFieldIndexByName(classificationSF->getName());
+		cloud->setCurrentDisplayedScalarField(classifSFIdx);
+		cloud->showSF(true);
+	}
+
 	if (parentWidget && cloud->getDisplay())
 	{
 		cloud->getDisplay()->redraw();
@@ -257,17 +256,11 @@ bool Classifier::evaluate(const Feature::Set& features, CCLib::ReferenceCloud* t
 	}
 
 	//look for the classification field
-	int classifSFIdx = cloud->getScalarFieldIndexByName(LAS_FIELD_NAMES[LAS_CLASSIFICATION]); //LAS_FIELD_NAMES[LAS_CLASSIFICATION] = "Classification"
-	if (!classifSFIdx)
-	{
-		errorMessage = QObject::tr("Missing 'Classification' field on input cloud");
-		return false;
-	}
-	CCLib::ScalarField* classifSF = cloud->getScalarField(classifSFIdx);
+	CCLib::ScalarField* classifSF = GetClassificationSF(cloud);
 	if (!classifSF || classifSF->size() < cloud->size())
 	{
 		assert(false);
-		errorMessage = QObject::tr("Invalid 'Classification' field on input cloud");
+		errorMessage = QObject::tr("Missing/Invalid 'Classification' field on input cloud");
 		return false;
 	}
 
@@ -385,17 +378,11 @@ bool Classifier::train(	const ccPointCloud* cloud,
 	}
 
 	//look for the classification field
-	int classifSFIdx = cloud->getScalarFieldIndexByName(LAS_FIELD_NAMES[LAS_CLASSIFICATION]); //LAS_FIELD_NAMES[LAS_CLASSIFICATION] = "Classification"
-	if (!classifSFIdx)
-	{
-		errorMessage = QObject::tr("Missing 'Classification' field on input cloud");
-		return false;
-	}
-	CCLib::ScalarField* classifSF = cloud->getScalarField(classifSFIdx);
+	CCLib::ScalarField* classifSF = GetClassificationSF(cloud);
 	if (!classifSF || classifSF->size() < cloud->size())
 	{
 		assert(false);
-		errorMessage = QObject::tr("Invalid 'Classification' field on input cloud");
+		errorMessage = QObject::tr("Missing/invalid 'Classification' field on input cloud");
 		return false;
 	}
 
@@ -603,3 +590,21 @@ bool Classifier::fromFile(QString filename, QWidget* parentWidget/*=nullptr*/)
 
 	return true;
 }
+
+CCLib::ScalarField* Classifier::GetClassificationSF(const ccPointCloud* cloud)
+{
+	if (!cloud)
+	{
+		//invalid input cloud
+		assert(false);
+		return nullptr;
+	}
+	//look for the classification field
+	int classifSFIdx = cloud->getScalarFieldIndexByName(LAS_FIELD_NAMES[LAS_CLASSIFICATION]); //LAS_FIELD_NAMES[LAS_CLASSIFICATION] = "Classification"
+	if (classifSFIdx < 0)
+	{
+		return nullptr;
+	}
+	return cloud->getScalarField(classifSFIdx);
+}
+

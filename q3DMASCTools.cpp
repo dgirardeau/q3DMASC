@@ -29,9 +29,6 @@
 #include <ccScalarField.h>
 #include <ccPointCloud.h>
 
-//qPDALIO
-#include "../../core/IO/qPDALIO/src/LASFields.h"
-
 //Qt
 #include <QTextStream>
 #include <QFile>
@@ -93,8 +90,12 @@ bool Tools::SaveClassifier(QString filename, const Feature::Set& features, const
 	return true;
 }
 
-bool Tools::LoadClassifierCloudLabels(QString filename, QSet<QString>& labels)
+bool Tools::LoadClassifierCloudLabels(QString filename, QSet<QString>& labels, QString& corePointsLabel, bool& filenamesSpecified)
 {
+	//just in case
+	corePointsLabel.clear();
+	labels.clear();
+
 	QFile file(filename);
 	if (!file.open(QFile::Text | QFile::ReadOnly))
 	{
@@ -103,6 +104,7 @@ bool Tools::LoadClassifierCloudLabels(QString filename, QSet<QString>& labels)
 	}
 
 	QTextStream stream(&file);
+	int filenameCount = 0;
 	for (int lineNumber = 0; ; ++lineNumber)
 	{
 		QString line = stream.readLine();
@@ -126,8 +128,29 @@ bool Tools::LoadClassifierCloudLabels(QString filename, QSet<QString>& labels)
 
 			QString label = tokens.front();
 			labels.insert(label);
+
+			if (tokens.size() > 1)
+				++filenameCount;
+		}
+		else if (line.startsWith("CORE_POINTS:"))
+		{
+			if (!corePointsLabel.isEmpty())
+			{
+				//core points defined multiple times?!
+				continue;
+			}
+			QString command = line.mid(12);
+			QStringList tokens = command.split('_');
+			if (tokens.empty())
+			{
+				ccLog::Warning("Malformed file: expecting tokens after 'core_points:' on line #" + QString::number(lineNumber));
+				return false;
+			}
+			corePointsLabel = tokens[0].trimmed();
 		}
 	}
+
+	filenamesSpecified = (filenameCount > 0 && filenameCount == labels.size());
 
 	return true;
 }
@@ -639,6 +662,7 @@ static bool LoadFileCommon(	const QString& filename,
 		std::vector<double> scales;
 
 		QTextStream stream(&file);
+		bool badFeatures = false;
 		for (int lineNumber = 1; ; ++lineNumber)
 		{
 			QString line = stream.readLine();
@@ -716,14 +740,16 @@ static bool LoadFileCommon(	const QString& filename,
 				}
 				if (corePoints->origin)
 				{
-					ccLog::Warning("Malformed file: can't declare core points twice! (line #" + QString::number(lineNumber) + ")");
-					return false;
+					ccLog::Warning("Core points already defined (those declared on line #" + QString::number(lineNumber) + " will be ignored)");
 				}
-				QString command = line.mid(12);
-
-				if (!ReadCorePoints(command, clouds, *corePoints, lineNumber))
+				else
 				{
-					return false;
+					QString command = line.mid(12);
+
+					if (!ReadCorePoints(command, clouds, *corePoints, lineNumber))
+					{
+						return false;
+					}
 				}
 			}
 			else if (upperLine.startsWith("SCALES:")) //scales
@@ -747,7 +773,8 @@ static bool LoadFileCommon(	const QString& filename,
 				if (!CreateFeaturesFromCommand(command, lineNumber, clouds, rawFeatures, scales))
 				{
 					//error message already issued
-					return false;
+					//return false;
+					badFeatures = true; //we continue as we want to get ALL the errors
 				}
 			}
 			else if (upperLine.startsWith("PARAM_")) //parameter
@@ -796,6 +823,11 @@ static bool LoadFileCommon(	const QString& filename,
 				ccLog::Warning(QString("Line #%1: unrecognized token/command: ").arg(lineNumber) + (line.length() < 10 ? line : line.left(10) + "..."));
 				return false;
 			}
+		}
+
+		if (badFeatures)
+		{
+			return false;
 		}
 	}
 	catch (const std::bad_alloc&)

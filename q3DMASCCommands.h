@@ -94,20 +94,34 @@ struct Command3DMASCClassif : public ccCommandLineInterface::Command
 			{
 				return cmd.error(QString("Cloud index %1 exceeds the number of loaded clouds (=%2)").arg(cloudIndex).arg(cmd.clouds().size()));
 			}
-			cloudPerRole.insert(role, cmd.clouds()[cloudIndex-1].pc);
+			cloudPerRole.insert(role, cmd.clouds()[cloudIndex - 1].pc);
 
 			if (mainCloudRole.isEmpty())
 			{
 				mainCloudRole = role;
-				cmd.print("The classified cloud role will be " + role);
 			}
 		}
 
 		//try to load the clouds roles from the classifier file
 		QSet<QString> cloudLabels;
-		if (!masc::Tools::LoadClassifierCloudLabels(classifierFilename, cloudLabels))
+		QString corePointsLabel;
+		bool filenamesSpecified = false;
+		if (!masc::Tools::LoadClassifierCloudLabels(classifierFilename, cloudLabels, corePointsLabel, filenamesSpecified))
 		{
 			return cmd.error("Failed to read classifier file");
+		}
+
+		if (!corePointsLabel.isEmpty())
+		{
+			//we use the core points source as 'main role' by default
+			mainCloudRole = corePointsLabel;
+			cmd.print("Core points source: " + corePointsLabel + "(will be used as the classified cloud)");
+		}
+		cmd.print("The classified cloud role will be " + mainCloudRole);
+
+		if (!filenamesSpecified)
+		{
+			return cmd.error("Filenames were not specified for at least one role");
 		}
 
 		for (QString label : cloudLabels)

@@ -117,7 +117,9 @@ void q3DMASCPlugin::doClassifyAction()
 	}
 
 	QSet<QString> cloudLabels;
-	if (!masc::Tools::LoadClassifierCloudLabels(inputFilename, cloudLabels))
+	QString corePointsLabel;
+	bool filenamesSpecified = false;
+	if (!masc::Tools::LoadClassifierCloudLabels(inputFilename, cloudLabels, corePointsLabel, filenamesSpecified))
 	{
 		m_app->dispToConsole("Failed to read classifier file (see Console)", ccMainAppInterface::ERR_CONSOLE_MESSAGE);
 		return;
@@ -135,7 +137,7 @@ void q3DMASCPlugin::doClassifyAction()
 
 	//now show a dialog where the user will be able to set the cloud roles
 	Classify3DMASCDialog classifDlg(m_app);
-	classifDlg.setCloudRoles(cloudLabels);
+	classifDlg.setCloudRoles(cloudLabels, corePointsLabel);
 	classifDlg.classifierFileLineEdit->setText(inputFilename);
 	static bool s_keepAttributes = false;
 	classifDlg.keepAttributesCheckBox->setChecked(s_keepAttributes);
@@ -233,7 +235,9 @@ void q3DMASCPlugin::doTrainAction()
 
 	//load the cloud labels (PC1, PC2, CTX, etc.)
 	QSet<QString> cloudLabels;
-	if (!masc::Tools::LoadClassifierCloudLabels(inputFilename, cloudLabels))
+	QString corePointsLabel;
+	bool filenamesSpecified = false;
+	if (!masc::Tools::LoadClassifierCloudLabels(inputFilename, cloudLabels, corePointsLabel, filenamesSpecified))
 	{
 		m_app->dispToConsole("Failed to read classifier file (see Console)", ccMainAppInterface::ERR_CONSOLE_MESSAGE);
 		return;
@@ -246,8 +250,11 @@ void q3DMASCPlugin::doTrainAction()
 
 	static bool s_keepAttributes = false;
 	masc::Tools::NamedClouds loadedClouds;
+	masc::CorePoints corePoints;
 
-	bool useCloudsFromDB = (QMessageBox::question(m_app->getMainWindow(), "Use clouds in DB", "Use clouds in db (yes) or clouds specified in the file(no)?", QMessageBox::Yes, QMessageBox::No) == QMessageBox::Yes);
+	//if no filename is specified in the training file, we are bound to ask the user to specify them
+	bool useCloudsFromDB = (!filenamesSpecified || QMessageBox::question(m_app->getMainWindow(), "Use clouds in DB", "Use clouds in db (yes) or clouds specified in the file(no)?", QMessageBox::Yes, QMessageBox::No) == QMessageBox::Yes);
+	QString mainCloudLabel;
 	if (useCloudsFromDB)
 	{
 		if (cloudLabels.size() > 3)
@@ -259,7 +266,7 @@ void q3DMASCPlugin::doTrainAction()
 		//now show a dialog where the user will be able to set the cloud roles
 		Classify3DMASCDialog classifDlg(m_app, true);
 		classifDlg.setWindowTitle("3DMASC Train");
-		classifDlg.setCloudRoles(cloudLabels);
+		classifDlg.setCloudRoles(cloudLabels, corePointsLabel);
 		classifDlg.classifierFileLineEdit->setText(inputFilename);
 		classifDlg.keepAttributesCheckBox->setChecked(s_keepAttributes);
 		if (!classifDlg.exec())
@@ -269,16 +276,28 @@ void q3DMASCPlugin::doTrainAction()
 		}
 		s_keepAttributes = classifDlg.keepAttributesCheckBox->isChecked();
 
-		QString mainCloudLabel;
 		classifDlg.getClouds(loadedClouds, mainCloudLabel);
+		m_app->dispToConsole("Training cloud: " + mainCloudLabel, ccMainAppInterface::STD_CONSOLE_MESSAGE);
+		corePoints.origin = loadedClouds[mainCloudLabel];
 	}
 
 	static masc::TrainParameters s_params;
-	masc::CorePoints corePoints;
 	masc::Feature::Set features;
 	if (!masc::Tools::LoadTrainingFile(inputFilename, features, loadedClouds, corePoints, s_params))
 	{
 		m_app->dispToConsole("Failed to load the training file", ccMainAppInterface::ERR_CONSOLE_MESSAGE);
+		return;
+	}
+
+	if (!corePoints.origin)
+	{
+		m_app->dispToConsole("Core points not defined", ccMainAppInterface::ERR_CONSOLE_MESSAGE);
+		return;
+	}
+
+	if (!masc::Classifier::GetClassificationSF(corePoints.origin))
+	{
+		m_app->dispToConsole("Missing 'Classification' field on core points cloud", ccMainAppInterface::ERR_CONSOLE_MESSAGE);
 		return;
 	}
 
@@ -290,6 +309,11 @@ void q3DMASCPlugin::doTrainAction()
 		{
 			group->addChild(it.value());
 		}
+	}
+
+	for (masc::Tools::NamedClouds::const_iterator it = loadedClouds.begin(); it != loadedClouds.end(); ++it)
+	{
+		m_app->dispToConsole(it.key() + " = " + it.value()->getName(), ccMainAppInterface::STD_CONSOLE_MESSAGE);
 	}
 
 	//show the training dialog for the first time
@@ -452,25 +476,25 @@ void q3DMASCPlugin::doTrainAction()
 			testSubset2->addPointIndex(0, testCloud->size());
 		}
 
-		if (s_params.testDataRatio < 0.0f || s_params.testDataRatio > 0.99f)
+		if (testDataRatio < 0.0f || testDataRatio > 0.99f)
 		{
 			assert(false);
 			m_app->dispToConsole("Invalid test data ratio", ccMainAppInterface::ERR_CONSOLE_MESSAGE);
 		}
 		else
 		{
-			if (previousTestSubsetRatio != s_params.testDataRatio)
+			if (previousTestSubsetRatio != testDataRatio)
 			{
 				//randomly select the training points
 				testSubset->clear();
 				trainSubset->clear();
-				if (!masc::Tools::RandomSubset(corePoints.cloud, s_params.testDataRatio, testSubset.data(), trainSubset.data()))
+				if (!masc::Tools::RandomSubset(corePoints.cloud, testDataRatio, testSubset.data(), trainSubset.data()))
 				{
 					m_app->dispToConsole("Not enough memory", ccMainAppInterface::ERR_CONSOLE_MESSAGE);
 					generatedScalarFields.releaseAllSFs();
 					return;
 				}
-				previousTestSubsetRatio = s_params.testDataRatio;
+				previousTestSubsetRatio = testDataRatio;
 			}
 
 			//train the classifier

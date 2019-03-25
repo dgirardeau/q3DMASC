@@ -371,7 +371,7 @@ static bool ComputeMathOpWithNearestNeighbor(	const CorePoints& corePoints,
 		ScalarType s = NAN_VALUE;
 
 		int neighborhoodSize = 0;
-		if (octree->findPointNeighbourhood(P, &Yk, 1, octreeLevel, maxSquareDist) >= 1)
+		if (octree->findPointNeighbourhood(P, &Yk, 1, octreeLevel, maxSquareDist, 0.0, &neighborhoodSize) >= 1)
 		{
 			double s1 = field1.pointValue(corePoints.originIndex(i));
 			double s2 = field2.pointValue(Yk.getPointGlobalIndex(0));
