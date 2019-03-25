@@ -441,7 +441,7 @@ static bool CreateFeaturesFromCommand(const QString& command, QString corePoints
 
 	//now check the consistency of the rule
 	QString errorMessage;
-	if (!feature->checkValidity(QString(), errorMessage))
+	if (!feature->checkValidity(corePointsRole, errorMessage))
 	{
 		ccLog::Warning("Malformed feature: " + errorMessage + QString(" (line %1)").arg(lineNumber));
 		return false;
@@ -459,7 +459,7 @@ static bool CreateFeaturesFromCommand(const QString& command, QString corePoints
 			newFeature->scale = scales.at(i);
 
 			//as we only change the scale value, all the duplicated features should be valid
-			assert(newFeature->checkValidity(QString(), errorMessage));
+			assert(newFeature->checkValidity(corePointsRole, errorMessage));
 
 			rawFeatures.push_back(newFeature);
 		}
