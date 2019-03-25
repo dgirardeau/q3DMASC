@@ -28,9 +28,9 @@ bool DualCloudFeature::prepare(	const CorePoints& corePoints,
 	return false;
 }
 
-bool DualCloudFeature::checkValidity(QString &error) const
+bool DualCloudFeature::checkValidity(QString corePointRole, QString &error) const
 {
-	if (!Feature::checkValidity(error))
+	if (!Feature::checkValidity(corePointRole, error))
 	{
 		return false;
 	}

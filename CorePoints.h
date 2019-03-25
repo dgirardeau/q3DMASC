@@ -32,11 +32,14 @@ namespace masc
 	//! Core points descriptor
 	struct CorePoints
 	{
-		//origin cloud
+		//! Origin cloud
 		ccPointCloud* origin = nullptr;
 
-		//core points cloud
+		//! Core points cloud
 		ccPointCloud* cloud = nullptr;
+
+		//! Core points 'role'
+		QString role;
 
 		//! Return the size
 		inline unsigned size() const { return (cloud ? cloud->size() : 0); }

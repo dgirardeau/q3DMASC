@@ -170,6 +170,7 @@ void q3DMASCPlugin::doClassifyAction()
 	//the 'main cloud' is the cloud that should be classified
 	masc::CorePoints corePoints;
 	corePoints.origin = corePoints.cloud = clouds[mainCloudLabel];
+	corePoints.role = mainCloudLabel;
 
 	//prepare the main cloud
 	ccProgressDialog progressDlg(true, m_app->getMainWindow());
@@ -279,6 +280,7 @@ void q3DMASCPlugin::doTrainAction()
 		classifDlg.getClouds(loadedClouds, mainCloudLabel);
 		m_app->dispToConsole("Training cloud: " + mainCloudLabel, ccMainAppInterface::STD_CONSOLE_MESSAGE);
 		corePoints.origin = loadedClouds[mainCloudLabel];
+		corePoints.role = mainCloudLabel;
 	}
 
 	static masc::TrainParameters s_params;

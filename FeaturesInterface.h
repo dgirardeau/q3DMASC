@@ -155,7 +155,7 @@ namespace masc
 		inline bool scaled() const { return std::isfinite(scale); }
 
 		//! Checks the feature definition validity
-		virtual bool checkValidity(QString &error) const
+		virtual bool checkValidity(QString corePointRole, QString &error) const
 		{
 			unsigned char cloudCount = (cloud1 ? (cloud2 ? 2 : 1) : 0);
 			if (cloudCount == 0)

@@ -441,7 +441,7 @@ static bool CreateFeaturesFromCommand(const QString& command, int lineNumber, co
 
 	//now check the consistency of the rule
 	QString errorMessage;
-	if (!feature->checkValidity(errorMessage))
+	if (!feature->checkValidity(QString(), errorMessage))
 	{
 		ccLog::Warning("Malformed feature: " + errorMessage + QString(" (line %1)").arg(lineNumber));
 		return false;
@@ -459,7 +459,7 @@ static bool CreateFeaturesFromCommand(const QString& command, int lineNumber, co
 			newFeature->scale = scales.at(i);
 
 			//as we only change the scale value, all the duplicated features should be valid
-			assert(newFeature->checkValidity(errorMessage));
+			assert(newFeature->checkValidity(QString(), errorMessage));
 
 			rawFeatures.push_back(newFeature);
 		}
@@ -542,6 +542,7 @@ static bool ReadCorePoints(const QString& command, const Tools::NamedClouds& clo
 		return false;
 	}
 	corePoints.origin = clouds[pcName];
+	corePoints.role = pcName;
 
 	//should we sub-sample the origin cloud?
 	if (tokens.size() > 1)
@@ -928,7 +929,8 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 	for (const Feature::Shared& feature : features)
 	{
 		QString errorMessage("invalid pointer");
-		if (!feature || !feature->checkValidity(errorMessage))
+		assert(!corePoints.role.isEmpty());
+		if (!feature || !feature->checkValidity(corePoints.role, errorMessage))
 		{
 			errorStr = "Invalid rule/feature: " + errorMessage;
 			return false;

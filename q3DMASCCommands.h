@@ -155,6 +155,7 @@ struct Command3DMASCClassif : public ccCommandLineInterface::Command
 		//the 'main cloud' is the cloud that should be classified
 		masc::CorePoints corePoints;
 		corePoints.origin = corePoints.cloud = cloudPerRole[mainCloudRole];
+		corePoints.role = mainCloudRole;
 
 		//prepare the main cloud
 		QScopedPointer<ccProgressDialog> pDlg;

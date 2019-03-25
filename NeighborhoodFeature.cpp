@@ -23,9 +23,9 @@
 
 using namespace masc;
 
-bool NeighborhoodFeature::checkValidity(QString &error) const
+bool NeighborhoodFeature::checkValidity(QString corePointRole, QString &error) const
 {
-	if (!Feature::checkValidity(error))
+	if (!Feature::checkValidity(corePointRole, error))
 	{
 		return false;
 	}
@@ -65,7 +65,7 @@ bool NeighborhoodFeature::prepare(	const CorePoints& corePoints,
 		return false;
 	}
 
-	if (!checkValidity(error))
+	if (!checkValidity(corePoints.role, error))
 	{
 		assert(false);
 		return false;

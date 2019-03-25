@@ -46,9 +46,9 @@ static const char* s_normDipDirSFName = "Norm dip dir.";
 
 using namespace masc;
 
-bool PointFeature::checkValidity(QString &error) const
+bool PointFeature::checkValidity(QString corePointRole, QString &error) const
 {
-	if (!Feature::checkValidity(error))
+	if (!Feature::checkValidity(corePointRole, error))
 	{
 		return false;
 	}
@@ -61,6 +61,12 @@ bool PointFeature::checkValidity(QString &error) const
 	}
 
 	assert(cloud1);
+
+	if (!corePointRole.isEmpty() && !scaled() && cloud1Label != corePointRole) //in some cases, we don't know the role of the core points yet!
+	{
+		error = "Scale-less features can only be computed on the core points / classified cloud";
+		return false;
+	}
 
 	if (scaled() && stat == NO_STAT)
 	{

@@ -43,7 +43,7 @@ bool ContextBasedFeature::prepare(	const CorePoints& corePoints,
 		return false;
 	}
 
-	if (!checkValidity(error))
+	if (!checkValidity(corePoints.role, error))
 	{
 		assert(false);
 		return false;
@@ -248,9 +248,9 @@ bool ContextBasedFeature::finish(const CorePoints& corePoints, QString& error)
 	return success;
 }
 
-bool ContextBasedFeature::checkValidity(QString &error) const
+bool ContextBasedFeature::checkValidity(QString corePointRole, QString &error) const
 {
-	if (!Feature::checkValidity(error))
+	if (!Feature::checkValidity(corePointRole, error))
 	{
 		return false;
 	}

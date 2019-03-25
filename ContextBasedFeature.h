@@ -84,7 +84,7 @@ namespace masc
 		virtual Feature::Shared clone() const override { return Feature::Shared(new ContextBasedFeature(*this)); }
 		virtual bool prepare(const CorePoints& corePoints, QString& error, CCLib::GenericProgressCallback* progressCb = nullptr, SFCollector* generatedScalarFields = nullptr) override;
 		virtual bool finish(const CorePoints& corePoints, QString& error) override;
-		virtual bool checkValidity(QString &error) const override;
+		virtual bool checkValidity(QString corePointRole, QString &error) const override;
 		virtual QString toString() const override;
 
 		//! Compute the feature value on a set of points
