@@ -69,7 +69,7 @@ bool ContextBasedFeature::prepare(	const CorePoints& corePoints,
 		error = QString("Failed to prepare scalar %1 @ scale %2").arg(resultSFName).arg(scale);
 		return false;
 	}
-	sourceName = sf->getName();
+	source.name = sf->getName();
 
 	if (!scaled()) //with 'kNN' neighbors, we can compute the values right away
 	{

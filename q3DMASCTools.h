@@ -38,11 +38,11 @@ namespace masc
 
 		typedef QMap<QString, ccPointCloud* > NamedClouds;
 
-		static bool LoadTrainingFile(QString filename, Feature::Set& rawFeatures, NamedClouds& loadedClouds, CorePoints& corePoints, TrainParameters& parameters);
+		static bool LoadTrainingFile(QString filename, Feature::Set& rawFeatures, NamedClouds& loadedClouds, TrainParameters& parameters, CorePoints* corePoints = nullptr);
 
-		static bool SaveClassifier(QString filename, const Feature::Set& features, const masc::Classifier& classifier, QWidget* parent = nullptr);
+		static bool SaveClassifier(QString filename, const Feature::Set& features, const QString corePointsRole, const masc::Classifier& classifier, QWidget* parent = nullptr);
 
-		static bool LoadClassifierCloudLabels(QString filename, QSet<QString>& labels, QString& corePointsLabel, bool& filenamesSpecified);
+		static bool LoadClassifierCloudLabels(QString filename, QList<QString>& labels, QString& corePointsLabel, bool& filenamesSpecified);
 
 		static bool LoadClassifier(QString filename, const NamedClouds& clouds, Feature::Set& rawFeatures, masc::Classifier& classifier, QWidget* parent = nullptr);
 

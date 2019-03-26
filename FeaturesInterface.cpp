@@ -133,3 +133,24 @@ bool Feature::PerformMathOp(const IScalarFieldWrapper& sf1, const IScalarFieldWr
 
 	return true;
 }
+
+bool Feature::ExtractSources(const Set& features, Source::Set& sources)
+{
+	sources.clear();
+	try
+	{
+		sources.reserve(features.size());
+	}
+	catch (const std::bad_alloc&)
+	{
+		ccLog::Warning("Not enough memory");
+		return false;
+	}
+
+	for (Feature::Shared f : features)
+	{
+		sources.push_back(f->source);
+	}
+
+	return true;
+}

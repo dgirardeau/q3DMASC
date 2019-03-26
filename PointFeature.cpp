@@ -506,7 +506,7 @@ bool PointFeature::prepare(	const CorePoints& corePoints,
 			return false;
 		}
 
-		sourceName = statSF1->getName();
+		source.name = statSF1->getName();
 	}
 	else //not scaled
 	{
@@ -536,7 +536,7 @@ bool PointFeature::prepare(	const CorePoints& corePoints,
 		if (field2 && op != Feature::NO_OPERATION)
 		{
 			QString resultSFName2 = cloud2Label + "." + field2->getName() + QString("_") + Feature::StatToString(stat) + "@" + QString::number(scale);
-			keepStatSF2 = (corePoints.cloud->getScalarFieldIndexByName(qPrintable(resultSFName2)) >= 0); //we remember that the scalar field was already existing!
+			//keepStatSF2 = (corePoints.cloud->getScalarFieldIndexByName(qPrintable(resultSFName2)) >= 0); //we remember that the scalar field was already existing!
 
 			assert(!statSF2);
 			statSF2 = PrepareSF(corePoints.cloud, qPrintable(resultSFName2), generatedScalarFields);
@@ -610,7 +610,7 @@ bool PointFeature::prepare(	const CorePoints& corePoints,
 			corePoints.cloud->setCurrentDisplayedScalarField(newSFIdx);
 		}
 
-		sourceName = resultSF->getName();
+		source.name = resultSF->getName();
 
 		return true;
 	}
@@ -712,8 +712,8 @@ bool PointFeature::computeStat(const CCLib::DgmOctree::NeighboursSet& pointsInNe
 		case Feature::MODE:
 		{
 			CCLib::WeibullDistribution w;
-			w.computeParameters(values);
-			outputValue = w.computeMode();
+			if (w.computeParameters(values))
+				outputValue = w.computeMode();
 		}
 		break;
 
@@ -741,8 +741,8 @@ bool PointFeature::computeStat(const CCLib::DgmOctree::NeighboursSet& pointsInNe
 		case Feature::SKEW:
 		{
 			CCLib::WeibullDistribution w;
-			w.computeParameters(values);
-			outputValue = w.computeSkewness();
+			if (w.computeParameters(values))
+				outputValue = w.computeSkewness();
 		}
 		break;
 
@@ -802,25 +802,23 @@ bool PointFeature::finish(const CorePoints& corePoints, QString& error)
 				success = false;
 			}
 		}
+		statSF2->computeMinAndMax();
 
-		if (keepStatSF2)
-		{
-			statSF2->computeMinAndMax();
-		}
-		else
-		{
-			int sfIndex2 = corePoints.cloud->getScalarFieldIndexByName(statSF2->getName());
-			if (sfIndex2 >= 0)
-			{
-				corePoints.cloud->deleteScalarField(sfIndex2);
-			}
-			else
-			{
-				assert(false);
-				statSF2->release();
-			}
-			statSF2 = nullptr;
-		}
+		//DGM: we don't delete it now! As it could be used by other features!
+		//if (!keepStatSF2)
+		//{
+		//	int sfIndex2 = corePoints.cloud->getScalarFieldIndexByName(statSF2->getName());
+		//	if (sfIndex2 >= 0)
+		//	{
+		//		corePoints.cloud->deleteScalarField(sfIndex2);
+		//	}
+		//	else
+		//	{
+		//		assert(false);
+		//		statSF2->release();
+		//	}
+		//	statSF2 = nullptr;
+		//}
 	}
 
 	return success;

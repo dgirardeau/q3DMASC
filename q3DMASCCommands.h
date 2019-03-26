@@ -103,7 +103,7 @@ struct Command3DMASCClassif : public ccCommandLineInterface::Command
 		}
 
 		//try to load the clouds roles from the classifier file
-		QSet<QString> cloudLabels;
+		QList<QString> cloudLabels;
 		QString corePointsLabel;
 		bool filenamesSpecified = false;
 		if (!masc::Tools::LoadClassifierCloudLabels(classifierFilename, cloudLabels, corePointsLabel, filenamesSpecified))
@@ -182,7 +182,9 @@ struct Command3DMASCClassif : public ccCommandLineInterface::Command
 
 		//apply classifier
 		{
-			if (!classifier.classify(features, corePoints.cloud, errorMessage, cmd.widgetParent()))
+			masc::Feature::Source::Set featureSources;
+			masc::Feature::ExtractSources(features, featureSources);
+			if (!classifier.classify(featureSources, corePoints.cloud, errorMessage, cmd.widgetParent()))
 			{
 				generatedScalarFields.releaseAllSFs();
 				return cmd.error(errorMessage);

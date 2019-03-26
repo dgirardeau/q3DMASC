@@ -46,7 +46,7 @@ namespace masc
 		//! Train the classifier
 		bool train(	const ccPointCloud* cloud,
 					const RandomTreesParams& params,
-					const Feature::Set& features,
+					const Feature::Source::Set& featureSources,
 					QString& errorMessage,
 					CCLib::ReferenceCloud* trainSubset = nullptr,
 					ccMainAppInterface* app = nullptr,
@@ -61,10 +61,19 @@ namespace masc
 		};
 
 		//! Evaluates the classifier
-		bool evaluate(const Feature::Set& features, CCLib::ReferenceCloud* testSubset, AccuracyMetrics& metrics, QString& errorMessage, QWidget* parentWidget = nullptr);
+		bool evaluate(	const Feature::Source::Set& featureSources,
+						ccPointCloud* testCloud,
+						AccuracyMetrics& metrics,
+						QString& errorMessage,
+						CCLib::ReferenceCloud* testSubset = nullptr,
+						QString outputSFName = QString(),
+						QWidget* parentWidget = nullptr);
 
 		//! Applies the classifier
-		bool classify(const Feature::Set& features, ccPointCloud* cloud, QString& errorMessage, QWidget* parentWidget = nullptr);
+		bool classify(	const Feature::Source::Set& featureSources,
+						ccPointCloud* cloud,
+						QString& errorMessage,
+						QWidget* parentWidget = nullptr);
 
 		//! Returns whether the classifier is valid or not
 		bool isValid() const;

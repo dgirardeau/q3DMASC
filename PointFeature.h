@@ -148,38 +148,31 @@ namespace masc
 			, field2(nullptr)
 			, statSF1(nullptr)
 			, statSF2(nullptr)
-			, keepStatSF2(false)
+			//, keepStatSF2(false)
 		{
 			//auomatically set the right source for specific features
 			switch (type)
 			{
 			case X:
-				source = DimX;
-				sourceName = "X";
+				source = { Source::DimX, "X" };
 				break;
 			case Y:
-				source = DimY;
-				sourceName = "Y";
+				source = { Source::DimY, "Y" };
 				break;
 			case Z:
-				source = DimZ;
-				sourceName = "Z";
+				source = { Source::DimZ, "Z" };
 				break;
 			case R:
-				source = Red;
-				sourceName = "Red";
+				source = { Source::Red, "Red" };
 				break;
 			case G:
-				source = Green;
-				sourceName = "Green";
+				source = { Source::Green, "Green" };
 				break;
 			case B:
-				source = Blue;
-				sourceName = "Blue";
+				source = { Source::Blue, "Blue" };
 				break;
 			default:
-				source = ScalarField;
-				//sourceName --> TBD later
+				source = { Source::ScalarField, QString() }; //source name --> TBD later
 				break;
 			}
 		}
@@ -219,6 +212,6 @@ namespace masc
 		//! For scaled features
 		CCLib::ScalarField *statSF1, *statSF2;
 		
-		bool keepStatSF2;
+		//bool keepStatSF2;
 	};
 }

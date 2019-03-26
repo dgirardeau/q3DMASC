@@ -118,20 +118,36 @@ namespace masc
 		}
 
 		//! Sources of values for this feature
-		enum Source
+		struct Source
 		{
-			ScalarField, DimX, DimY, DimZ, Red, Green, Blue
+			using Set = std::vector<Source>;
+
+			//! Sources types
+			enum Type
+			{
+				ScalarField, DimX, DimY, DimZ, Red, Green, Blue
+			};
+
+			Source(Type t = ScalarField, QString n = QString())
+				: type(t)
+				, name(n)
+			{}
+			
+			Type type;
+			QString name;
 		};
+
+		//! Extracts the set of 'sources' from a set of features
+		static bool ExtractSources(const Set& features, Source::Set& sources);
 
 	public: //methods
 
 		//! Default constructor
-		Feature(double p_scale = std::numeric_limits<double>::quiet_NaN(), Source p_source = ScalarField, QString p_sourceName = QString())
+		Feature(double p_scale = std::numeric_limits<double>::quiet_NaN(), Source::Type p_source = Source::ScalarField, QString p_sourceName = QString())
 			: scale(p_scale)
 			, cloud1(nullptr)
 			, cloud2(nullptr)
-			, source(p_source)
-			, sourceName(p_sourceName)
+			, source(p_source, p_sourceName)
 			, stat(NO_STAT)
 			, op(NO_OPERATION)
 		{}
@@ -202,7 +218,6 @@ namespace masc
 		QString cloud1Label, cloud2Label;
 	
 		Source source; //values source
-		QString sourceName; //feature source name (mandatory for scalar fields if the SF index is not set)
 	
 		Stat stat; //only considered if a scale is defined
 		Operation op; //only considered if 2 clouds are defined

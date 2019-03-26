@@ -41,7 +41,11 @@
 
 using namespace masc;
 
-bool Tools::SaveClassifier(QString filename, const Feature::Set& features, const masc::Classifier& classifier, QWidget* parent/*=nullptr*/)
+bool Tools::SaveClassifier(	QString filename,
+							const Feature::Set& features,
+							const QString corePointsRole,
+							const masc::Classifier& classifier,
+							QWidget* parent/*=nullptr*/)
 {
 	//first save the classifier data (same base filename but with the ymal extension)
 	QFileInfo fi(filename);
@@ -66,19 +70,29 @@ bool Tools::SaveClassifier(QString filename, const Feature::Set& features, const
 	stream << "classifier: " << yamlFilename << endl;
 
 	//look for all clouds (labels)
-	QSet<QString> cloudLabels;
+	QList<QString> cloudLabels;
 	for (Feature::Shared f : features)
 	{
-		if (f->cloud1)
-			cloudLabels.insert(f->cloud1Label);
-		if (f->cloud2)
-			cloudLabels.insert(f->cloud2Label);
+		if (f->cloud1 && !cloudLabels.contains(f->cloud1Label))
+			cloudLabels.push_back(f->cloud1Label);
+		if (f->cloud2 && !cloudLabels.contains(f->cloud2Label))
+			cloudLabels.push_back(f->cloud2Label);
+	}
+	if (!corePointsRole.isEmpty() && !cloudLabels.contains(corePointsRole))
+	{
+		cloudLabels.push_back(corePointsRole);
 	}
 
 	stream << "# Clouds (roles)" << endl;
 	for (const QString& label : cloudLabels)
 	{
 		stream << "cloud: " << label << endl;
+	}
+	
+	if (!corePointsRole.isEmpty())
+	{
+		stream << "# Core points (classified role)" << endl;
+		stream << "core_points: " << corePointsRole << endl;
 	}
 
 	stream << "# Features" << endl;
@@ -90,7 +104,7 @@ bool Tools::SaveClassifier(QString filename, const Feature::Set& features, const
 	return true;
 }
 
-bool Tools::LoadClassifierCloudLabels(QString filename, QSet<QString>& labels, QString& corePointsLabel, bool& filenamesSpecified)
+bool Tools::LoadClassifierCloudLabels(QString filename, QList<QString>& labels, QString& corePointsLabel, bool& filenamesSpecified)
 {
 	//just in case
 	corePointsLabel.clear();
@@ -127,7 +141,12 @@ bool Tools::LoadClassifierCloudLabels(QString filename, QSet<QString>& labels, Q
 			}
 
 			QString label = tokens.front();
-			labels.insert(label);
+			if (labels.contains(label))
+			{
+				ccLog::Warning(QString("Malformed file: role '%1:' is already defined/used on line #%2").arg(label).arg(lineNumber));
+				return false;
+			}
+			labels.push_back(label);
 
 			if (tokens.size() > 1)
 				++filenameCount;
@@ -850,11 +869,11 @@ bool Tools::LoadClassifier(QString filename, const NamedClouds& clouds, Feature:
 bool Tools::LoadTrainingFile(	QString filename,
 								Feature::Set& rawFeatures,
 								NamedClouds& loadedClouds,
-								CorePoints& corePoints,
-								TrainParameters& parameters)
+								TrainParameters& parameters,
+								CorePoints* corePoints/*=nullptr*/)
 {
 	bool cloudsWereProvided = !loadedClouds.empty();
-	if (LoadFileCommon(filename, loadedClouds, cloudsWereProvided, rawFeatures, &corePoints, nullptr, &parameters, nullptr))
+	if (LoadFileCommon(filename, loadedClouds, cloudsWereProvided, rawFeatures, corePoints, nullptr, &parameters, nullptr))
 	{
 		return true;
 	}

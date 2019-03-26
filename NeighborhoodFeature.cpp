@@ -88,7 +88,7 @@ bool NeighborhoodFeature::prepare(	const CorePoints& corePoints,
 		error = QString("Failed to prepare scalar %1 @ scale %2").arg(resultSFName).arg(scale);
 		return false;
 	}
-	sourceName = sf1->getName();
+	source.name = sf1->getName();
 
 	if (cloud2 && op != Feature::NO_OPERATION)
 	{

@@ -116,7 +116,7 @@ void q3DMASCPlugin::doClassifyAction()
 		settings.endGroup();
 	}
 
-	QSet<QString> cloudLabels;
+	QList<QString> cloudLabels;
 	QString corePointsLabel;
 	bool filenamesSpecified = false;
 	if (!masc::Tools::LoadClassifierCloudLabels(inputFilename, cloudLabels, corePointsLabel, filenamesSpecified))
@@ -159,11 +159,15 @@ void q3DMASCPlugin::doClassifyAction()
 	{
 		return;
 	}
+	if (classifier.isValid())
+	{
+		m_app->dispToConsole("No classifier or invalid classifier", ccMainAppInterface::ERR_CONSOLE_MESSAGE);
+		return;
+	}
 
 	if (clouds.contains("TEST"))
 	{
 		//remove the test cloud (if any)
-		delete clouds["TEST"];
 		clouds.remove("TEST");
 	}
 
@@ -190,7 +194,9 @@ void q3DMASCPlugin::doClassifyAction()
 	//apply classifier
 	{
 		QString errorMessage;
-		if (!classifier.classify(features, corePoints.cloud, errorMessage, m_app->getMainWindow()))
+		masc::Feature::Source::Set featureSources;
+		masc::Feature::ExtractSources(features, featureSources);
+		if (!classifier.classify(featureSources, corePoints.cloud, errorMessage, m_app->getMainWindow()))
 		{
 			m_app->dispToConsole(errorMessage, ccMainAppInterface::ERR_CONSOLE_MESSAGE);
 			generatedScalarFields.releaseAllSFs();
@@ -235,7 +241,7 @@ void q3DMASCPlugin::doTrainAction()
 	}
 
 	//load the cloud labels (PC1, PC2, CTX, etc.)
-	QSet<QString> cloudLabels;
+	QList<QString> cloudLabels;
 	QString corePointsLabel;
 	bool filenamesSpecified = false;
 	if (!masc::Tools::LoadClassifierCloudLabels(inputFilename, cloudLabels, corePointsLabel, filenamesSpecified))
@@ -285,7 +291,7 @@ void q3DMASCPlugin::doTrainAction()
 
 	static masc::TrainParameters s_params;
 	masc::Feature::Set features;
-	if (!masc::Tools::LoadTrainingFile(inputFilename, features, loadedClouds, corePoints, s_params))
+	if (!masc::Tools::LoadTrainingFile(inputFilename, features, loadedClouds, s_params, &corePoints))
 	{
 		m_app->dispToConsole("Failed to load the training file", ccMainAppInterface::ERR_CONSOLE_MESSAGE);
 		return;
@@ -318,6 +324,34 @@ void q3DMASCPlugin::doTrainAction()
 		m_app->dispToConsole(it.key() + " = " + it.value()->getName(), ccMainAppInterface::STD_CONSOLE_MESSAGE);
 	}
 
+	//test role
+	ccPointCloud* testCloud = nullptr;
+	bool needTestSuite = false;
+	masc::Feature::Set featuresTest;
+	if (loadedClouds.contains("TEST"))
+	{
+		testCloud = loadedClouds["TEST"];
+		loadedClouds.remove("TEST");
+
+		if (testCloud != corePoints.origin && testCloud != corePoints.cloud)
+		{
+			//we need a duplicated test suite!!!
+			needTestSuite = true;
+			//replace the main cloud by the test cloud
+			masc::Tools::NamedClouds loadedCloudsTest;
+			loadedCloudsTest = loadedClouds;
+			loadedCloudsTest[mainCloudLabel] = testCloud;
+
+			//simply reload the classification file to create duplicated features
+			masc::TrainParameters tempParams;
+			if (!masc::Tools::LoadTrainingFile(inputFilename, featuresTest, loadedCloudsTest, tempParams))
+			{
+				m_app->dispToConsole("Failed to load the training file (for test)", ccMainAppInterface::ERR_CONSOLE_MESSAGE);
+				return;
+			}
+		}
+	}
+
 	//show the training dialog for the first time
 	Train3DMASCDialog trainDlg(m_app->getMainWindow());
 	trainDlg.maxDepthSpinBox->setValue(s_params.rt.maxDepth);
@@ -325,6 +359,7 @@ void q3DMASCPlugin::doTrainAction()
 	trainDlg.activeVarCountSpinBox->setValue(s_params.rt.activeVarCount);
 	trainDlg.minSampleCountSpinBox->setValue(s_params.rt.minSampleCount);
 	trainDlg.testDataRatioSpinBox->setValue(static_cast<int>(s_params.testDataRatio * 100));
+	trainDlg.testDataRatioSpinBox->setEnabled(testCloud == nullptr);
 
 	//display the loaded features and let the user select the ones to use
 	trainDlg.setResultText("Select features and press 'Run'");
@@ -335,6 +370,17 @@ void q3DMASCPlugin::doTrainAction()
 		originalFeatures.push_back(FeatureSelection(f));
 		trainDlg.addFeature(f->toString(), originalFeatures.back().importance, originalFeatures.back().selected);
 	}
+
+	std::vector<FeatureSelection> originalFeaturesTest;
+	if (testCloud && needTestSuite)
+	{
+		originalFeaturesTest.reserve(featuresTest.size());
+		for (const masc::Feature::Shared& f : featuresTest)
+		{
+			originalFeaturesTest.push_back(FeatureSelection(f));
+		}
+	}
+
 	if (!trainDlg.exec())
 	{
 		delete group;
@@ -350,7 +396,7 @@ void q3DMASCPlugin::doTrainAction()
 		delete group;
 		return;
 	}
-	
+
 	if (corePoints.cloud != corePoints.origin)
 	{
 		//auto-hide the other clouds
@@ -388,22 +434,13 @@ void q3DMASCPlugin::doTrainAction()
 		group = nullptr;
 	}
 
-	//test role
-	ccPointCloud* testCloud = nullptr;
-	if (loadedClouds.contains("TEST"))
-	{
-		testCloud = loadedClouds["TEST"];
-		loadedClouds.remove("TEST");
-	}
-
-
 	//train / test subsets
-	QScopedPointer<CCLib::ReferenceCloud> trainSubset(new CCLib::ReferenceCloud(corePoints.cloud));
-	QScopedPointer<CCLib::ReferenceCloud> testSubset(new CCLib::ReferenceCloud(corePoints.cloud));
+	QSharedPointer<CCLib::ReferenceCloud> trainSubset, testSubset;
 	float previousTestSubsetRatio = -1.0f;
+	SFCollector generatedScalarFields, generatedScalarFieldsTest;
 
-	SFCollector generatedScalarFields;
-
+	//we will train + evaluate the classifier, then display the reuslts
+	//then let the user change parameters and (potentially) start again
 	for (int iteration = 0; ; ++iteration)
 	{
 		//look for selected features
@@ -425,87 +462,97 @@ void q3DMASCPlugin::doTrainAction()
 			}
 		}
 
+		masc::Classifier classifier;
 		if (features.empty())
 		{
 			m_app->dispToConsole("No feature selected!", ccMainAppInterface::ERR_CONSOLE_MESSAGE);
-			continue;
-		}
-
-		//prepare the features
-		if (!toPrepare.empty())
-		{
-			progressDlg.setAutoClose(false); //we don't want the progress dialog to 'pop' for each feature
-			QString error;
-			if (!masc::Tools::PrepareFeatures(corePoints, toPrepare, error, &progressDlg, &generatedScalarFields))
-			{
-				m_app->dispToConsole(error, ccMainAppInterface::ERR_CONSOLE_MESSAGE);
-				generatedScalarFields.releaseAllSFs();
-				return;
-			}
-			progressDlg.setAutoClose(true); //restore the default behavior of the progress dialog
-			progressDlg.close();
-			QCoreApplication::processEvents();
-			m_app->redrawAll();
-
-			//flag the prepared features as 'prepared' ;)
-			for (FeatureSelection& fs : originalFeatures)
-			{
-				if (fs.selected && !fs.prepared)
-					fs.prepared = true;
-			}
-		}
-
-		masc::Classifier classifier;
-
-		//retrieve parameters
-		s_params.rt.maxDepth = trainDlg.maxDepthSpinBox->value();
-		s_params.rt.maxTreeCount = trainDlg.maxTreeCountSpinBox->value();
-		s_params.rt.activeVarCount = trainDlg.activeVarCountSpinBox->value();
-		s_params.rt.minSampleCount = trainDlg.minSampleCountSpinBox->value();
-		float testDataRatio = s_params.testDataRatio = trainDlg.testDataRatioSpinBox->value() / 100.0f;
-		QScopedPointer<CCLib::ReferenceCloud> testSubset2;
-		if (testCloud)
-		{
-			m_app->dispToConsole("Test data cloud provided (ignoring test data ratio)", ccMainAppInterface::WRN_CONSOLE_MESSAGE);
-			testDataRatio = 0.0f;
-			testSubset2.reset(new CCLib::ReferenceCloud(testCloud));
-			if (!testSubset2->reserve(testCloud->size()))
-			{
-				m_app->dispToConsole("Not enough memory to evaluate the classifier", ccMainAppInterface::ERR_CONSOLE_MESSAGE);
-				generatedScalarFields.releaseAllSFs();
-				return;
-			}
-			testSubset2->addPointIndex(0, testCloud->size());
-		}
-
-		if (testDataRatio < 0.0f || testDataRatio > 0.99f)
-		{
-			assert(false);
-			m_app->dispToConsole("Invalid test data ratio", ccMainAppInterface::ERR_CONSOLE_MESSAGE);
 		}
 		else
 		{
-			if (previousTestSubsetRatio != testDataRatio)
+			//prepare the features (should be done once)
+			if (!toPrepare.empty())
 			{
-				//randomly select the training points
-				testSubset->clear();
-				trainSubset->clear();
-				if (!masc::Tools::RandomSubset(corePoints.cloud, testDataRatio, testSubset.data(), trainSubset.data()))
+				progressDlg.setAutoClose(false); //we don't want the progress dialog to 'pop' for each feature
+				QString error;
+				if (!masc::Tools::PrepareFeatures(corePoints, toPrepare, error, &progressDlg, &generatedScalarFields))
 				{
-					m_app->dispToConsole("Not enough memory", ccMainAppInterface::ERR_CONSOLE_MESSAGE);
+					m_app->dispToConsole(error, ccMainAppInterface::ERR_CONSOLE_MESSAGE);
 					generatedScalarFields.releaseAllSFs();
+					generatedScalarFieldsTest.releaseAllSFs();
 					return;
 				}
-				previousTestSubsetRatio = testDataRatio;
+				progressDlg.setAutoClose(true); //restore the default behavior of the progress dialog
+				progressDlg.hide();
+				QCoreApplication::processEvents();
+				m_app->redrawAll();
+
+				//flag the prepared features as 'prepared' ;)
+				for (FeatureSelection& fs : originalFeatures)
+				{
+					if (fs.selected && !fs.prepared)
+						fs.prepared = true;
+				}
 			}
+
+			//retrieve parameters
+			s_params.rt.maxDepth = trainDlg.maxDepthSpinBox->value();
+			s_params.rt.maxTreeCount = trainDlg.maxTreeCountSpinBox->value();
+			s_params.rt.activeVarCount = trainDlg.activeVarCountSpinBox->value();
+			s_params.rt.minSampleCount = trainDlg.minSampleCountSpinBox->value();
+			float testDataRatio = 0.0f;
+
+			if (!testCloud)
+			{
+				//we need to generate test subsets
+				testDataRatio = s_params.testDataRatio = trainDlg.testDataRatioSpinBox->value() / 100.0f;
+				if (testDataRatio < 0.0f || testDataRatio > 0.99f)
+				{
+					assert(false);
+					m_app->dispToConsole("Invalid test data ratio", ccMainAppInterface::ERR_CONSOLE_MESSAGE);
+					trainSubset.clear();
+					testSubset.clear();
+				}
+				else if (previousTestSubsetRatio != testDataRatio)
+				{
+					if (!trainSubset)
+						trainSubset.reset(new CCLib::ReferenceCloud(corePoints.cloud));
+					trainSubset->clear();
+
+					if (!testSubset)
+						testSubset.reset(new CCLib::ReferenceCloud(corePoints.cloud));
+					testSubset->clear();
+
+					//randomly select the training points
+					if (!masc::Tools::RandomSubset(corePoints.cloud, testDataRatio, testSubset.data(), trainSubset.data()))
+					{
+						m_app->dispToConsole("Not enough memory to generate the test subsets", ccMainAppInterface::ERR_CONSOLE_MESSAGE);
+						generatedScalarFields.releaseAllSFs();
+						generatedScalarFieldsTest.releaseAllSFs();
+						return;
+					}
+					previousTestSubsetRatio = testDataRatio;
+				}
+			}
+
+			//extract the sources (after having prepared the features!)
+			masc::Feature::Source::Set featureSources;
+			masc::Feature::ExtractSources(features, featureSources);
 
 			//train the classifier
 			{
 				QString errorMessage;
-				if (!classifier.train(corePoints.cloud, s_params.rt, features, errorMessage, trainSubset.data(), m_app, m_app->getMainWindow()))
+				if (!classifier.train(	corePoints.cloud,
+										s_params.rt,
+										featureSources,
+										errorMessage,
+										trainSubset.data(),
+										m_app,
+										m_app->getMainWindow()
+									))
 				{
 					m_app->dispToConsole(errorMessage, ccMainAppInterface::ERR_CONSOLE_MESSAGE);
 					generatedScalarFields.releaseAllSFs();
+					generatedScalarFieldsTest.releaseAllSFs();
 					return;
 				}
 				trainDlg.setFirstRunDone();
@@ -514,12 +561,72 @@ void q3DMASCPlugin::doTrainAction()
 
 			//test the trained classifier
 			{
+				if (testCloud)
+				{
+					//look for selected features
+					if (needTestSuite)
+					{
+						featuresTest.clear();
+						masc::Feature::Set toPrepareTest;
+						for (size_t i = 0; i < originalFeaturesTest.size(); ++i)
+						{
+							originalFeaturesTest[i].selected = trainDlg.isFeatureSelected(i);
+
+							//if the feature is selected
+							if (originalFeaturesTest[i].selected)
+							{
+								if (!originalFeaturesTest[i].prepared)
+								{
+									//we should prepare it first!
+									toPrepareTest.push_back(originalFeaturesTest[i].feature);
+								}
+								featuresTest.push_back(originalFeaturesTest[i].feature);
+							}
+						}
+
+						//prepare the features and the test cloud
+						if (!toPrepareTest.empty())
+						{
+							progressDlg.setAutoClose(false); //we don't want the progress dialog to 'pop' for each feature
+							QString error;
+							masc::CorePoints corePointsTest;
+							corePointsTest.cloud = corePointsTest.origin = testCloud;
+							corePointsTest.role = mainCloudLabel;
+							if (!masc::Tools::PrepareFeatures(corePointsTest, toPrepareTest, error, &progressDlg, &generatedScalarFieldsTest))
+							{
+								m_app->dispToConsole(error, ccMainAppInterface::ERR_CONSOLE_MESSAGE);
+								generatedScalarFields.releaseAllSFs();
+								generatedScalarFieldsTest.releaseAllSFs();
+								return;
+							}
+							progressDlg.setAutoClose(true); //restore the default behavior of the progress dialog
+							progressDlg.hide();
+							QCoreApplication::processEvents();
+							m_app->redrawAll();
+
+							//flag the prepared features as 'prepared' ;)
+							for (FeatureSelection& fs : originalFeaturesTest)
+							{
+								if (fs.selected && !fs.prepared)
+									fs.prepared = true;
+							}
+						}
+					}
+				}
+
 				masc::Classifier::AccuracyMetrics metrics;
 				QString errorMessage;
-				if (!classifier.evaluate(features, testSubset2 ? testSubset2.data() : testSubset.data(), metrics, errorMessage, m_app->getMainWindow()))
+				if (!classifier.evaluate(	featureSources,
+											testCloud ? testCloud : corePoints.cloud,
+											metrics,
+											errorMessage,
+											testCloud ? nullptr : testSubset.data(),
+											"Classification_pred",
+											m_app->getMainWindow()))
 				{
 					m_app->dispToConsole(errorMessage, ccMainAppInterface::ERR_CONSOLE_MESSAGE);
 					generatedScalarFields.releaseAllSFs();
+					generatedScalarFieldsTest.releaseAllSFs();
 					return;
 				}
 
@@ -551,6 +658,7 @@ void q3DMASCPlugin::doTrainAction()
 			}
 		}
 
+		//now wait for the user input
 		while (true)
 		{
 			if (!trainDlg.exec())
@@ -559,6 +667,7 @@ void q3DMASCPlugin::doTrainAction()
 				if (!s_keepAttributes)
 				{
 					generatedScalarFields.releaseAllSFs();
+					generatedScalarFieldsTest.releaseAllSFs();
 				}
 				return;
 			}
@@ -583,7 +692,7 @@ void q3DMASCPlugin::doTrainAction()
 				}
 
 				//save the classifier
-				if (masc::Tools::SaveClassifier(outputFilename, features, classifier, m_app->getMainWindow()))
+				if (masc::Tools::SaveClassifier(outputFilename, features, mainCloudLabel, classifier, m_app->getMainWindow()))
 				{
 					m_app->dispToConsole("Classifier succesfully saved to " + outputFilename, ccMainAppInterface::STD_CONSOLE_MESSAGE);
 					trainDlg.setClassifierSaved();

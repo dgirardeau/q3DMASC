@@ -90,9 +90,12 @@ Classify3DMASCDialog::Classify3DMASCDialog(ccMainAppInterface* app, bool trainMo
 		}
 
 		//if 3 clouds are loaded, then there's chances that the first one is the global  cloud!
-		cloud1ComboBox->setCurrentIndex(cloudCount > 0 ? (cloudCount > 2 ? 1 : 0) : -1);
-		cloud2ComboBox->setCurrentIndex(cloudCount > 1 ? (cloudCount > 2 ? 2 : 1) : -1);
-		cloud3ComboBox->setCurrentIndex(cloudCount > 2 ? 0 : -1);
+		cloud1ComboBox->setCurrentIndex(/*cloudCount > 0 ? (cloudCount > 2 ? 1 : 0) : */-1);
+		connect(cloud1ComboBox, SIGNAL(currentIndexChanged(int)), this, SLOT(onCloudChanged(int)));
+		cloud2ComboBox->setCurrentIndex(/*cloudCount > 1 ? (cloudCount > 2 ? 2 : 1) : */-1);
+		connect(cloud2ComboBox, SIGNAL(currentIndexChanged(int)), this, SLOT(onCloudChanged(int)));
+		cloud3ComboBox->setCurrentIndex(/*cloudCount > 2 ? 0 : */-1);
+		connect(cloud3ComboBox, SIGNAL(currentIndexChanged(int)), this, SLOT(onCloudChanged(int)));
 		testCloudComboBox->setCurrentIndex(-1);
 
 		if (cloudCount == 0 && app)
@@ -110,7 +113,7 @@ Classify3DMASCDialog::Classify3DMASCDialog(ccMainAppInterface* app, bool trainMo
 	onCloudChanged(0);
 }
 
-void Classify3DMASCDialog::setCloudRoles(const QSet<QString>& roles, QString corePointsLabel)
+void Classify3DMASCDialog::setCloudRoles(const QList<QString>& roles, QString corePointsLabel)
 {
 	int index = 0;
 	for (const QString& role : roles)
