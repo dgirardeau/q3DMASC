@@ -125,7 +125,13 @@ namespace masc
 			//! Sources types
 			enum Type
 			{
-				ScalarField, DimX, DimY, DimZ, Red, Green, Blue
+				ScalarField = 0,
+				DimX,
+				DimY,
+				DimZ,
+				Red,
+				Green,
+				Blue
 			};
 
 			Source(Type t = ScalarField, QString n = QString())
@@ -139,6 +145,12 @@ namespace masc
 
 		//! Extracts the set of 'sources' from a set of features
 		static bool ExtractSources(const Set& features, Source::Set& sources);
+
+		//! Saves a set of 'sources' to a file
+		static bool SaveSources(const Source::Set& sources, QString filename);
+
+		//! Loads a set of 'sources' from a file
+		static bool LoadSources(Source::Set& sources, QString filename);
 
 	public: //methods
 

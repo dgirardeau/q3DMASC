@@ -28,6 +28,12 @@ bool DualCloudFeature::prepare(	const CorePoints& corePoints,
 	return false;
 }
 
+QString DualCloudFeature::toString() const
+{
+	//use the default keyword + "_SC" + the scale
+	return ToString(type) + "_SC" + QString::number(scale);
+}
+
 bool DualCloudFeature::checkValidity(QString corePointRole, QString &error) const
 {
 	if (!Feature::checkValidity(corePointRole, error))

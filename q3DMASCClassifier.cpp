@@ -132,6 +132,7 @@ bool Classifier::classify(	const Feature::Source::Set& featureSources,
 		try
 		{
 			ccScalarField* classifSFBackup = new ccScalarField(*static_cast<ccScalarField*>(classificationSF));
+			classifSFBackup->setName("Classification_prev");
 			cloud->addScalarField(classifSFBackup);
 		}
 		catch (const std::bad_alloc)

@@ -134,6 +134,73 @@ bool Feature::PerformMathOp(const IScalarFieldWrapper& sf1, const IScalarFieldWr
 	return true;
 }
 
+bool Feature::SaveSources(const Source::Set& sources, QString filename)
+{
+	QFile file(filename);
+	if (!file.open(QFile::WriteOnly | QFile::Text))
+	{
+		ccLog::Warning("Failed to open file for writing: " + filename);
+		return false;
+	}
+	
+	QTextStream stream(&file);
+	stream << "#Features_SF" << endl;
+	for (const Source& s : sources)
+	{
+		stream << s.type << ":" << s.name << endl;
+	}
+
+	return true;
+}
+
+bool Feature::LoadSources(Source::Set& sources, QString filename)
+{
+	QFile file(filename);
+	if (!file.open(QFile::ReadOnly | QFile::Text))
+	{
+		ccLog::Warning("Failed to open file for reading: " + filename);
+		return false;
+	}
+
+	QTextStream stream(&file);
+	QString header = stream.readLine();
+	if (!header.startsWith("#Features_SF"))
+	{
+		ccLog::Warning("Unexpected header");
+		return false;
+	}
+
+	while (true)
+	{
+		QString line = stream.readLine();
+		if (line.isNull())
+			break;
+		if (line.isEmpty())
+			continue; //unexpected but we can survive
+		QStringList tokens = line.split(':');
+		if (tokens.size() != 2)
+		{
+			ccLog::Warning("Malformed file");
+			return false;
+		}
+
+		Source src;
+		bool ok = false;
+		int sourceType = tokens[0].toInt(&ok);
+		if (!ok || sourceType < Feature::Source::ScalarField || sourceType > Feature::Source::Blue)
+		{
+			ccLog::Warning("Unhandled source type");
+			return false;
+		}
+		src.type = static_cast<Feature::Source::Type>(sourceType);
+		src.name = tokens[1];
+		
+		sources.push_back(src);
+	}
+
+	return true;
+}
+
 bool Feature::ExtractSources(const Set& features, Source::Set& sources)
 {
 	sources.clear();

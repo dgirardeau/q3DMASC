@@ -653,14 +653,14 @@ static bool ReadCloud(const QString& command, Tools::NamedClouds& clouds, QDir& 
 	return true;
 }
 
-static bool LoadFileCommon(	const QString& filename,
-							Tools::NamedClouds& clouds,
-							bool cloudsAreProvided,
-							std::vector<Feature::Shared>& rawFeatures,
-							masc::CorePoints* corePoints = nullptr,
-							masc::Classifier* classifier = nullptr,
-							TrainParameters* parameters = nullptr,
-							QWidget* parent = nullptr)
+bool Tools::LoadFile(	const QString& filename,
+						Tools::NamedClouds* clouds,
+						bool cloudsAreProvided,
+						std::vector<Feature::Shared>* rawFeatures/*=nullptr*/,	//requires 'clouds'
+						masc::CorePoints* corePoints/*=nullptr*/,				//requires 'clouds'
+						masc::Classifier* classifier/*=nullptr*/,
+						TrainParameters* parameters/*=nullptr*/,
+						QWidget* parent/*=nullptr*/)
 {
 	QFileInfo fi(filename);
 	if (!fi.exists())
@@ -678,7 +678,7 @@ static bool LoadFileCommon(	const QString& filename,
 
 	try
 	{
-		assert(rawFeatures.empty());
+		assert(!rawFeatures || rawFeatures->empty());
 		std::vector<double> scales;
 
 		QTextStream stream(&file);
@@ -727,26 +727,26 @@ static bool LoadFileCommon(	const QString& filename,
 			}
 			else if (upperLine.startsWith("CLOUD:")) //clouds
 			{
-				if (cloudsAreProvided)
+				if (!clouds || cloudsAreProvided)
 				{
 					//no need to load the clouds in this case
 					continue;
 				}
 				QString command = line.mid(6);
-				if (!ReadCloud(command, clouds, fi.absoluteDir(), lineNumber))
+				if (!ReadCloud(command, *clouds, fi.absoluteDir(), lineNumber))
 				{
 					return false;
 				}
 			}
 			else if (upperLine.startsWith("TEST:")) //test cloud
 			{
-				if (cloudsAreProvided)
+				if (!clouds || cloudsAreProvided)
 				{
 					//no need to load the clouds in this case
 					continue;
 				}
 				QString command = line.mid(5);
-				if (!ReadCloud("TEST=" + command, clouds, fi.absoluteDir(), lineNumber)) //add the TEST keyword so that the cloud will be loaded as the TEST cloud
+				if (!ReadCloud("TEST=" + command, *clouds, fi.absoluteDir(), lineNumber)) //add the TEST keyword so that the cloud will be loaded as the TEST cloud
 				{
 					return false;
 				}
@@ -766,7 +766,7 @@ static bool LoadFileCommon(	const QString& filename,
 				{
 					QString command = line.mid(12);
 
-					if (!ReadCorePoints(command, clouds, *corePoints, lineNumber))
+					if (clouds && !ReadCorePoints(command, *clouds, *corePoints, lineNumber))
 					{
 						return false;
 					}
@@ -790,11 +790,14 @@ static bool LoadFileCommon(	const QString& filename,
 			{
 				QString command = line.mid(8);
 
-				if (!CreateFeaturesFromCommand(command, corePoints ? corePoints->role : QString(), lineNumber, clouds, rawFeatures, scales))
+				if (rawFeatures && clouds)
 				{
-					//error message already issued
-					//return false;
-					badFeatures = true; //we continue as we want to get ALL the errors
+					if (!CreateFeaturesFromCommand(command, corePoints ? corePoints->role : QString(), lineNumber, *clouds, *rawFeatures, scales))
+					{
+						//error message already issued
+						//return false;
+						badFeatures = true; //we continue as we want to get ALL the errors
+					}
 				}
 			}
 			else if (upperLine.startsWith("PARAM_")) //parameter
@@ -856,14 +859,15 @@ static bool LoadFileCommon(	const QString& filename,
 		return false;
 	}
 
-	rawFeatures.shrink_to_fit();
+	if (rawFeatures)
+		rawFeatures->shrink_to_fit();
 
 	return true;
 }
 
-bool Tools::LoadClassifier(QString filename, const NamedClouds& clouds, Feature::Set& rawFeatures, masc::Classifier& classifier, QWidget* parent/*=nullptr*/)
+bool Tools::LoadClassifier(QString filename, NamedClouds& clouds, Feature::Set& rawFeatures, masc::Classifier& classifier, QWidget* parent/*=nullptr*/)
 {
-	return LoadFileCommon(filename, const_cast<NamedClouds&>(clouds), true, rawFeatures, nullptr, &classifier, nullptr, parent);
+	return LoadFile(filename, &clouds, true, &rawFeatures, nullptr, &classifier, nullptr, parent);
 }
 
 bool Tools::LoadTrainingFile(	QString filename,
@@ -873,7 +877,7 @@ bool Tools::LoadTrainingFile(	QString filename,
 								CorePoints* corePoints/*=nullptr*/)
 {
 	bool cloudsWereProvided = !loadedClouds.empty();
-	if (LoadFileCommon(filename, loadedClouds, cloudsWereProvided, rawFeatures, corePoints, nullptr, &parameters, nullptr))
+	if (LoadFile(filename, &loadedClouds, cloudsWereProvided, &rawFeatures, corePoints, nullptr, &parameters, nullptr))
 	{
 		return true;
 	}
