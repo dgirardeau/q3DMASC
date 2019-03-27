@@ -121,9 +121,27 @@ bool Classifier::classify(	const Feature::Source::Set& featureSources,
 
 	//look for the classification field
 	CCLib::ScalarField* classificationSF = GetClassificationSF(cloud);
-	if (!classificationSF)
+
+	if (classificationSF)
 	{
-		//create it if necessary
+		//save previous classification field (if any)
+		int sfIdx = cloud->getScalarFieldIndexByName("Classification_prev");
+		if (sfIdx < 0)
+			cloud->deleteScalarField(sfIdx);
+
+		try
+		{
+			ccScalarField* classifSFBackup = new ccScalarField(*static_cast<ccScalarField*>(classificationSF));
+			cloud->addScalarField(classifSFBackup);
+		}
+		catch (const std::bad_alloc)
+		{
+			ccLog::Warning("Not enough memory to backup the previous classification SF!");
+		}
+	}
+	else
+	{
+		//create the classification SF
 		ccScalarField* _classificationSF = new ccScalarField(LAS_FIELD_NAMES[LAS_CLASSIFICATION]);
 		if (!_classificationSF->resizeSafe(cloud->size()))
 		{
