@@ -43,8 +43,8 @@ public:
 	void setFirstRunDone();
 	inline void setClassifierSaved() { classifierSaved = true; saveRequested = false; }
 
-	bool isFeatureSelected(size_t index) const;
-	void setFeatureImportance(size_t index, float importance);
+	bool isFeatureSelected(QString featureName) const;
+	void setFeatureImportance(QString featureName, float importance);
 	void sortByFeatureImportance();
 	
 	inline bool shouldSaveClassifier() const { return saveRequested; }

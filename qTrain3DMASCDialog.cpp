@@ -70,15 +70,19 @@ void Train3DMASCDialog::setFirstRunDone()
 	savePushButton->setEnabled(true);
 }
 
-bool Train3DMASCDialog::isFeatureSelected(size_t index) const
+bool Train3DMASCDialog::isFeatureSelected(QString featureName) const
 {
-	if (static_cast<int>(index) >= tableWidget->rowCount())
+	for (int index = 0; index < tableWidget->rowCount(); ++index)
 	{
-		assert(false);
-		return false;
+		QTableWidgetItem* item = tableWidget->item(index, 0);
+		if (item->text() == featureName)
+		{
+			return (item->checkState() == Qt::Checked);
+		}
 	}
 
-	return (tableWidget->item(static_cast<int>(index), 0)->checkState() == Qt::Checked);
+	assert(false);
+	return false;
 }
 
 void Train3DMASCDialog::sortByFeatureImportance()
@@ -86,22 +90,19 @@ void Train3DMASCDialog::sortByFeatureImportance()
 	tableWidget->sortByColumn(FeatureImportanceColumn, Qt::AscendingOrder);
 }
 
-void Train3DMASCDialog::setFeatureImportance(size_t index, float importance)
+void Train3DMASCDialog::setFeatureImportance(QString featureName, float importance)
 {
-	if (static_cast<int>(index) >= tableWidget->rowCount())
+	for (int index = 0; index < tableWidget->rowCount(); ++index)
 	{
-		assert(false);
-		return;
+		if (tableWidget->item(index, 0)->text() == featureName)
+		{
+			QTableWidgetItem* item = tableWidget->item(static_cast<int>(index), FeatureImportanceColumn);
+			item->setText(std::isnan(importance) ? QString() : QString::number(importance, 'f', 6));
+			return;
+		}
 	}
 
-	if (!std::isnan(importance))
-	{
-		tableWidget->item(static_cast<int>(index), FeatureImportanceColumn)->setText(QString::number(importance));
-	}
-	else
-	{
-		tableWidget->item(static_cast<int>(index), FeatureImportanceColumn)->setText(QString());
-	}
+	assert(false);
 }
 
 void Train3DMASCDialog::onClose()

@@ -141,6 +141,8 @@ void q3DMASCPlugin::doClassifyAction()
 	classifDlg.classifierFileLineEdit->setText(inputFilename);
 	static bool s_keepAttributes = false;
 	classifDlg.keepAttributesCheckBox->setChecked(s_keepAttributes);
+	classifDlg.testCloudComboBox->hide();
+	classifDlg.testLabel->hide();
 	if (!classifDlg.exec())
 	{
 		//process cancelled by the user
@@ -159,7 +161,7 @@ void q3DMASCPlugin::doClassifyAction()
 	{
 		return;
 	}
-	if (classifier.isValid())
+	if (!classifier.isValid())
 	{
 		m_app->dispToConsole("No classifier or invalid classifier", ccMainAppInterface::ERR_CONSOLE_MESSAGE);
 		return;
@@ -448,7 +450,7 @@ void q3DMASCPlugin::doTrainAction()
 		masc::Feature::Set toPrepare;
 		for (size_t i = 0; i < originalFeatures.size(); ++i)
 		{
-			originalFeatures[i].selected = trainDlg.isFeatureSelected(i);
+			originalFeatures[i].selected = trainDlg.isFeatureSelected(originalFeatures[i].feature->toString());
 
 			//if the feature is selected
 			if (originalFeatures[i].selected)
@@ -570,7 +572,7 @@ void q3DMASCPlugin::doTrainAction()
 						masc::Feature::Set toPrepareTest;
 						for (size_t i = 0; i < originalFeaturesTest.size(); ++i)
 						{
-							originalFeaturesTest[i].selected = trainDlg.isFeatureSelected(i);
+							originalFeaturesTest[i].selected = trainDlg.isFeatureSelected(originalFeatures[i].feature->toString());
 
 							//if the feature is selected
 							if (originalFeaturesTest[i].selected)
@@ -651,7 +653,7 @@ void q3DMASCPlugin::doTrainAction()
 					{
 						originalFeatures[i].importance = std::numeric_limits<float>::quiet_NaN();
 					}
-					trainDlg.setFeatureImportance(i, originalFeatures[i].importance);
+					trainDlg.setFeatureImportance(originalFeatures[i].feature->toString(), originalFeatures[i].importance);
 				}
 
 				trainDlg.sortByFeatureImportance();

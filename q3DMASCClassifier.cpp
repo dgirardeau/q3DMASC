@@ -56,7 +56,7 @@ static IScalarFieldWrapper::Shared GetSource(const Feature::Source& fs, const cc
 	{
 	case Feature::Source::ScalarField:
 	{
-		assert(fs.name.isEmpty());
+		assert(!fs.name.isEmpty());
 		int sfIdx = cloud->getScalarFieldIndexByName(qPrintable(fs.name));
 		if (sfIdx >= 0)
 		{
