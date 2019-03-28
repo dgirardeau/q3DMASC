@@ -603,7 +603,7 @@ static bool ReadCorePoints(const QString& command, const Tools::NamedClouds& clo
 	return true;
 }
 
-static bool ReadCloud(const QString& command, Tools::NamedClouds& clouds, QDir& defaultDir, int lineNumber)
+static bool ReadCloud(const QString& command, Tools::NamedClouds& clouds, QDir& defaultDir, int lineNumber, FileIOFilter::LoadParameters& loadParameters)
 {
 	QStringList tokens = command.split('=');
 	if (tokens.size() != 2)
@@ -616,10 +616,8 @@ static bool ReadCloud(const QString& command, Tools::NamedClouds& clouds, QDir& 
 	QString pcFilename = defaultDir.absoluteFilePath(tokens[1].trimmed());
 	//try to open the cloud
 	{
-		FileIOFilter::LoadParameters parameters;
-		parameters.alwaysDisplayLoadDialog = false;
 		CC_FILE_ERROR error = CC_FERR_NO_ERROR;
-		ccHObject* object = FileIOFilter::LoadFromFile(pcFilename, parameters, error);
+		ccHObject* object = FileIOFilter::LoadFromFile(pcFilename, loadParameters, error);
 		if (error != CC_FERR_NO_ERROR || !object)
 		{
 			//error message already issued
@@ -674,6 +672,20 @@ bool Tools::LoadFile(	const QString& filename,
 	{
 		ccLog::Warning(QString("Can't open file '%1'").arg(filename));
 		return false;
+	}
+
+	//to use the same 'global shift' for multiple files
+	CCVector3d loadCoordinatesShift(0, 0, 0);
+	bool loadCoordinatesTransEnabled = false;
+	FileIOFilter::LoadParameters loadParameters;
+	if (!cloudsAreProvided)
+	{
+		loadParameters.alwaysDisplayLoadDialog = true;
+		loadParameters.shiftHandlingMode = ccGlobalShiftManager::DIALOG_IF_NECESSARY;
+		loadParameters.coordinatesShift = &loadCoordinatesShift;
+		loadParameters.coordinatesShiftEnabled = &loadCoordinatesTransEnabled;
+		loadParameters.parentWidget = parent;
+		FileIOFilter::ResetSesionCounter();
 	}
 
 	try
@@ -733,7 +745,7 @@ bool Tools::LoadFile(	const QString& filename,
 					continue;
 				}
 				QString command = line.mid(6);
-				if (!ReadCloud(command, *clouds, fi.absoluteDir(), lineNumber))
+				if (!ReadCloud(command, *clouds, fi.absoluteDir(), lineNumber, loadParameters))
 				{
 					return false;
 				}
@@ -746,7 +758,7 @@ bool Tools::LoadFile(	const QString& filename,
 					continue;
 				}
 				QString command = line.mid(5);
-				if (!ReadCloud("TEST=" + command, *clouds, fi.absoluteDir(), lineNumber)) //add the TEST keyword so that the cloud will be loaded as the TEST cloud
+				if (!ReadCloud("TEST=" + command, *clouds, fi.absoluteDir(), lineNumber, loadParameters)) //add the TEST keyword so that the cloud will be loaded as the TEST cloud
 				{
 					return false;
 				}
@@ -765,7 +777,6 @@ bool Tools::LoadFile(	const QString& filename,
 				else
 				{
 					QString command = line.mid(12);
-
 					if (clouds && !ReadCorePoints(command, *clouds, *corePoints, lineNumber))
 					{
 						return false;
@@ -874,10 +885,11 @@ bool Tools::LoadTrainingFile(	QString filename,
 								Feature::Set& rawFeatures,
 								NamedClouds& loadedClouds,
 								TrainParameters& parameters,
-								CorePoints* corePoints/*=nullptr*/)
+								CorePoints* corePoints/*=nullptr*/,
+								QWidget* parentWidget/*=nullptr*/)
 {
 	bool cloudsWereProvided = !loadedClouds.empty();
-	if (LoadFile(filename, &loadedClouds, cloudsWereProvided, &rawFeatures, corePoints, nullptr, &parameters, nullptr))
+	if (LoadFile(filename, &loadedClouds, cloudsWereProvided, &rawFeatures, corePoints, nullptr, &parameters, parentWidget))
 	{
 		return true;
 	}

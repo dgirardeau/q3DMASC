@@ -129,7 +129,7 @@ void q3DMASCPlugin::doClassifyAction()
 		m_app->dispToConsole("Invalid classifier file (no cloud label defined)", ccMainAppInterface::ERR_CONSOLE_MESSAGE);
 		return;
 	}
-	else if (cloudLabels.size() > 3)
+	else if (cloudLabels.size() > (cloudLabels.contains("TEST") ? 4 : 3))
 	{
 		m_app->dispToConsole("This classifier uses more than 3 clouds (the GUI version cannot handle it)", ccMainAppInterface::ERR_CONSOLE_MESSAGE);
 		return;
@@ -263,10 +263,10 @@ void q3DMASCPlugin::doTrainAction()
 
 	//if no filename is specified in the training file, we are bound to ask the user to specify them
 	bool useCloudsFromDB = (!filenamesSpecified || QMessageBox::question(m_app->getMainWindow(), "Use clouds in DB", "Use clouds in db (yes) or clouds specified in the file(no)?", QMessageBox::Yes, QMessageBox::No) == QMessageBox::Yes);
-	QString mainCloudLabel;
+	QString mainCloudLabel = corePointsLabel;
 	if (useCloudsFromDB)
 	{
-		if (cloudLabels.size() > 3)
+		if (cloudLabels.size() > (cloudLabels.contains("TEST") ? 4 : 3))
 		{
 			m_app->dispToConsole("This classifier uses more than 3 different clouds (the GUI version cannot handle it)", ccMainAppInterface::WRN_CONSOLE_MESSAGE);
 			return;
@@ -293,7 +293,7 @@ void q3DMASCPlugin::doTrainAction()
 
 	static masc::TrainParameters s_params;
 	masc::Feature::Set features;
-	if (!masc::Tools::LoadTrainingFile(inputFilename, features, loadedClouds, s_params, &corePoints))
+	if (!masc::Tools::LoadTrainingFile(inputFilename, features, loadedClouds, s_params, &corePoints, m_app->getMainWindow()))
 	{
 		m_app->dispToConsole("Failed to load the training file", ccMainAppInterface::ERR_CONSOLE_MESSAGE);
 		return;
@@ -303,6 +303,11 @@ void q3DMASCPlugin::doTrainAction()
 	{
 		m_app->dispToConsole("Core points not defined", ccMainAppInterface::ERR_CONSOLE_MESSAGE);
 		return;
+	}
+
+	if (mainCloudLabel.isEmpty())
+	{
+		mainCloudLabel = corePoints.role;
 	}
 
 	if (!masc::Classifier::GetClassificationSF(corePoints.origin))

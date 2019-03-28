@@ -49,6 +49,12 @@ bool NeighborhoodFeature::checkValidity(QString corePointRole, QString &error) c
 		return false;
 	}
 
+	if (std::isnan(scale))
+	{
+		error = "No scale defined";
+		return false;
+	}
+
 	return true;
 }
 
@@ -315,7 +321,7 @@ bool NeighborhoodFeature::computeValue(CCLib::DgmOctree::NeighboursSet& pointsIn
 		{
 			outputValue = maxZ - queryPoint.z;
 		}
-		else if (type == Zmax)
+		else if (type == Zmin)
 		{
 			outputValue = queryPoint.z - minZ;
 		}

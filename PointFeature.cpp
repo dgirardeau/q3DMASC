@@ -86,7 +86,7 @@ bool PointFeature::checkValidity(QString corePointRole, QString &error) const
 	{
 		if (cloud1->getScalarFieldIndexByName(LAS_FIELD_NAMES[LAS_INTENSITY]) < 0)
 		{
-			error = QString("Cloud has no '%1' scalar field").arg(LAS_FIELD_NAMES[LAS_INTENSITY]);
+			error = QString("Cloud %0 has no '%1' scalar field").arg(cloud1->getName()).arg(LAS_FIELD_NAMES[LAS_INTENSITY]);
 			return false;
 		}
 		return true;
@@ -99,7 +99,7 @@ bool PointFeature::checkValidity(QString corePointRole, QString &error) const
 	{
 		if (cloud1->getScalarFieldIndexByName(LAS_FIELD_NAMES[LAS_NUMBER_OF_RETURNS]) < 0)
 		{
-			error = QString("Cloud has no '%1' scalar field").arg(LAS_FIELD_NAMES[LAS_NUMBER_OF_RETURNS]);
+			error = QString("Cloud %0 has no '%1' scalar field").arg(cloud1->getName()).arg(LAS_FIELD_NAMES[LAS_NUMBER_OF_RETURNS]);
 			return false;
 		}
 		return true;
@@ -108,7 +108,7 @@ bool PointFeature::checkValidity(QString corePointRole, QString &error) const
 	{
 		if (cloud1->getScalarFieldIndexByName(LAS_FIELD_NAMES[LAS_RETURN_NUMBER]) < 0)
 		{
-			error = QString("Cloud has no '%1' scalar field").arg(LAS_FIELD_NAMES[LAS_RETURN_NUMBER]);
+			error = QString("Cloud %0 has no '%1' scalar field").arg(cloud1->getName()).arg(LAS_FIELD_NAMES[LAS_RETURN_NUMBER]);
 			return false;
 		}
 		return true;
@@ -117,12 +117,12 @@ bool PointFeature::checkValidity(QString corePointRole, QString &error) const
 	{
 		if (cloud1->getScalarFieldIndexByName(LAS_FIELD_NAMES[LAS_NUMBER_OF_RETURNS]) < 0)
 		{
-			error = QString("Cloud has no '%1' scalar field").arg(LAS_FIELD_NAMES[LAS_NUMBER_OF_RETURNS]);
+			error = QString("Cloud %0 has no '%1' scalar field").arg(cloud1->getName()).arg(LAS_FIELD_NAMES[LAS_NUMBER_OF_RETURNS]);
 			return false;
 		}
 		if (cloud1->getScalarFieldIndexByName(LAS_FIELD_NAMES[LAS_RETURN_NUMBER]) < 0)
 		{
-			error = QString("Cloud has no '%1' scalar field").arg(LAS_FIELD_NAMES[LAS_RETURN_NUMBER]);
+			error = QString("Cloud %0 has no '%1' scalar field").arg(cloud1->getName()).arg(LAS_FIELD_NAMES[LAS_RETURN_NUMBER]);
 			return false;
 		}
 		return true;
@@ -132,7 +132,7 @@ bool PointFeature::checkValidity(QString corePointRole, QString &error) const
 	case PointFeature::B:
 		if (!cloud1->hasColors())
 		{
-			error = "Cloud has no RGB color";
+			error = QString("Cloud %0 has no RGB color").arg(cloud1->getName());
 			return false;
 		}
 		return true;
@@ -140,7 +140,7 @@ bool PointFeature::checkValidity(QString corePointRole, QString &error) const
 	{
 		if (cloud1->getScalarFieldIndexByName(s_NIRSFName) < 0)
 		{
-			error = QString("Cloud has no '%1' scalar field").arg(s_NIRSFName);
+			error = QString("Cloud %0 has no '%1' scalar field").arg(cloud1->getName()).arg(s_NIRSFName);
 			return false;
 		}
 		return true;
@@ -150,7 +150,7 @@ bool PointFeature::checkValidity(QString corePointRole, QString &error) const
 	{
 		if (!cloud1->hasNormals())
 		{
-			error = "Cloud has no normals";
+			error = QString("Cloud %0 has no normals").arg(cloud1->getName());
 			return false;
 		}
 		return true;
@@ -159,7 +159,7 @@ bool PointFeature::checkValidity(QString corePointRole, QString &error) const
 	{
 		if (cloud1->getScalarFieldIndexByName(s_M3C2SFName) < 0)
 		{
-			error = QString("Cloud has no '%1' scalar field").arg(s_M3C2SFName);
+			error = QString("Cloud %0 has no '%1' scalar field").arg(cloud1->getName()).arg(s_M3C2SFName);
 			return false;
 		}
 		return true;
@@ -168,7 +168,7 @@ bool PointFeature::checkValidity(QString corePointRole, QString &error) const
 	{
 		if (cloud1->getScalarFieldIndexByName(s_PCVSFName) < 0)
 		{
-			error = QString("Cloud has no '%1' scalar field").arg(s_PCVSFName);
+			error = QString("Cloud %0 has no '%1' scalar field").arg(cloud1->getName()).arg(s_PCVSFName);
 			return false;
 		}
 		return true;
@@ -176,7 +176,7 @@ bool PointFeature::checkValidity(QString corePointRole, QString &error) const
 	case PointFeature::SF:
 		if (sourceSFIndex >= static_cast<int>(cloud1->getNumberOfScalarFields()))
 		{
-			error = QString("Cloud has no scalar field #%1").arg(sourceSFIndex);
+			error = QString("Cloud %0 has no scalar field #%1").arg(cloud1->getName()).arg(sourceSFIndex);
 			return false;
 		}
 		return true;

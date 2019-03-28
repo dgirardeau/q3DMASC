@@ -38,7 +38,7 @@ namespace masc
 
 		typedef QMap<QString, ccPointCloud* > NamedClouds;
 
-		static bool LoadTrainingFile(QString filename, Feature::Set& rawFeatures, NamedClouds& loadedClouds, TrainParameters& parameters, CorePoints* corePoints = nullptr);
+		static bool LoadTrainingFile(QString filename, Feature::Set& rawFeatures, NamedClouds& loadedClouds, TrainParameters& parameters, CorePoints* corePoints = nullptr, QWidget* parent = nullptr);
 
 		static bool LoadClassifierCloudLabels(QString filename, QList<QString>& labels, QString& corePointsLabel, bool& filenamesSpecified);
 

@@ -87,7 +87,7 @@ bool Train3DMASCDialog::isFeatureSelected(QString featureName) const
 
 void Train3DMASCDialog::sortByFeatureImportance()
 {
-	tableWidget->sortByColumn(FeatureImportanceColumn, Qt::AscendingOrder);
+	tableWidget->sortByColumn(FeatureImportanceColumn, Qt::DescendingOrder);
 }
 
 void Train3DMASCDialog::setFeatureImportance(QString featureName, float importance)
