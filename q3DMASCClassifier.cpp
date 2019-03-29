@@ -45,7 +45,7 @@ Classifier::Classifier()
 
 bool Classifier::isValid() const
 {
-	return (m_rtrees && m_rtrees->isTrained());
+	return (m_rtrees && m_rtrees->isClassifier() && m_rtrees->isTrained());
 }
 
 static IScalarFieldWrapper::Shared GetSource(const Feature::Source& fs, const ccPointCloud* cloud)
@@ -107,9 +107,9 @@ bool Classifier::classify(	const Feature::Source::Set& featureSources,
 		return false;
 	}
 	
-	if (!m_rtrees || !m_rtrees->isTrained())
+	if (!isValid())
 	{
-		errorMessage = QObject::tr("Classifier hasn't been trained yet");
+		errorMessage = QObject::tr("Invalid classifier");
 		return false;
 	}
 
@@ -216,10 +216,23 @@ bool Classifier::classify(	const Feature::Source::Set& featureSources,
 			double value = wrappers[fIndex]->pointValue(i);
 			test_data.at<float>(0, fIndex) = static_cast<float>(value);
 		}
-		
-		float predictedClass = m_rtrees->predict(test_data.row(0));
-		classificationSF->setValue(i, static_cast<int>(predictedClass));
 
+#if 0
+		cv::Mat result;
+		try
+		{
+			m_rtrees->getVotes(test_data, result, cv::ml::DTrees::PREDICT_AUTO);
+		}
+		catch (const cv::Exception& cvex)
+		{
+			errorMessage = cvex.msg.c_str();
+			success = false;
+			break;
+		}
+#else
+		float predictedClass = m_rtrees->predict(test_data.row(0), cv::noArray(), cv::ml::DTrees::PREDICT_MAX_VOTE);
+		classificationSF->setValue(i, static_cast<int>(predictedClass));
+#endif
 		if (pDlg && !nProgress.oneStep())
 		{
 			//process cancelled by the user
@@ -376,8 +389,8 @@ bool Classifier::evaluate(const Feature::Source::Set& featureSources,
 			//	return false;
 			//}
 
-			float predictedClass = m_rtrees->predict(test_data.row(i));
-			int iPredictedClass = static_cast<int>(predictedClass);
+			float fPredictedClass = m_rtrees->predict(test_data.row(i), cv::noArray(), cv::ml::DTrees::PREDICT_MAX_VOTE);
+			int iPredictedClass = static_cast<int>(fPredictedClass);
 			if (iPredictedClass == iClass)
 			{
 				++metrics.goodGuess;
@@ -508,22 +521,37 @@ bool Classifier::train(	const ccPointCloud* cloud,
 	m_rtrees = cv::ml::RTrees::create();
 	m_rtrees->setMaxDepth(params.maxDepth);
 	m_rtrees->setMinSampleCount(params.minSampleCount);
+	m_rtrees->setRegressionAccuracy(0);
+	m_rtrees->setUseSurrogates(false);
+	m_rtrees->setPriors(cv::Mat());
+	//m_rtrees->setMaxCategories(params.maxCategories); //not important?
 	m_rtrees->setCalculateVarImportance(true);
 	m_rtrees->setActiveVarCount(params.activeVarCount);
 	cv::TermCriteria terminationCriteria(cv::TermCriteria::MAX_ITER, params.maxTreeCount, std::numeric_limits<double>::epsilon());
 	m_rtrees->setTermCriteria(terminationCriteria);
-	
-	//rtrees->setRegressionAccuracy(0);
-	//rtrees->setUseSurrogates(false);
-	//rtrees->setMaxCategories(params.maxCategories); //not important?
-	//rtrees->setPriors(cv::Mat());
 
 	QFuture<bool> future = QtConcurrent::run([&]()
 	{
 		// Code in this block will run in another thread
 		try
 		{
-			m_rtrees->train(training_data, cv::ml::ROW_SAMPLE, train_labels);
+			cv::Mat sampleIndexes = cv::Mat::zeros(1, training_data.rows, CV_8U);
+			cv::Mat trainSamples = sampleIndexes.colRange(0, sampleCount);
+			trainSamples.setTo(cv::Scalar::all(1));
+			
+			cv::Mat varTypes(training_data.cols + 1, 1, CV_8U);
+			varTypes.setTo(cv::Scalar::all(cv::ml::VAR_ORDERED));
+			varTypes.at<uchar>(training_data.cols) = cv::ml::VAR_CATEGORICAL;
+			
+			cv::Ptr<cv::ml::TrainData> trainData = cv::ml::TrainData::create(training_data, cv::ml::ROW_SAMPLE, train_labels, cv::noArray(), sampleIndexes, cv::noArray(), varTypes);
+
+			bool success = m_rtrees->train(trainData);
+			if (!success || !m_rtrees->isClassifier())
+			{
+				errorMessage = "Training failed";
+				return false;
+			}
+			//m_rtrees->train(training_data, cv::ml::ROW_SAMPLE, train_labels);
 		}
 		catch (const cv::Exception& cvex)
 		{
@@ -634,7 +662,12 @@ bool Classifier::fromFile(QString filename, QWidget* parentWidget/*=nullptr*/)
 		QCoreApplication::processEvents();
 	}
 
-	if (!m_rtrees->isTrained())
+	if (m_rtrees->empty() || !m_rtrees->isClassifier())
+	{
+		ccLog::Error(QObject::tr("Loaded classifier is invalid"));
+		return false;
+	}
+	else if (!m_rtrees->isTrained())
 	{
 		ccLog::Warning(QObject::tr("Loaded classifier doesn't seem to be trained"));
 	}
