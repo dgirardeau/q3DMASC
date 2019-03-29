@@ -22,6 +22,36 @@
 
 using namespace masc;
 
+bool ContextBasedFeature::checkValidity(QString corePointRole, QString &error) const
+{
+	if (!Feature::checkValidity(corePointRole, error))
+	{
+		return false;
+	}
+
+	if (type == Invalid)
+	{
+		assert(false);
+		error = "invalid feature type";
+		return false;
+	}
+
+	unsigned char cloudCount = (cloud1 ? (cloud2 ? 2 : 1) : 0);
+	if (cloudCount < 2)
+	{
+		error = "at least two clouds are required to compute context-based features";
+		return false;
+	}
+
+	if (!scaled() && kNN < 1)
+	{
+		error = QString("invalid kNN value for a scale-less context-based feature (%1)").arg(kNN);
+		return false;
+	}
+
+	return true;
+}
+
 bool ContextBasedFeature::prepare(	const CorePoints& corePoints,
 									QString& error,
 									CCLib::GenericProgressCallback* progressCb/*=nullptr*/,
@@ -246,36 +276,6 @@ bool ContextBasedFeature::finish(const CorePoints& corePoints, QString& error)
 	}
 
 	return success;
-}
-
-bool ContextBasedFeature::checkValidity(QString corePointRole, QString &error) const
-{
-	if (!Feature::checkValidity(corePointRole, error))
-	{
-		return false;
-	}
-
-	if (type == Invalid)
-	{
-		assert(false);
-		error = "invalid feature type";
-		return false;
-	}
-
-	unsigned char cloudCount = (cloud1 ? (cloud2 ? 2 : 1) : 0);
-	if (cloudCount < 2)
-	{
-		error = "at least two clouds are required to compute context-based features";
-		return false;
-	}
-
-	if (!scaled() && kNN < 1)
-	{
-		error = QString("invalid kNN value for a scale-less context-based feature (%1)").arg(kNN);
-		return false;
-	}
-
-	return true;
 }
 
 QString ContextBasedFeature::toString() const
