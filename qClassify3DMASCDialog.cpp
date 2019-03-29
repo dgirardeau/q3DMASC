@@ -84,6 +84,7 @@ Classify3DMASCDialog::Classify3DMASCDialog(ccMainAppInterface* app, bool trainMo
 				cloud1ComboBox->addItem(name, uniqueID);
 				cloud2ComboBox->addItem(name, uniqueID);
 				cloud3ComboBox->addItem(name, uniqueID);
+				cloud4ComboBox->addItem(name, uniqueID);
 				testCloudComboBox->addItem(name, uniqueID);
 				++cloudCount;
 			}
@@ -96,6 +97,8 @@ Classify3DMASCDialog::Classify3DMASCDialog(ccMainAppInterface* app, bool trainMo
 		connect(cloud2ComboBox, SIGNAL(currentIndexChanged(int)), this, SLOT(onCloudChanged(int)));
 		cloud3ComboBox->setCurrentIndex(/*cloudCount > 2 ? 0 : */-1);
 		connect(cloud3ComboBox, SIGNAL(currentIndexChanged(int)), this, SLOT(onCloudChanged(int)));
+		cloud4ComboBox->setCurrentIndex(/*cloudCount > 3 ? 0 : */-1);
+		connect(cloud4ComboBox, SIGNAL(currentIndexChanged(int)), this, SLOT(onCloudChanged(int)));
 		testCloudComboBox->setCurrentIndex(-1);
 
 		if (cloudCount == 0 && app)
@@ -135,6 +138,11 @@ void Classify3DMASCDialog::setCloudRoles(const QList<QString>& roles, QString co
 			if (corePointsLabel == role)
 				cloud3RadioButton->setChecked(true);
 			break;
+		case 3:
+			cloud4RadioButton->setText(role);
+			if (corePointsLabel == role)
+				cloud4RadioButton->setChecked(true);
+			break;
 		default:
 			//this dialog can't handle more than 3 roles!
 			break;
@@ -158,6 +166,12 @@ void Classify3DMASCDialog::setCloudRoles(const QList<QString>& roles, QString co
 		cloud3RadioButton->setEnabled(false);
 		cloud3RadioButton->setVisible(false);
 		cloud3ComboBox->setVisible(false);
+	}
+	if (index < 4)
+	{
+		cloud4RadioButton->setEnabled(false);
+		cloud4RadioButton->setVisible(false);
+		cloud4ComboBox->setVisible(false);
 	}
 }
 
@@ -191,6 +205,14 @@ void Classify3DMASCDialog::getClouds(QMap<QString, ccPointCloud*>& clouds, QStri
 		if (cloud3RadioButton->isChecked())
 		{
 			mainCloud = cloud3RadioButton->text();
+		}
+	}
+	if (cloud4RadioButton->isEnabled())
+	{
+		clouds.insert(cloud4RadioButton->text(), GetCloudFromCombo(cloud3ComboBox, m_app->dbRootObject()));
+		if (cloud4RadioButton->isChecked())
+		{
+			mainCloud = cloud4RadioButton->text();
 		}
 	}
 	if (testCloudComboBox->currentIndex() >= 0)

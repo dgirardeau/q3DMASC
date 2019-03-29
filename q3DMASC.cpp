@@ -129,9 +129,9 @@ void q3DMASCPlugin::doClassifyAction()
 		m_app->dispToConsole("Invalid classifier file (no cloud label defined)", ccMainAppInterface::ERR_CONSOLE_MESSAGE);
 		return;
 	}
-	else if (cloudLabels.size() > (cloudLabels.contains("TEST") ? 4 : 3))
+	else if (cloudLabels.size() > 4 + (cloudLabels.contains("TEST") ? 1 : 0))
 	{
-		m_app->dispToConsole("This classifier uses more than 3 clouds (the GUI version cannot handle it)", ccMainAppInterface::ERR_CONSOLE_MESSAGE);
+		m_app->dispToConsole("This classifier uses more than 4 clouds (the GUI version cannot handle it)", ccMainAppInterface::ERR_CONSOLE_MESSAGE);
 		return;
 	}
 
@@ -266,9 +266,9 @@ void q3DMASCPlugin::doTrainAction()
 	QString mainCloudLabel = corePointsLabel;
 	if (useCloudsFromDB)
 	{
-		if (cloudLabels.size() > (cloudLabels.contains("TEST") ? 4 : 3))
+		if (cloudLabels.size() > 4 + (cloudLabels.contains("TEST") ? 1 : 0))
 		{
-			m_app->dispToConsole("This classifier uses more than 3 different clouds (the GUI version cannot handle it)", ccMainAppInterface::WRN_CONSOLE_MESSAGE);
+			m_app->dispToConsole("This classifier uses more than 4 different clouds (the GUI version cannot handle it)", ccMainAppInterface::WRN_CONSOLE_MESSAGE);
 			return;
 		}
 
