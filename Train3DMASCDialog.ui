@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>400</width>
-    <height>500</height>
+    <height>550</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -226,6 +226,13 @@
           <string>Importance</string>
          </property>
         </column>
+       </widget>
+      </item>
+      <item>
+       <widget class="QToolButton" name="exportToolButton">
+        <property name="text">
+         <string>export</string>
+        </property>
        </widget>
       </item>
      </layout>

@@ -20,6 +20,9 @@
 //Qt
 #include <QTableWidgetItem>
 #include <QMessageBox>
+#include <QFileDialog>
+#include <QSettings>
+#include <QTextStream>
 
 //System
 #include <assert.h>
@@ -36,6 +39,7 @@ Train3DMASCDialog::Train3DMASCDialog(QWidget* parent/*=nullptr*/)
 
 	connect(closePushButton, SIGNAL(clicked()), this, SLOT(onClose()));
 	connect(savePushButton, SIGNAL(clicked()), this, SLOT(onSave()));
+	connect(exportToolButton, SIGNAL(clicked()), this, SLOT(onExportResults()));
 }
 
 void Train3DMASCDialog::clearResults()
@@ -96,7 +100,7 @@ void Train3DMASCDialog::setFeatureImportance(QString featureName, float importan
 	{
 		if (tableWidget->item(index, 0)->text() == featureName)
 		{
-			QTableWidgetItem* item = tableWidget->item(static_cast<int>(index), FeatureImportanceColumn);
+			QTableWidgetItem* item = tableWidget->item(index, FeatureImportanceColumn);
 			item->setText(std::isnan(importance) ? QString() : QString::number(importance, 'f', 6));
 			return;
 		}
@@ -117,4 +121,36 @@ void Train3DMASCDialog::onSave()
 {
 	saveRequested = true;
 	accept();
+}
+
+void Train3DMASCDialog::onExportResults()
+{
+	QSettings settings;
+	settings.beginGroup("3DMASC");
+	QString outputPath = settings.value("FilePath", QCoreApplication::applicationDirPath()).toString();
+	QString outputFilename = QFileDialog::getSaveFileName(this, "Export feature importance matrix", outputPath, "*.csv");
+	if (outputFilename.isNull())
+	{
+		//process cancelled by the user
+		return;
+	}
+	settings.setValue("FilePath", QFileInfo(outputFilename).absolutePath());
+	settings.endGroup();
+
+	//save the file
+	QFile file(outputFilename);
+	if (!file.open(QFile::WriteOnly | QFile::Text))
+	{
+		QMessageBox::critical(this, "Error", "Failed to open file for writing: " + outputFilename);
+		return;
+	}
+
+	QTextStream stream(&file);
+	stream << "Feature;Importance" << endl;
+	for (int index = 0; index < tableWidget->rowCount(); ++index)
+	{
+		QString featureName = tableWidget->item(index, 0)->text();
+		QString importance = tableWidget->item(index, FeatureImportanceColumn)->text();
+		stream << featureName << ";" << importance << endl;
+	}
 }

@@ -207,7 +207,8 @@ bool Classifier::classify(	const Feature::Source::Set& featureSources,
 		catch (const cv::Exception& cvex)
 		{
 			errorMessage = cvex.msg.c_str();
-			return false;
+			success = false;
+			break;
 		}
 
 		for (int fIndex = 0; fIndex < attributesPerSample; ++fIndex)

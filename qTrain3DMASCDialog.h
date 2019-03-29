@@ -53,6 +53,7 @@ protected slots:
 
 	void onClose();
 	void onSave();
+	void onExportResults();
 
 protected: //members
 
