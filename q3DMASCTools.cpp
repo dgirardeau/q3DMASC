@@ -425,20 +425,20 @@ static bool CreateFeaturesFromCommand(const QString& command, QString corePoints
 		}
 
 		//is the token a 'context' descriptor?
-		if (feature->getType() == Feature::Type::ContextBasedFeature && token.startsWith("CTX"))
-		{
-			//read the context label
-			QString ctxLabelStr = token.mid(2);
-			bool ok = true;
-			int ctxLabel = ctxLabelStr.toInt(&ok);
-			if (!ok)
-			{
-				ccLog::Warning(QString("Malformed file: expecting a valid integer value after 'CTX' on line #%1").arg(lineNumber));
-				return false;
-			}
-			static_cast<ContextBasedFeature*>(feature.data())->ctxClassLabel = ctxLabel;
-			continue;
-		}
+		//if (feature->getType() == Feature::Type::ContextBasedFeature && token.startsWith("CTX"))
+		//{
+		//	//read the context label
+		//	QString ctxLabelStr = token.mid(3);
+		//	bool ok = true;
+		//	int ctxLabel = ctxLabelStr.toInt(&ok);
+		//	if (!ok)
+		//	{
+		//		ccLog::Warning(QString("Malformed file: expecting a valid integer value after 'CTX' on line #%1").arg(lineNumber));
+		//		return false;
+		//	}
+		//	static_cast<ContextBasedFeature*>(feature.data())->ctxClassLabel = ctxLabel;
+		//	continue;
+		//}
 
 		//if we are here, it means we couldn't find a correspondance for the current token
 		ccLog::Warning(QString("Malformed file: unrecognized or unexpected token '%1' on line #%2").arg(token).arg(lineNumber));
