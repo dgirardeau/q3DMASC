@@ -160,18 +160,6 @@ bool Classifier::classify(	const Feature::Source::Set& featureSources,
 
 	ccLog::Print(QObject::tr("[3DMASC] Classifying %1 points with %2 feature(s)").arg(sampleCount).arg(attributesPerSample));
 
-	//allocate the data matrix
-	cv::Mat test_data;
-	try
-	{
-		test_data.create(1, attributesPerSample, CV_32FC1);
-	}
-	catch (const cv::Exception& cvex)
-	{
-		errorMessage = cvex.msg.c_str();
-		return false;
-	}
-
 	//create the field wrappers
 	std::vector< IScalarFieldWrapper::Shared > wrappers;
 	{
@@ -203,8 +191,25 @@ bool Classifier::classify(	const Feature::Source::Set& featureSources,
 	CCLib::NormalizedProgress nProgress(pDlg.data(), cloud->size());
 
 	bool success = true;
-	for (unsigned i = 0; i < cloud->size(); ++i)
+#ifndef _DEBUG
+#if defined(_OPENMP)
+#pragma omp parallel for
+#endif
+#endif
+	for (int i = 0; i < static_cast<int>(cloud->size()); ++i)
 	{
+		//allocate the data matrix
+		cv::Mat test_data;
+		try
+		{
+			test_data.create(1, attributesPerSample, CV_32FC1);
+		}
+		catch (const cv::Exception& cvex)
+		{
+			errorMessage = cvex.msg.c_str();
+			return false;
+		}
+
 		for (int fIndex = 0; fIndex < attributesPerSample; ++fIndex)
 		{
 			double value = wrappers[fIndex]->pointValue(i);
