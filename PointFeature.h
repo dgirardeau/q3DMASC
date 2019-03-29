@@ -47,7 +47,7 @@ namespace masc
 			, G
 			, B
 			, NIR
-			, DipAng
+			, Dip
 			, DipDir
 			, M3C2
 			, PCV
@@ -82,7 +82,7 @@ namespace masc
 				return "B";
 			case NIR:
 				return "NIR";
-			case DipAng:
+			case Dip:
 				return "NormDip";
 			case DipDir:
 				return "NormDipDir";
@@ -125,7 +125,7 @@ namespace masc
 			else if (token == "NIR")
 				return NIR;
 			else if (token == "NORMDIP")
-				return DipAng;
+				return Dip;
 			else if (token == "NORMDIPDIR")
 				return DipDir;
 			else if (token == "M3C2")

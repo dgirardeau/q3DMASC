@@ -145,7 +145,7 @@ bool PointFeature::checkValidity(QString corePointRole, QString &error) const
 		}
 		return true;
 	}
-	case PointFeature::DipAng:
+	case PointFeature::Dip:
 	case PointFeature::DipDir:
 	{
 		if (!cloud1->hasNormals())
@@ -271,7 +271,7 @@ IScalarFieldWrapper::Shared PointFeature::retrieveField(ccPointCloud* cloud, QSt
 		}
 		return IScalarFieldWrapper::Shared(new ScalarFieldWrapper(sf));
 	}
-	case PointFeature::DipAng:
+	case PointFeature::Dip:
 	case PointFeature::DipDir:
 	{
 		//we need normals to compute the dip and dip direction!
@@ -280,7 +280,7 @@ IScalarFieldWrapper::Shared PointFeature::retrieveField(ccPointCloud* cloud, QSt
 			error = "Cloud has no normals: can't compute dip or dip dir. angles";
 			return nullptr;
 		}
-		return IScalarFieldWrapper::Shared(new NormDipAndDipDirFieldWrapper(cloud, type == PointFeature::DipAng ? NormDipAndDipDirFieldWrapper::Dip : NormDipAndDipDirFieldWrapper::DipDir));
+		return IScalarFieldWrapper::Shared(new NormDipAndDipDirFieldWrapper(cloud, type == PointFeature::Dip ? NormDipAndDipDirFieldWrapper::Dip : NormDipAndDipDirFieldWrapper::DipDir));
 	}
 	case PointFeature::M3C2:
 	{
@@ -496,17 +496,6 @@ bool PointFeature::prepare(	const CorePoints& corePoints,
 			return false;
 		}
 		resultSFName += QString("_") + Feature::StatToString(stat);
-
-		//prepare the corresponding scalar field
-		assert(!statSF1);
-		statSF1 = PrepareSF(corePoints.cloud, qPrintable(resultSFName), generatedScalarFields);
-		if (!statSF1)
-		{
-			error = QString("Failed to prepare scalar field for field '%1' @ scale %2").arg(field1->getName()).arg(scale);
-			return false;
-		}
-
-		source.name = statSF1->getName();
 	}
 	else //not scaled
 	{
@@ -532,7 +521,20 @@ bool PointFeature::prepare(	const CorePoints& corePoints,
 	if (isScaled)
 	{
 		resultSFName += "@" + QString::number(scale);
+	}
 
+	//prepare the corresponding scalar field
+	assert(!statSF1);
+	statSF1 = PrepareSF(corePoints.cloud, qPrintable(resultSFName), generatedScalarFields);
+	if (!statSF1)
+	{
+		error = QString("Failed to prepare scalar field for field '%1' @ scale %2").arg(field1->getName()).arg(scale);
+		return false;
+	}
+	source.name = statSF1->getName();
+
+	if (isScaled)
+	{
 		if (field2 && op != Feature::NO_OPERATION)
 		{
 			QString resultSFName2 = cloud2Label + "." + field2->getName() + QString("_") + Feature::StatToString(stat) + "@" + QString::number(scale);

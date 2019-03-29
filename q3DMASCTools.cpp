@@ -1205,6 +1205,7 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 								if (!feature->computeValue(nNSS.pointsInNeighbourhood, nNSS.queryPoint, outputValue))
 								{
 									//an error occurred
+									errorStr = "An error occurred during the computation of feature " + feature->toString() + "on cloud " + feature->cloud1->getName();
 									success = false;
 									break;
 								}
@@ -1220,6 +1221,7 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 								if (!feature->computeValue(nNSS.pointsInNeighbourhood, nNSS.queryPoint, outputValue))
 								{
 									//an error occurred
+									errorStr = "An error occurred during the computation of feature " + feature->toString() + "on cloud " + feature->cloud2->getName();
 									success = false;
 									break;
 								}
@@ -1238,6 +1240,7 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 								if (!feature->computeValue(nNSS.pointsInNeighbourhood, nNSS.queryPoint, outputValue))
 								{
 									//an error occurred
+									errorStr = "An error occurred during the computation of feature " + feature->toString() + "on cloud " + feature->cloud2->getName();
 									success = false;
 									break;
 								}

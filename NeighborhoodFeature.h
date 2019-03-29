@@ -38,7 +38,7 @@ namespace masc
 			, SPHER
 			, LINEA
 			, PLANA
-			, DipAng
+			, Dip
 			, DipDir
 			, ROUGH
 			, NBPTS
@@ -70,8 +70,8 @@ namespace masc
 				return "LINEA";
 			case PLANA:
 				return "PLANA";
-			case DipAng:
-				return "DipAng";
+			case Dip:
+				return "Dip";
 			case DipDir:
 				return "DipDir";
 			case ROUGH:
@@ -116,8 +116,8 @@ namespace masc
 				return LINEA;
 			else if (token == "PLANA")
 				return PLANA;
-			else if (token == "DIPANG")
-				return DipAng;
+			else if (token == "DIP")
+				return Dip;
 			else if (token == "DIPDIR")
 				return DipDir;
 			else if (token == "ROUGH")

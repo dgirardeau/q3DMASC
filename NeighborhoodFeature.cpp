@@ -256,7 +256,7 @@ bool NeighborhoodFeature::computeValue(CCLib::DgmOctree::NeighboursSet& pointsIn
 	}
 	break;
 
-	case DipAng:
+	case Dip:
 	case DipDir:
 	if (kNN >= 3)
 	{
@@ -269,11 +269,7 @@ bool NeighborhoodFeature::computeValue(CCLib::DgmOctree::NeighboursSet& pointsIn
 			CCVector3 Np = (N->z < 0 ? -PC_ONE * *N : *N);
 			PointCoordinateType dip_deg, dipDir_deg;
 			ccNormalVectors::ConvertNormalToDipAndDipDir(Np, dip_deg, dipDir_deg);
-			outputValue = (type == DipAng ? dip_deg : dipDir_deg);
-		}
-		else
-		{
-			return false;
+			outputValue = (type == Dip ? dip_deg : dipDir_deg);
 		}
 	}
 	break;
@@ -347,10 +343,6 @@ bool NeighborhoodFeature::computeValue(CCLib::DgmOctree::NeighboursSet& pointsIn
 				//Ratio of distance to center of mass and radius of sphere
 				outputValue = d / r;
 			}
-		}
-		else
-		{
-			return false;
 		}
 	}
 	break;
