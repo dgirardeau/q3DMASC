@@ -20,6 +20,9 @@
 //Local
 #include "q3DMASCTools.h"
 
+//qCC_db
+#include <ccScalarField.h>
+
 //Qt
 #include <QMutex>
 
@@ -67,7 +70,7 @@ bool ContextBasedFeature::checkValidity(QString corePointRole, QString &error) c
 }
 
 bool ContextBasedFeature::prepare(	const CorePoints& corePoints,
-									QString& error,
+									QString& errorMessage,
 									CCLib::GenericProgressCallback* progressCb/*=nullptr*/,
 									SFCollector* generatedScalarFields/*=nullptr*/)
 {
@@ -75,7 +78,7 @@ bool ContextBasedFeature::prepare(	const CorePoints& corePoints,
 	{
 		//invalid input
 		assert(false);
-		error = "internal error (no input core points)";
+		errorMessage = "internal error (no input core points)";
 		return false;
 	}
 
@@ -83,11 +86,11 @@ bool ContextBasedFeature::prepare(	const CorePoints& corePoints,
 	{
 		//invalid input
 		assert(false);
-		error = "internal error (no contextual cloud)";
+		errorMessage = "internal error (no contextual cloud)";
 		return false;
 	}
 
-	if (!checkValidity(corePoints.role, error))
+	if (!checkValidity(corePoints.role, errorMessage))
 	{
 		assert(false);
 		return false;
@@ -119,138 +122,159 @@ bool ContextBasedFeature::prepare(	const CorePoints& corePoints,
 	sf = PrepareSF(corePoints.cloud, qPrintable(resultSFName), generatedScalarFields);
 	if (!sf)
 	{
-		error = QString("Failed to prepare scalar %1 @ scale %2").arg(resultSFName).arg(scale);
+		errorMessage = QString("Failed to prepare scalar %1 @ scale %2").arg(resultSFName).arg(scale);
 		return false;
 	}
 	source.name = sf->getName();
 
 	if (!scaled()) //with 'kNN' neighbors, we can compute the values right away
 	{
-		//get the octree
-		ccOctree::Shared octree2 = cloud2->getOctree();
-		if (!octree2)
-		{
-			ccLog::Print(QString("Computing octree of cloud %1 (%2 points)").arg(cloud2->getName()).arg(cloud2->size()));
-			octree2 = cloud2->computeOctree(progressCb);
-			if (!octree2)
-			{
-				error = "Failed to compute octree (not enough memory?)";
-				return false;
-			}
-		}
-
-		//now extract the neighborhoods
-		unsigned char octreeLevel = octree2->findBestLevelForAGivenPopulationPerCell(static_cast<unsigned>(std::max(3, kNN)));
-		ccLog::Print(QString("[Initial octree level] level = %1").arg(octreeLevel));
-
 		unsigned pointCount = corePoints.size();
 		QString logMessage = QString("Computing %1 on cloud %2 with context cloud %3\n(core points: %4)").arg(typeStr).arg(corePoints.cloud->getName()).arg(cloud2Label).arg(pointCount);
-		if (progressCb)
-		{
-			progressCb->setMethodTitle(qPrintable("Compute " + typeStr));
-			progressCb->setInfo(qPrintable(logMessage));
-		}
-		ccLog::Print(logMessage);
-		CCLib::NormalizedProgress nProgress(progressCb, pointCount);
 
+		//first: look for the number of points that 
 		const ScalarType fClass = static_cast<ScalarType>(ctxClassLabel);
+		unsigned classCount = 0;
+		for (unsigned i = 0; i < classifSF->size(); ++i)
+		{
+			if (classifSF->getValue(i) == fClass)
+				++classCount;
+		}
 
-		QMutex mutex;
-		bool error = false;
-		double meanNeighborhoodSize = 0;
-		int tenth = pointCount / 10;
+		if (classCount >= static_cast<unsigned>(kNN))
+		{
+			ccPointCloud classCloud;
+			if (!classCloud.reserve(classCount))
+			{
+				errorMessage = "Not enough memory";
+				return false;
+			}
+			
+			for (unsigned i = 0; i < classifSF->size(); ++i)
+			{
+				if (classifSF->getValue(i) == fClass)
+				{
+					classCloud.addPoint(*cloud2->getPoint(i));
+				}
+			}
+
+			//compute the octree
+			ccLog::Print(QString("Computing octree of class %1 points (%2 points)").arg(ctxClassLabel).arg(classCount));
+			ccOctree::Shared classOctree = classCloud.computeOctree(progressCb);
+			if (!classOctree)
+			{
+				errorMessage = "Failed to compute octree (not enough memory?)";
+				return false;
+			}
+
+			//now extract the neighborhoods
+			unsigned char octreeLevel = classOctree->findBestLevelForAGivenPopulationPerCell(static_cast<unsigned>(std::max(3, kNN)));
+			ccLog::Print(QString("[Initial octree level] level = %1").arg(octreeLevel));
+
+			if (progressCb)
+			{
+				progressCb->setMethodTitle(qPrintable("Compute " + typeStr));
+				progressCb->setInfo(qPrintable(logMessage));
+			}
+			ccLog::Print(logMessage);
+			CCLib::NormalizedProgress nProgress(progressCb, pointCount);
+
+			QMutex mutex;
+			double meanNeighborhoodSize = 0;
+			int tenth = pointCount / 10;
+			bool cancelled = false;
 #ifndef _DEBUG
 #if defined(_OPENMP)
 #pragma omp parallel for
 #endif
 #endif
-		for (int i = 0; i < static_cast<int>(pointCount); ++i)
-		{
-			const CCVector3* P = corePoints.cloud->getPoint(i);
-			CCLib::ReferenceCloud Yk(cloud2);
-			double maxSquareDist = 0;
-
-			ScalarType s = NAN_VALUE;
-			
-			int neighborhoodSize = 0;
-			if (octree2->findPointNeighbourhood(P, &Yk, static_cast<unsigned>(kNN), octreeLevel, maxSquareDist, 0, &neighborhoodSize) >= static_cast<unsigned>(kNN))
+			for (int i = 0; i < static_cast<int>(pointCount); ++i)
 			{
-				CCVector3d sumQ(0, 0, 0);
-				unsigned validCount = 0;
-				for (int k = 0; k < kNN; ++k)
-				{
-					//we only consider points with the right class!!!
-					if (Yk.getCurrentPointScalarValue() != fClass)
-						continue;
-					sumQ += CCVector3d::fromArray(Yk.getPoint(k)->u);
-					++validCount;
-				}
+				const CCVector3* P = corePoints.cloud->getPoint(i);
+				CCLib::ReferenceCloud Yk(&classCloud);
+				double maxSquareDist = 0;
 
-				if (validCount)
+				ScalarType s = NAN_VALUE;
+
+				int neighborhoodSize = 0;
+				if (classOctree->findPointNeighbourhood(P, &Yk, static_cast<unsigned>(kNN), octreeLevel, maxSquareDist, 0, &neighborhoodSize) >= static_cast<unsigned>(kNN))
 				{
+					CCVector3d sumQ(0, 0, 0);
+					for (int k = 0; k < kNN; ++k)
+					{
+						sumQ += CCVector3d::fromArray(Yk.getPoint(k)->u);
+					}
+
 					switch (type)
 					{
 					case DZ:
-						s = static_cast<ScalarType>(P->z - sumQ.z / validCount);
+						s = static_cast<ScalarType>(P->z - sumQ.z / kNN);
 						break;
 					case DH:
-						s = static_cast<ScalarType>(sqrt(pow(P->x - sumQ.x / validCount, 2.0) + pow(P->y - sumQ.y / validCount, 2.0)));
+						s = static_cast<ScalarType>(sqrt(pow(P->x - sumQ.x / kNN, 2.0) + pow(P->y - sumQ.y / kNN, 2.0)));
+						break;
+					}
+				}
+
+				if (i && (i % tenth) == 0)
+				{
+					double density = meanNeighborhoodSize / tenth;
+					if (density < 1.1)
+					{
+						if (octreeLevel + 1 < CCLib::DgmOctree::MAX_OCTREE_LEVEL)
+							++octreeLevel;
+					}
+					else while (density > 2.9)
+					{
+						if (octreeLevel <= 5)
+							break;
+						--octreeLevel;
+						density /= 2.0;
+					}
+					ccLog::Print(QString("[Adaptative octree level] Mean neighborhood size: %1 --> new level = %2").arg(meanNeighborhoodSize / tenth).arg(octreeLevel));
+					meanNeighborhoodSize = 0;
+				}
+				else
+				{
+					meanNeighborhoodSize += neighborhoodSize;
+				}
+
+				sf->setValue(i, s);
+
+				if (progressCb)
+				{
+					mutex.lock();
+					cancelled = !nProgress.oneStep();
+					mutex.unlock();
+					if (cancelled)
+					{
+						//process cancelled by the user
+						errorMessage = "Process cancelled";
 						break;
 					}
 				}
 			}
 
-			if (i && (i % tenth) == 0)
-			{
-				double density = meanNeighborhoodSize / tenth;
-				if (density < 1.1)
-				{
-					if (octreeLevel + 1 < CCLib::DgmOctree::MAX_OCTREE_LEVEL)
-						++octreeLevel;
-				}
-				else while (density > 2.9)
-				{
-					if (octreeLevel <= 5)
-						break;
-					--octreeLevel;
-					density /= 2.0;
-				}
-				ccLog::Print(QString("[Adaptative octree level] Mean neighborhood size: %1 --> new level = %2").arg(meanNeighborhoodSize / tenth).arg(octreeLevel));
-				meanNeighborhoodSize = 0;
-			}
-			else
-			{
-				meanNeighborhoodSize += neighborhoodSize;
-			}
-
-			sf->setValue(i, s);
-
 			if (progressCb)
 			{
-				mutex.lock();
-				bool cancelled = !nProgress.oneStep();
-				mutex.unlock();
-				if (cancelled)
-				{
-					//process cancelled by the user
-					ccLog::Warning("Process cancelled");
-					error = true;
-					break;
-				}
+				progressCb->stop();
 			}
+
+			if (cancelled)
+			{
+				sf->computeMinAndMax();
+				return false;
+			}
+
+		}
+		else // classCount < kNN
+		{
+			//specific case: not enough points of this class in the whole cloud!
+			//sf->fill(NAN_VALUE); //already the case
+			ccLog::Warning(QString("Cloud %1 has less than %2 points of class %3").arg(cloud2Label).arg(classCount).arg(ctxClassLabel));
 		}
 
 		sf->computeMinAndMax();
-
-		if (progressCb)
-		{
-			progressCb->stop();
-		}
-
-		if (error)
-		{
-			return false;
-		}
 	}
 
 	return true;

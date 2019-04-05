@@ -496,6 +496,15 @@ bool PointFeature::prepare(	const CorePoints& corePoints,
 			return false;
 		}
 		resultSFName += QString("_") + Feature::StatToString(stat);
+
+		//prepare the corresponding scalar field
+		statSF1 = PrepareSF(corePoints.cloud, qPrintable(resultSFName), generatedScalarFields);
+		if (!statSF1)
+		{
+			error = QString("Failed to prepare scalar field for field '%1' @ scale %2").arg(field1->getName()).arg(scale);
+			return false;
+		}
+		source.name = statSF1->getName();
 	}
 	else //not scaled
 	{
@@ -522,16 +531,6 @@ bool PointFeature::prepare(	const CorePoints& corePoints,
 	{
 		resultSFName += "@" + QString::number(scale);
 	}
-
-	//prepare the corresponding scalar field
-	assert(!statSF1);
-	statSF1 = PrepareSF(corePoints.cloud, qPrintable(resultSFName), generatedScalarFields);
-	if (!statSF1)
-	{
-		error = QString("Failed to prepare scalar field for field '%1' @ scale %2").arg(field1->getName()).arg(scale);
-		return false;
-	}
-	source.name = statSF1->getName();
 
 	if (isScaled)
 	{
