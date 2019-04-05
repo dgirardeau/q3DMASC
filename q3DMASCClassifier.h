@@ -85,9 +85,6 @@ namespace masc
 
 		inline cv::Mat getVarImportance() const { return m_rtrees->getVarImportance(); }
 
-		//! Helper: returns the classification SF associated to a cloud (if any)
-		static CCLib::ScalarField* GetClassificationSF(const ccPointCloud* cloud);
-
 	protected:
 
 		//! Random trees (OpenCV)

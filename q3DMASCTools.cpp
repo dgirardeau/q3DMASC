@@ -29,6 +29,9 @@
 #include <ccScalarField.h>
 #include <ccPointCloud.h>
 
+//qPDALIO
+#include "../../core/IO/qPDALIO/src/LASFields.h"
+
 //Qt
 #include <QTextStream>
 #include <QFile>
@@ -1372,4 +1375,21 @@ bool Tools::RandomSubset(ccPointCloud* cloud, float ratio, CCLib::ReferenceCloud
 	}
 
 	return true;
+}
+
+CCLib::ScalarField* Tools::GetClassificationSF(const ccPointCloud* cloud)
+{
+	if (!cloud)
+	{
+		//invalid input cloud
+		assert(false);
+		return nullptr;
+	}
+	//look for the classification field
+	int classifSFIdx = cloud->getScalarFieldIndexByName(LAS_FIELD_NAMES[LAS_CLASSIFICATION]); //LAS_FIELD_NAMES[LAS_CLASSIFICATION] = "Classification"
+	if (classifSFIdx < 0)
+	{
+		return nullptr;
+	}
+	return cloud->getScalarField(classifSFIdx);
 }

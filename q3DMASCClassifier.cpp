@@ -19,6 +19,7 @@
 
 //Local
 #include "ScalarFieldWrappers.h"
+#include "q3DMASCTools.h"
 
 //qCC_db
 #include <ccPointCloud.h>
@@ -120,7 +121,7 @@ bool Classifier::classify(	const Feature::Source::Set& featureSources,
 	}
 
 	//look for the classification field
-	CCLib::ScalarField* classificationSF = GetClassificationSF(cloud);
+	CCLib::ScalarField* classificationSF = Tools::GetClassificationSF(cloud);
 
 	if (classificationSF)
 	{
@@ -294,7 +295,7 @@ bool Classifier::evaluate(const Feature::Source::Set& featureSources,
 	}
 
 	//look for the classification field
-	CCLib::ScalarField* classifSF = GetClassificationSF(testCloud);
+	CCLib::ScalarField* classifSF = Tools::GetClassificationSF(testCloud);
 	if (!classifSF || classifSF->size() < testCloud->size())
 	{
 		assert(false);
@@ -442,7 +443,7 @@ bool Classifier::train(	const ccPointCloud* cloud,
 	}
 
 	//look for the classification field
-	CCLib::ScalarField* classifSF = GetClassificationSF(cloud);
+	CCLib::ScalarField* classifSF = Tools::GetClassificationSF(cloud);
 	if (!classifSF || classifSF->size() < cloud->size())
 	{
 		assert(false);
@@ -674,21 +675,3 @@ bool Classifier::fromFile(QString filename, QWidget* parentWidget/*=nullptr*/)
 
 	return true;
 }
-
-CCLib::ScalarField* Classifier::GetClassificationSF(const ccPointCloud* cloud)
-{
-	if (!cloud)
-	{
-		//invalid input cloud
-		assert(false);
-		return nullptr;
-	}
-	//look for the classification field
-	int classifSFIdx = cloud->getScalarFieldIndexByName(LAS_FIELD_NAMES[LAS_CLASSIFICATION]); //LAS_FIELD_NAMES[LAS_CLASSIFICATION] = "Classification"
-	if (classifSFIdx < 0)
-	{
-		return nullptr;
-	}
-	return cloud->getScalarField(classifSFIdx);
-}
-

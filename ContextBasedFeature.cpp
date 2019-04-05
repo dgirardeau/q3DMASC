@@ -17,6 +17,9 @@
 
 #include "ContextBasedFeature.h"
 
+//Local
+#include "q3DMASCTools.h"
+
 //Qt
 #include <QMutex>
 
@@ -36,10 +39,21 @@ bool ContextBasedFeature::checkValidity(QString corePointRole, QString &error) c
 		return false;
 	}
 
-	unsigned char cloudCount = (cloud1 ? (cloud2 ? 2 : 1) : 0);
-	if (cloudCount < 2)
+	if (!cloud1 || !cloud2)
 	{
-		error = "at least two clouds are required to compute context-based features";
+		error = "two clouds are required to compute context-based features";
+		return false;
+	}
+
+	CCLib::ScalarField* classifSF = Tools::GetClassificationSF(cloud2);
+	if (!classifSF)
+	{
+		error = QString("Context cloud (%1) has no classification field").arg(cloud2Label);
+		return false;
+	}
+	if (classifSF->size() < cloud2->size())
+	{
+		error = QString("Context cloud (%1) has an invalid classification field").arg(cloud2Label);
 		return false;
 	}
 
@@ -79,6 +93,15 @@ bool ContextBasedFeature::prepare(	const CorePoints& corePoints,
 		return false;
 	}
 
+	CCLib::ScalarField* classifSF = Tools::GetClassificationSF(cloud2);
+	if (!classifSF || classifSF->size() < cloud2->size())
+	{
+		assert(false);
+		//already checked by 'checkValidity'
+		return false;
+	}
+	cloud2->setCurrentOutScalarField(cloud2->getScalarFieldIndexByName(classifSF->getName()));
+
 	//build the final SF name
 	QString typeStr = ToString(type);
 	QString resultSFName = typeStr + "_" + cloud1Label + "_" + cloud2Label + "_" + QString::number(ctxClassLabel);
@@ -104,12 +127,12 @@ bool ContextBasedFeature::prepare(	const CorePoints& corePoints,
 	if (!scaled()) //with 'kNN' neighbors, we can compute the values right away
 	{
 		//get the octree
-		ccOctree::Shared octree = cloud2->getOctree();
-		if (!octree)
+		ccOctree::Shared octree2 = cloud2->getOctree();
+		if (!octree2)
 		{
 			ccLog::Print(QString("Computing octree of cloud %1 (%2 points)").arg(cloud2->getName()).arg(cloud2->size()));
-			octree = cloud2->computeOctree(progressCb);
-			if (!octree)
+			octree2 = cloud2->computeOctree(progressCb);
+			if (!octree2)
 			{
 				error = "Failed to compute octree (not enough memory?)";
 				return false;
@@ -117,7 +140,7 @@ bool ContextBasedFeature::prepare(	const CorePoints& corePoints,
 		}
 
 		//now extract the neighborhoods
-		unsigned char octreeLevel = octree->findBestLevelForAGivenPopulationPerCell(static_cast<unsigned>(std::max(3, kNN)));
+		unsigned char octreeLevel = octree2->findBestLevelForAGivenPopulationPerCell(static_cast<unsigned>(std::max(3, kNN)));
 		ccLog::Print(QString("[Initial octree level] level = %1").arg(octreeLevel));
 
 		unsigned pointCount = corePoints.size();
@@ -129,6 +152,8 @@ bool ContextBasedFeature::prepare(	const CorePoints& corePoints,
 		}
 		ccLog::Print(logMessage);
 		CCLib::NormalizedProgress nProgress(progressCb, pointCount);
+
+		const ScalarType fClass = static_cast<ScalarType>(ctxClassLabel);
 
 		QMutex mutex;
 		bool error = false;
@@ -148,46 +173,54 @@ bool ContextBasedFeature::prepare(	const CorePoints& corePoints,
 			ScalarType s = NAN_VALUE;
 			
 			int neighborhoodSize = 0;
-			if (octree->findPointNeighbourhood(P, &Yk, static_cast<unsigned>(kNN), octreeLevel, maxSquareDist, 0, &neighborhoodSize) >= static_cast<unsigned>(kNN))
+			if (octree2->findPointNeighbourhood(P, &Yk, static_cast<unsigned>(kNN), octreeLevel, maxSquareDist, 0, &neighborhoodSize) >= static_cast<unsigned>(kNN))
 			{
 				CCVector3d sumQ(0, 0, 0);
+				unsigned validCount = 0;
 				for (int k = 0; k < kNN; ++k)
 				{
+					//we only consider points with the right class!!!
+					if (Yk.getCurrentPointScalarValue() != fClass)
+						continue;
 					sumQ += CCVector3d::fromArray(Yk.getPoint(k)->u);
+					++validCount;
 				}
 
-				switch (type)
+				if (validCount)
 				{
-				case DZ:
-					s = static_cast<ScalarType>(P->z - sumQ.z / kNN);
-					break;
-				case DH:
-					s = static_cast<ScalarType>(sqrt(pow(P->x - sumQ.x / kNN, 2.0) + pow(P->y - sumQ.y / kNN, 2.0)));
-					break;
+					switch (type)
+					{
+					case DZ:
+						s = static_cast<ScalarType>(P->z - sumQ.z / validCount);
+						break;
+					case DH:
+						s = static_cast<ScalarType>(sqrt(pow(P->x - sumQ.x / validCount, 2.0) + pow(P->y - sumQ.y / validCount, 2.0)));
+						break;
+					}
 				}
+			}
 
-				if (i && (i % tenth) == 0)
+			if (i && (i % tenth) == 0)
+			{
+				double density = meanNeighborhoodSize / tenth;
+				if (density < 1.1)
 				{
-					double density = meanNeighborhoodSize / tenth;
-					if (density < 1.1)
-					{
-						if (octreeLevel + 1 < CCLib::DgmOctree::MAX_OCTREE_LEVEL)
-							++octreeLevel;
-					}
-					else while (density > 2.9)
-					{
-						if (octreeLevel <= 5)
-							break;
-						--octreeLevel;
-						density /= 2.0;
-					}
-					ccLog::Print(QString("[Adaptative octree level] Mean neighborhood size: %1 --> new level = %2").arg(meanNeighborhoodSize / tenth).arg(octreeLevel));
-					meanNeighborhoodSize = 0;
+					if (octreeLevel + 1 < CCLib::DgmOctree::MAX_OCTREE_LEVEL)
+						++octreeLevel;
 				}
-				else
+				else while (density > 2.9)
 				{
-					meanNeighborhoodSize += neighborhoodSize;
+					if (octreeLevel <= 5)
+						break;
+					--octreeLevel;
+					density /= 2.0;
 				}
+				ccLog::Print(QString("[Adaptative octree level] Mean neighborhood size: %1 --> new level = %2").arg(meanNeighborhoodSize / tenth).arg(octreeLevel));
+				meanNeighborhoodSize = 0;
+			}
+			else
+			{
+				meanNeighborhoodSize += neighborhoodSize;
 			}
 
 			sf->setValue(i, s);
@@ -225,19 +258,32 @@ bool ContextBasedFeature::prepare(	const CorePoints& corePoints,
 
 bool ContextBasedFeature::computeValue(CCLib::DgmOctree::NeighboursSet& pointsInNeighbourhood, const CCVector3& queryPoint, ScalarType& outputValue) const
 {
+	const ScalarType fClass = static_cast<ScalarType>(ctxClassLabel);
+
 	CCVector3d sumQ(0, 0, 0);
+	unsigned validCount = 0;
 	for (CCLib::DgmOctree::PointDescriptor& Pd : pointsInNeighbourhood)
 	{
+		//we only consider points with the right class!!!
+		if (cloud2->getPointScalarValue(Pd.pointIndex) != fClass)
+			continue;
 		sumQ += CCVector3d::fromArray(Pd.point->u);
+		++validCount;
+	}
+
+	if (validCount == 0)
+	{
+		outputValue = NAN_VALUE;
+		return true;
 	}
 
 	switch (type)
 	{
 	case DZ:
-		outputValue = static_cast<ScalarType>(queryPoint.z - sumQ.z / kNN);
+		outputValue = static_cast<ScalarType>(queryPoint.z - sumQ.z / validCount);
 		break;
 	case DH:
-		outputValue = static_cast<ScalarType>(sqrt(pow(queryPoint.x - sumQ.x / kNN, 2.0) + pow(queryPoint.y - sumQ.y / kNN, 2.0)));
+		outputValue = static_cast<ScalarType>(sqrt(pow(queryPoint.x - sumQ.x / validCount, 2.0) + pow(queryPoint.y - sumQ.y / validCount, 2.0)));
 		break;
 	default:
 		assert(false);
