@@ -209,7 +209,7 @@ void Classify3DMASCDialog::getClouds(QMap<QString, ccPointCloud*>& clouds, QStri
 	}
 	if (cloud4RadioButton->isEnabled())
 	{
-		clouds.insert(cloud4RadioButton->text(), GetCloudFromCombo(cloud3ComboBox, m_app->dbRootObject()));
+		clouds.insert(cloud4RadioButton->text(), GetCloudFromCombo(cloud4ComboBox, m_app->dbRootObject()));
 		if (cloud4RadioButton->isChecked())
 		{
 			mainCloud = cloud4RadioButton->text();
