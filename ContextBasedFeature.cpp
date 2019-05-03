@@ -119,7 +119,7 @@ bool ContextBasedFeature::prepare(	const CorePoints& corePoints,
 
 	//and the scalar field
 	assert(!sf);
-	sf = PrepareSF(corePoints.cloud, qPrintable(resultSFName), generatedScalarFields);
+	sf = PrepareSF(corePoints.cloud, qPrintable(resultSFName), generatedScalarFields, SFCollector::CAN_REMOVE);
 	if (!sf)
 	{
 		errorMessage = QString("Failed to prepare scalar %1 @ scale %2").arg(resultSFName).arg(scale);

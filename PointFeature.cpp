@@ -479,13 +479,12 @@ bool PointFeature::prepare(	const CorePoints& corePoints,
 	bool isScaled = scaled();
 
 	//build the final SF name
-	QString resultSFName;
-	if (cloud2)
+	QString resultSFName = field1->getName();
+	if (cloud2 || corePoints.role != cloud1Label)
 	{
-		resultSFName = cloud1Label + ".";
+		resultSFName += "_" + cloud1Label;
 	}
-	resultSFName += field1->getName();
-	
+
 	if (isScaled)
 	{
 		//shall we extract a statistical measure? (mandatory for scaled feature)
@@ -496,15 +495,6 @@ bool PointFeature::prepare(	const CorePoints& corePoints,
 			return false;
 		}
 		resultSFName += QString("_") + Feature::StatToString(stat);
-
-		//prepare the corresponding scalar field
-		statSF1 = PrepareSF(corePoints.cloud, qPrintable(resultSFName), generatedScalarFields);
-		if (!statSF1)
-		{
-			error = QString("Failed to prepare scalar field for field '%1' @ scale %2").arg(field1->getName()).arg(scale);
-			return false;
-		}
-		source.name = statSF1->getName();
 	}
 	else //not scaled
 	{
@@ -519,7 +509,7 @@ bool PointFeature::prepare(	const CorePoints& corePoints,
 	if (field2 && op != Feature::NO_OPERATION)
 	{
 		//include the math operation as well if necessary!
-		resultSFName += "_" + Feature::OpToString(op) + "_" + cloud2Label + "." + field2->getName();
+		resultSFName += "_" + Feature::OpToString(op) + "_" + field2->getName() + "_" + cloud2Label;
 		if (isScaled)
 		{
 			assert(stat != Feature::NO_STAT);
@@ -530,17 +520,23 @@ bool PointFeature::prepare(	const CorePoints& corePoints,
 	if (isScaled)
 	{
 		resultSFName += "@" + QString::number(scale);
-	}
 
-	if (isScaled)
-	{
+		//prepare the corresponding scalar field
+		statSF1 = PrepareSF(corePoints.cloud, qPrintable(resultSFName), generatedScalarFields, SFCollector::CAN_REMOVE);
+		if (!statSF1)
+		{
+			error = QString("Failed to prepare scalar field for field '%1' @ scale %2").arg(field1->getName()).arg(scale);
+			return false;
+		}
+		source.name = statSF1->getName();
+
 		if (field2 && op != Feature::NO_OPERATION)
 		{
-			QString resultSFName2 = cloud2Label + "." + field2->getName() + QString("_") + Feature::StatToString(stat) + "@" + QString::number(scale);
+			QString resultSFName2 = field2->getName() + QString("_") + Feature::StatToString(stat) + "_" + cloud2Label + "@" + QString::number(scale);
 			//keepStatSF2 = (corePoints.cloud->getScalarFieldIndexByName(qPrintable(resultSFName2)) >= 0); //we remember that the scalar field was already existing!
 
 			assert(!statSF2);
-			statSF2 = PrepareSF(corePoints.cloud, qPrintable(resultSFName2), generatedScalarFields);
+			statSF2 = PrepareSF(corePoints.cloud, qPrintable(resultSFName2), generatedScalarFields, SFCollector::ALWAYS_REMOVE);
 			if (!statSF2)
 			{
 				error = QString("Failed to prepare scalar field for field '%1' @ scale %2").arg(field2->getName()).arg(scale);
@@ -605,7 +601,7 @@ bool PointFeature::prepare(	const CorePoints& corePoints,
 			if (generatedScalarFields)
 			{
 				//track the generated scalar-field
-				generatedScalarFields->push(corePoints.cloud, resultSF);
+				generatedScalarFields->push(corePoints.cloud, resultSF, SFCollector::CAN_REMOVE);
 			}
 
 			corePoints.cloud->setCurrentDisplayedScalarField(newSFIdx);

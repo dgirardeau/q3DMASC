@@ -186,7 +186,7 @@ void q3DMASCPlugin::doClassifyAction()
 	if (!masc::Tools::PrepareFeatures(corePoints, features, error, &progressDlg, &generatedScalarFields))
 	{
 		m_app->dispToConsole(error, ccMainAppInterface::ERR_CONSOLE_MESSAGE);
-		generatedScalarFields.releaseAllSFs();
+		generatedScalarFields.releaseSFs(false);
 		return;
 	}
 	progressDlg.close();
@@ -201,14 +201,11 @@ void q3DMASCPlugin::doClassifyAction()
 		if (!classifier.classify(featureSources, corePoints.cloud, errorMessage, m_app->getMainWindow()))
 		{
 			m_app->dispToConsole(errorMessage, ccMainAppInterface::ERR_CONSOLE_MESSAGE);
-			generatedScalarFields.releaseAllSFs();
+			generatedScalarFields.releaseSFs(false);
 			return;
 		}
 
-		if (!s_keepAttributes)
-		{
-			generatedScalarFields.releaseAllSFs();
-		}
+		generatedScalarFields.releaseSFs(s_keepAttributes);
 	}
 }
 
@@ -484,8 +481,8 @@ void q3DMASCPlugin::doTrainAction()
 				if (!masc::Tools::PrepareFeatures(corePoints, toPrepare, error, &progressDlg, &generatedScalarFields))
 				{
 					m_app->dispToConsole(error, ccMainAppInterface::ERR_CONSOLE_MESSAGE);
-					generatedScalarFields.releaseAllSFs();
-					generatedScalarFieldsTest.releaseAllSFs();
+					generatedScalarFields.releaseSFs(false);
+					generatedScalarFieldsTest.releaseSFs(false);
 					return;
 				}
 				progressDlg.setAutoClose(true); //restore the default behavior of the progress dialog
@@ -533,8 +530,8 @@ void q3DMASCPlugin::doTrainAction()
 					if (!masc::Tools::RandomSubset(corePoints.cloud, testDataRatio, testSubset.data(), trainSubset.data()))
 					{
 						m_app->dispToConsole("Not enough memory to generate the test subsets", ccMainAppInterface::ERR_CONSOLE_MESSAGE);
-						generatedScalarFields.releaseAllSFs();
-						generatedScalarFieldsTest.releaseAllSFs();
+						generatedScalarFields.releaseSFs(false);
+						generatedScalarFieldsTest.releaseSFs(false);
 						return;
 					}
 					previousTestSubsetRatio = testDataRatio;
@@ -558,8 +555,8 @@ void q3DMASCPlugin::doTrainAction()
 									))
 				{
 					m_app->dispToConsole(errorMessage, ccMainAppInterface::ERR_CONSOLE_MESSAGE);
-					generatedScalarFields.releaseAllSFs();
-					generatedScalarFieldsTest.releaseAllSFs();
+					generatedScalarFields.releaseSFs(false);
+					generatedScalarFieldsTest.releaseSFs(false);
 					return;
 				}
 				trainDlg.setFirstRunDone();
@@ -602,8 +599,8 @@ void q3DMASCPlugin::doTrainAction()
 							if (!masc::Tools::PrepareFeatures(corePointsTest, toPrepareTest, error, &progressDlg, &generatedScalarFieldsTest))
 							{
 								m_app->dispToConsole(error, ccMainAppInterface::ERR_CONSOLE_MESSAGE);
-								generatedScalarFields.releaseAllSFs();
-								generatedScalarFieldsTest.releaseAllSFs();
+								generatedScalarFields.releaseSFs(false);
+								generatedScalarFieldsTest.releaseSFs(false);
 								return;
 							}
 							progressDlg.setAutoClose(true); //restore the default behavior of the progress dialog
@@ -632,8 +629,8 @@ void q3DMASCPlugin::doTrainAction()
 											m_app->getMainWindow()))
 				{
 					m_app->dispToConsole(errorMessage, ccMainAppInterface::ERR_CONSOLE_MESSAGE);
-					generatedScalarFields.releaseAllSFs();
-					generatedScalarFieldsTest.releaseAllSFs();
+					generatedScalarFields.releaseSFs(false);
+					generatedScalarFieldsTest.releaseSFs(false);
 					return;
 				}
 
@@ -671,11 +668,8 @@ void q3DMASCPlugin::doTrainAction()
 			if (!trainDlg.exec())
 			{
 				//the dialog can be closed
-				if (!s_keepAttributes)
-				{
-					generatedScalarFields.releaseAllSFs();
-					generatedScalarFieldsTest.releaseAllSFs();
-				}
+				generatedScalarFields.releaseSFs(s_keepAttributes);
+				generatedScalarFieldsTest.releaseSFs(s_keepAttributes);
 				return;
 			}
 

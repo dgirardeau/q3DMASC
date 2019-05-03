@@ -226,7 +226,7 @@ struct Command3DMASCClassif : public ccCommandLineInterface::Command
 			QString errorMessage;
 			if (!masc::Tools::PrepareFeatures(corePoints, features, errorMessage, pDlg.data(), &generatedScalarFields))
 			{
-				generatedScalarFields.releaseAllSFs();
+				generatedScalarFields.releaseSFs(false);
 				return cmd.error(errorMessage);
 			}
 
@@ -279,14 +279,11 @@ struct Command3DMASCClassif : public ccCommandLineInterface::Command
 			QString errorMessage;
 			if (!classifier.classify(featureSources, classifiedCloud, errorMessage, cmd.widgetParent()))
 			{
-				generatedScalarFields.releaseAllSFs();
+				generatedScalarFields.releaseSFs(false);
 				return cmd.error(errorMessage);
 			}
 
-			if (!keepAttributes)
-			{
-				generatedScalarFields.releaseAllSFs();
-			}
+			generatedScalarFields.releaseSFs(keepAttributes);
 		}
 
 		if (cmd.autoSaveMode() || onlyFeatures)

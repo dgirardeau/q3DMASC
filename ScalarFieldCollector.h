@@ -33,11 +33,23 @@ namespace CCLib
 //! SF collector
 /** For tracking the creation and removing a set of scalar fields
 **/
-class SFCollector : QMap< ccPointCloud*, std::set<CCLib::ScalarField*> >
+class SFCollector
 {
 	public:
 
-		void push(ccPointCloud* cloud, CCLib::ScalarField* sf);
+		enum Behavior { ALWAYS_KEEP, CAN_REMOVE, ALWAYS_REMOVE };
 
-		void releaseAllSFs();
+		void push(ccPointCloud* cloud, CCLib::ScalarField* sf, Behavior behavior);
+
+		void releaseSFs(bool keepByDefault);
+
+		struct SFDesc
+		{
+			ccPointCloud* cloud = nullptr;
+			CCLib::ScalarField* sf = nullptr;
+			Behavior behavior = CAN_REMOVE;
+		};
+
+		using Map = QMap< CCLib::ScalarField*, SFDesc >;
+		Map scalarFields;
 };

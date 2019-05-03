@@ -26,33 +26,37 @@
 //system
 #include <assert.h>
 
-void SFCollector::push(ccPointCloud* cloud, CCLib::ScalarField* sf)
+void SFCollector::push(ccPointCloud* cloud, CCLib::ScalarField* sf, Behavior behavior)
 {
-	(*this)[cloud].insert(sf);
+	assert(!scalarFields.contains(sf));
+	SFDesc desc;
+	desc.behavior = behavior;
+	desc.cloud = cloud;
+	scalarFields[sf] = desc;
 }
 
-void SFCollector::releaseAllSFs()
+void SFCollector::releaseSFs(bool keepByDefault)
 {
-	for (QMap< ccPointCloud*, std::set<CCLib::ScalarField*> >::iterator it = begin(); it != end(); ++it)
+	for (Map::iterator it = scalarFields.begin(); it != scalarFields.end(); ++it)
 	{
-		ccPointCloud* cloud = it.key();
-		std::set<CCLib::ScalarField*>& sfs = it.value();
-
-		for (CCLib::ScalarField* sf : sfs)
+		const SFDesc& desc = it.value();
+		if (desc.behavior == ALWAYS_KEEP || (keepByDefault && desc.behavior == CAN_REMOVE))
 		{
-			int sfIdx = cloud->getScalarFieldIndexByName(sf->getName());
-			if (sfIdx >= 0)
-			{
-				cloud->deleteScalarField(sfIdx);
-			}
-			else
-			{
-				ccLog::Warning(QString("[SFCollector] Scalar field '%1' can't be found anymore").arg(sf->getName()));
-			}
+			//keep this SF
+			continue;
 		}
-
-		sfs.clear();
+		
+		CCLib::ScalarField* sf = it.key();
+		int sfIdx = desc.cloud->getScalarFieldIndexByName(sf->getName());
+		if (sfIdx >= 0)
+		{
+			desc.cloud->deleteScalarField(sfIdx);
+		}
+		else
+		{
+			ccLog::Warning(QString("[SFCollector] Scalar field '%1' can't be found anymore").arg(sf->getName()));
+		}
 	}
 
-	clear();
+	scalarFields.clear();
 }

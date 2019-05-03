@@ -88,7 +88,7 @@ bool NeighborhoodFeature::prepare(	const CorePoints& corePoints,
 
 	//and the scalar field
 	assert(!sf1);
-	sf1 = PrepareSF(corePoints.cloud, qPrintable(resultSFName), generatedScalarFields);
+	sf1 = PrepareSF(corePoints.cloud, qPrintable(resultSFName), generatedScalarFields, SFCollector::CAN_REMOVE);
 	if (!sf1)
 	{
 		error = QString("Failed to prepare scalar %1 @ scale %2").arg(resultSFName).arg(scale);
@@ -102,7 +102,7 @@ bool NeighborhoodFeature::prepare(	const CorePoints& corePoints,
 		keepSF2 = (corePoints.cloud->getScalarFieldIndexByName(qPrintable(resultSFName2)) >= 0); //we remember that the scalar field was already existing!
 
 		assert(!sf2);
-		sf2 = PrepareSF(corePoints.cloud, qPrintable(resultSFName2), generatedScalarFields);
+		sf2 = PrepareSF(corePoints.cloud, qPrintable(resultSFName2), generatedScalarFields, SFCollector::ALWAYS_REMOVE);
 		if (!sf2)
 		{
 			error = QString("Failed to prepare scalar field for %1 @ scale %2").arg(cloud2Label).arg(scale);

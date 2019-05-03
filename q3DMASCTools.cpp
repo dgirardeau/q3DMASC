@@ -1199,7 +1199,7 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 							}
 						}
 
-						//Neighborhhod features
+						//Neighborhood features
 						for (NeighborhoodFeature::Shared& feature : fas.neighborhoodFeaturesPerScale[fas.scales[scaleIndex]])
 						{
 							if (feature->cloud1 == sourceCloud && feature->sf1)

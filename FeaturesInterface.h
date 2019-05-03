@@ -210,7 +210,7 @@ namespace masc
 	public: //helpers
 
 		//! Creates (or resets) a scalar field with the given name on the input core points cloud
-		static CCLib::ScalarField* PrepareSF(ccPointCloud* cloud, const char* resultSFName, SFCollector* generatedScalarFields = nullptr);
+		static CCLib::ScalarField* PrepareSF(ccPointCloud* cloud, const char* resultSFName, SFCollector* generatedScalarFields/*= nullptr*/, SFCollector::Behavior behavior);
 
 		//! Performs a mathematical operation between two scalars
 		static ScalarType PerformMathOp(double s1, double s2, Operation op);
