@@ -151,6 +151,7 @@ bool Classifier::classify(	const Feature::Source::Set& featureSources,
 			errorMessage = QObject::tr("Not enough memory");
 			return false;
 		}
+		cloud->addScalarField(_classificationSF);
 		classificationSF = _classificationSF;
 	}
 	assert(classificationSF);
