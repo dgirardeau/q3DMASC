@@ -1145,9 +1145,11 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 					//for each scale (from the largest to the smallest)
 					for (size_t scaleIndex = 0; scaleIndex < fas.scales.size(); ++scaleIndex)
 					{
+						double currentScale = fas.scales[fas.scales.size() - 1 - scaleIndex]; //from the biggest to the smallest!
+
 						if (scaleIndex != 0)
 						{
-							double radius = fas.scales[fas.scales.size() - 1 - scaleIndex] / 2; //scale is the diameter!
+							double radius = currentScale / 2; //scale is the diameter!
 							double sqRadius = radius * radius;
 							//remove the farthest points
 							for (; kNN > 0; --kNN)
@@ -1167,7 +1169,7 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 						}
 
 						//Point features
-						for (PointFeature::Shared& feature : fas.pointFeaturesPerScale[fas.scales[scaleIndex]])
+						for (PointFeature::Shared& feature : fas.pointFeaturesPerScale[currentScale])
 						{
 							if (feature->cloud1 == sourceCloud && feature->statSF1 && feature->field1)
 							{
@@ -1200,7 +1202,7 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 						}
 
 						//Neighborhood features
-						for (NeighborhoodFeature::Shared& feature : fas.neighborhoodFeaturesPerScale[fas.scales[scaleIndex]])
+						for (NeighborhoodFeature::Shared& feature : fas.neighborhoodFeaturesPerScale[currentScale])
 						{
 							if (feature->cloud1 == sourceCloud && feature->sf1)
 							{
@@ -1235,7 +1237,7 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 						}
 
 						//Context-based features
-						for (ContextBasedFeature::Shared& feature : fas.contextBasedFeaturesPerScale[fas.scales[scaleIndex]])
+						for (ContextBasedFeature::Shared& feature : fas.contextBasedFeaturesPerScale[currentScale])
 						{
 							if (feature->cloud2 == sourceCloud && feature->sf)
 							{
