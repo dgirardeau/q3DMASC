@@ -132,7 +132,7 @@ public:
 		, m_band(band)
 	{}
 
-	virtual inline double pointValue(unsigned index) const override { return m_cloud->getPointColor(index).rgb[m_band]; }
+	virtual inline double pointValue(unsigned index) const override { return m_cloud->getPointColor(index).rgba[m_band]; }
 	virtual inline bool isValid() const { return m_cloud != nullptr && m_cloud->hasColors(); }
 	virtual inline QString getName() const { static const char s_names[][6] = { "Red", "Green", "Blue" }; return s_names[m_band]; }
 	virtual inline size_t size() const override { return m_cloud->size(); }
