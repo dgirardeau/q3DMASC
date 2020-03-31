@@ -7,6 +7,8 @@ if (INSTALL_Q3DMASC_PLUGIN)
 #New classification plugin (Dimitri Lague/OSUR)
 project( Q3DMASC_PLUGIN )
 
+	include( CMakePolicies NO_POLICY_SCOPE )
+
 	#need OpenCV
 	find_package( OpenCV REQUIRED )
 
