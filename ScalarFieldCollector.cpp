@@ -26,7 +26,7 @@
 //system
 #include <assert.h>
 
-void SFCollector::push(ccPointCloud* cloud, CCLib::ScalarField* sf, Behavior behavior)
+void SFCollector::push(ccPointCloud* cloud, CCCoreLib::ScalarField* sf, Behavior behavior)
 {
 	assert(!scalarFields.contains(sf));
 	SFDesc desc;
@@ -46,7 +46,7 @@ void SFCollector::releaseSFs(bool keepByDefault)
 			continue;
 		}
 		
-		CCLib::ScalarField* sf = it.key();
+		CCCoreLib::ScalarField* sf = it.key();
 		int sfIdx = desc.cloud->getScalarFieldIndexByName(sf->getName());
 		if (sfIdx >= 0)
 		{

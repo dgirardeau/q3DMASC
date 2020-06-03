@@ -55,14 +55,14 @@ namespace masc
 
 		static bool SaveClassifier(QString filename, const Feature::Set& features, const QString corePointsRole, const masc::Classifier& classifier, QWidget* parent = nullptr);
 
-		static bool PrepareFeatures(const CorePoints& corePoints, Feature::Set& features, QString& error, CCLib::GenericProgressCallback* progressCb = nullptr, SFCollector* generatedScalarFields = nullptr);
+		static bool PrepareFeatures(const CorePoints& corePoints, Feature::Set& features, QString& error, CCCoreLib::GenericProgressCallback* progressCb = nullptr, SFCollector* generatedScalarFields = nullptr);
 
-		static bool RandomSubset(ccPointCloud* cloud, float ratio, CCLib::ReferenceCloud* inRatioSubset, CCLib::ReferenceCloud* outRatioSubset);
+		static bool RandomSubset(ccPointCloud* cloud, float ratio, CCCoreLib::ReferenceCloud* inRatioSubset, CCCoreLib::ReferenceCloud* outRatioSubset);
 
-		static CCLib::ScalarField* RetrieveSF(const ccPointCloud* cloud, const QString& sfName, bool caseSensitive = true);
+		static CCCoreLib::ScalarField* RetrieveSF(const ccPointCloud* cloud, const QString& sfName, bool caseSensitive = true);
 
 		//! Helper: returns the classification SF associated to a cloud (if any)
-		static CCLib::ScalarField* GetClassificationSF(const ccPointCloud* cloud);
+		static CCCoreLib::ScalarField* GetClassificationSF(const ccPointCloud* cloud);
 	};
 
 }; //namespace masc

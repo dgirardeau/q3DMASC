@@ -21,7 +21,7 @@
 #include "q3DMASCTools.h"
 
 //qPDALIO
-#include "../../core/IO/qPDALIO/src/LASFields.h"
+#include "../../core/IO/qPDALIO/include/LASFields.h"
 
 //qCC_db
 #include <ccPointCloud.h>
@@ -199,7 +199,7 @@ IScalarFieldWrapper::Shared PointFeature::retrieveField(ccPointCloud* cloud, QSt
 	{
 	case PointFeature::Intensity:
 	{
-		CCLib::ScalarField* sf = Tools::RetrieveSF(cloud, LAS_FIELD_NAMES[LAS_INTENSITY], false);
+		CCCoreLib::ScalarField* sf = Tools::RetrieveSF(cloud, LAS_FIELD_NAMES[LAS_INTENSITY], false);
 		if (!sf)
 		{
 			error = "Cloud has no 'intensity' scalar field";
@@ -215,7 +215,7 @@ IScalarFieldWrapper::Shared PointFeature::retrieveField(ccPointCloud* cloud, QSt
 		return IScalarFieldWrapper::Shared(new DimScalarFieldWrapper(cloud, DimScalarFieldWrapper::DimZ));
 	case PointFeature::NbRet:
 	{
-		CCLib::ScalarField* sf = Tools::RetrieveSF(cloud, LAS_FIELD_NAMES[LAS_NUMBER_OF_RETURNS], false);
+		CCCoreLib::ScalarField* sf = Tools::RetrieveSF(cloud, LAS_FIELD_NAMES[LAS_NUMBER_OF_RETURNS], false);
 		if (!sf)
 		{
 			error = "Cloud has no 'number of returns' scalar field";
@@ -225,7 +225,7 @@ IScalarFieldWrapper::Shared PointFeature::retrieveField(ccPointCloud* cloud, QSt
 	}
 	case PointFeature::RetNb:
 	{
-		CCLib::ScalarField* sf = Tools::RetrieveSF(cloud, LAS_FIELD_NAMES[LAS_RETURN_NUMBER], false);
+		CCCoreLib::ScalarField* sf = Tools::RetrieveSF(cloud, LAS_FIELD_NAMES[LAS_RETURN_NUMBER], false);
 		if (!sf)
 		{
 			error = "Cloud has no 'return number' scalar field";
@@ -236,13 +236,13 @@ IScalarFieldWrapper::Shared PointFeature::retrieveField(ccPointCloud* cloud, QSt
 	case PointFeature::EchoRat:
 	{
 		//retrieve the two scalar fields 'p/q'
-		CCLib::ScalarField* numberOfRetSF = Tools::RetrieveSF(cloud, LAS_FIELD_NAMES[LAS_NUMBER_OF_RETURNS], false);
+		CCCoreLib::ScalarField* numberOfRetSF = Tools::RetrieveSF(cloud, LAS_FIELD_NAMES[LAS_NUMBER_OF_RETURNS], false);
 		if (!numberOfRetSF)
 		{
 			error = "Can't compute the 'echo ratio' field: no 'Number of Return' SF available";
 			return nullptr;
 		}
-		CCLib::ScalarField* retNumberSF = Tools::RetrieveSF(cloud, LAS_FIELD_NAMES[LAS_RETURN_NUMBER], false);
+		CCCoreLib::ScalarField* retNumberSF = Tools::RetrieveSF(cloud, LAS_FIELD_NAMES[LAS_RETURN_NUMBER], false);
 		if (!retNumberSF)
 		{
 			error = "Can't compute the 'echo ratio' field: no 'Return number' SF available";
@@ -263,7 +263,7 @@ IScalarFieldWrapper::Shared PointFeature::retrieveField(ccPointCloud* cloud, QSt
 		return IScalarFieldWrapper::Shared(new ColorScalarFieldWrapper(cloud, ColorScalarFieldWrapper::Blue));
 	case PointFeature::NIR:
 	{
-		CCLib::ScalarField* sf = Tools::RetrieveSF(cloud, s_NIRSFName, false);
+		CCCoreLib::ScalarField* sf = Tools::RetrieveSF(cloud, s_NIRSFName, false);
 		if (!sf)
 		{
 			error = "Cloud has no 'NIR' scalar field";
@@ -284,7 +284,7 @@ IScalarFieldWrapper::Shared PointFeature::retrieveField(ccPointCloud* cloud, QSt
 	}
 	case PointFeature::M3C2:
 	{
-		CCLib::ScalarField* sf = Tools::RetrieveSF(cloud, s_M3C2SFName, true);
+		CCCoreLib::ScalarField* sf = Tools::RetrieveSF(cloud, s_M3C2SFName, true);
 		if (!sf)
 		{
 			error = "Cloud has no 'm3c2 distance' scalar field";
@@ -294,7 +294,7 @@ IScalarFieldWrapper::Shared PointFeature::retrieveField(ccPointCloud* cloud, QSt
 	}
 	case PointFeature::PCV:
 	{
-		CCLib::ScalarField* sf = Tools::RetrieveSF(cloud, s_PCVSFName, true);
+		CCCoreLib::ScalarField* sf = Tools::RetrieveSF(cloud, s_PCVSFName, true);
 		if (!sf)
 		{
 			error = "Cloud has no 'PCV/Illuminance' scalar field";
@@ -319,12 +319,12 @@ IScalarFieldWrapper::Shared PointFeature::retrieveField(ccPointCloud* cloud, QSt
 
 static bool ComputeMathOpWithNearestNeighbor(	const CorePoints& corePoints,
 												const IScalarFieldWrapper& field1,
-												CCLib::ScalarField* outSF,
+												CCCoreLib::ScalarField* outSF,
 												ccPointCloud& cloud2,
 												const IScalarFieldWrapper& field2,
 												masc::Feature::Operation op,
 												QString& error,
-												CCLib::GenericProgressCallback* progressCb = nullptr)
+												CCCoreLib::GenericProgressCallback* progressCb = nullptr)
 {
 	if (op == masc::Feature::NO_OPERATION || !outSF || outSF->size() != corePoints.size())
 	{
@@ -357,7 +357,7 @@ static bool ComputeMathOpWithNearestNeighbor(	const CorePoints& corePoints,
 		progressCb->setInfo(qPrintable(logMessage));
 	}
 	ccLog::Print(logMessage);
-	CCLib::NormalizedProgress nProgress(progressCb, pointCount);
+	CCCoreLib::NormalizedProgress nProgress(progressCb, pointCount);
 
 	QMutex mutex;
 	double meanNeighborhoodSize = 0;
@@ -371,10 +371,10 @@ static bool ComputeMathOpWithNearestNeighbor(	const CorePoints& corePoints,
 	for (int i = 0; i < static_cast<int>(pointCount); ++i)
 	{
 		const CCVector3* P = corePoints.cloud->getPoint(i);
-		CCLib::ReferenceCloud Yk(&cloud2);
+		CCCoreLib::ReferenceCloud Yk(&cloud2);
 		double maxSquareDist = 0;
 
-		ScalarType s = NAN_VALUE;
+		ScalarType s = CCCoreLib::NAN_VALUE;
 
 		int neighborhoodSize = 0;
 		if (octree->findPointNeighbourhood(P, &Yk, 1, octreeLevel, maxSquareDist, 0.0, &neighborhoodSize) >= 1)
@@ -391,7 +391,7 @@ static bool ComputeMathOpWithNearestNeighbor(	const CorePoints& corePoints,
 			double density = meanNeighborhoodSize / tenth;
 			if (density < 1.1)
 			{
-				if (octreeLevel + 1 < CCLib::DgmOctree::MAX_OCTREE_LEVEL)
+				if (octreeLevel + 1 < CCCoreLib::DgmOctree::MAX_OCTREE_LEVEL)
 					++octreeLevel;
 			}
 			else while (density > 2.9)
@@ -435,7 +435,7 @@ static bool ComputeMathOpWithNearestNeighbor(	const CorePoints& corePoints,
 
 bool PointFeature::prepare(	const CorePoints& corePoints,
 							QString& error,
-							CCLib::GenericProgressCallback* progressCb/*=nullptr*/,
+							CCCoreLib::GenericProgressCallback* progressCb/*=nullptr*/,
 							SFCollector* generatedScalarFields/*=nullptr*/)
 {
 	if (!cloud1 || !corePoints.cloud)
@@ -553,7 +553,7 @@ bool PointFeature::prepare(	const CorePoints& corePoints,
 		//retrieve/create a SF to host the result
 		int sfIdx = corePoints.cloud->getScalarFieldIndexByName(qPrintable(resultSFName));
 
-		CCLib::ScalarField* resultSF = nullptr;
+		CCCoreLib::ScalarField* resultSF = nullptr;
 		if (sfIdx >= 0)
 		{
 			//reuse the existing field
@@ -613,7 +613,7 @@ bool PointFeature::prepare(	const CorePoints& corePoints,
 	}
 }
 
-bool PointFeature::computeStat(const CCLib::DgmOctree::NeighboursSet& pointsInNeighbourhood, const IScalarFieldWrapper::Shared& sourceField, double& outputValue) const
+bool PointFeature::computeStat(const CCCoreLib::DgmOctree::NeighboursSet& pointsInNeighbourhood, const IScalarFieldWrapper::Shared& sourceField, double& outputValue) const
 {
 	outputValue = std::numeric_limits<double>::quiet_NaN();
 
@@ -666,7 +666,7 @@ bool PointFeature::computeStat(const CCLib::DgmOctree::NeighboursSet& pointsInNe
 		double sum = 0.0;
 		double sum2 = 0.0;
 
-		CCLib::WeibullDistribution::ScalarContainer values;
+		CCCoreLib::WeibullDistribution::ScalarContainer values;
 		if (storeValues)
 		{
 			try
@@ -708,7 +708,7 @@ bool PointFeature::computeStat(const CCLib::DgmOctree::NeighboursSet& pointsInNe
 
 		case Feature::MODE:
 		{
-			CCLib::WeibullDistribution w;
+			CCCoreLib::WeibullDistribution w;
 			if (w.computeParameters(values))
 				outputValue = w.computeMode();
 		}
@@ -737,7 +737,7 @@ bool PointFeature::computeStat(const CCLib::DgmOctree::NeighboursSet& pointsInNe
 
 		case Feature::SKEW:
 		{
-			CCLib::WeibullDistribution w;
+			CCCoreLib::WeibullDistribution w;
 			if (w.computeParameters(values))
 				outputValue = w.computeSkewness();
 		}

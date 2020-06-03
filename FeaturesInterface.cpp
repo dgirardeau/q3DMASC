@@ -25,7 +25,7 @@
 
 using namespace masc;
 
-CCLib::ScalarField* Feature::PrepareSF(ccPointCloud* cloud, const char* resultSFName, SFCollector* generatedScalarFields/*=nullptr*/, SFCollector::Behavior behavior/*=SFCollector::CAN_REMOVE*/)
+CCCoreLib::ScalarField* Feature::PrepareSF(ccPointCloud* cloud, const char* resultSFName, SFCollector* generatedScalarFields/*=nullptr*/, SFCollector::Behavior behavior/*=SFCollector::CAN_REMOVE*/)
 {
 	if (!cloud || !resultSFName)
 	{
@@ -34,7 +34,7 @@ CCLib::ScalarField* Feature::PrepareSF(ccPointCloud* cloud, const char* resultSF
 		return nullptr;
 	}
 
-	CCLib::ScalarField* resultSF = nullptr;
+	CCCoreLib::ScalarField* resultSF = nullptr;
 	int sfIdx = cloud->getScalarFieldIndexByName(resultSFName);
 	if (sfIdx >= 0)
 	{
@@ -62,14 +62,14 @@ CCLib::ScalarField* Feature::PrepareSF(ccPointCloud* cloud, const char* resultSF
 	}
 
 	assert(resultSF);
-	resultSF->fill(NAN_VALUE);
+	resultSF->fill(CCCoreLib::NAN_VALUE);
 
 	return resultSF;
 }
 
 ScalarType Feature::PerformMathOp(double s1, double s2, Operation op)
 {
-	ScalarType s = NAN_VALUE;
+	ScalarType s = CCCoreLib::NAN_VALUE;
 	switch (op)
 	{
 	case Feature::MINUS:
@@ -92,7 +92,7 @@ ScalarType Feature::PerformMathOp(double s1, double s2, Operation op)
 	return s;
 }
 
-bool Feature::PerformMathOp(CCLib::ScalarField* sf1, const CCLib::ScalarField* sf2, Feature::Operation op)
+bool Feature::PerformMathOp(CCCoreLib::ScalarField* sf1, const CCCoreLib::ScalarField* sf2, Feature::Operation op)
 {
 	if (!sf1 || !sf2 || sf1->size() != sf2->size() || op == Feature::NO_OPERATION)
 	{
@@ -113,7 +113,7 @@ bool Feature::PerformMathOp(CCLib::ScalarField* sf1, const CCLib::ScalarField* s
 	return true;
 }
 
-bool Feature::PerformMathOp(const IScalarFieldWrapper& sf1, const IScalarFieldWrapper& sf2, Operation op, CCLib::ScalarField* outSF)
+bool Feature::PerformMathOp(const IScalarFieldWrapper& sf1, const IScalarFieldWrapper& sf2, Operation op, CCCoreLib::ScalarField* outSF)
 {
 	if (!outSF || sf1.size() != sf2.size() || sf1.size() != outSF->size() || op == Feature::NO_OPERATION)
 	{

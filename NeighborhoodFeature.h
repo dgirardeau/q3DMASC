@@ -158,13 +158,13 @@ namespace masc
 		//inherited from Feature
 		virtual Type getType() const override { return Type::NeighborhoodFeature; }
 		virtual Feature::Shared clone() const override { return Feature::Shared(new NeighborhoodFeature(*this)); }
-		virtual bool prepare(const CorePoints& corePoints, QString& error, CCLib::GenericProgressCallback* progressCb = nullptr, SFCollector* generatedScalarFields = nullptr) override;
+		virtual bool prepare(const CorePoints& corePoints, QString& error, CCCoreLib::GenericProgressCallback* progressCb = nullptr, SFCollector* generatedScalarFields = nullptr) override;
 		virtual bool finish(const CorePoints& corePoints, QString& error) override;
 		virtual bool checkValidity(QString corePointRole, QString &error) const override;
 		virtual QString toString() const override;
 
 		//! Compute the feature value on a set of points
-		bool computeValue(CCLib::DgmOctree::NeighboursSet& pointsInNeighbourhood, const CCVector3& queryPoint, double& outputValue) const;
+		bool computeValue(CCCoreLib::DgmOctree::NeighboursSet& pointsInNeighbourhood, const CCVector3& queryPoint, double& outputValue) const;
 
 	public: //members
 
@@ -174,7 +174,7 @@ namespace masc
 		NeighborhoodFeatureType type;
 
 		//! Feature values
-		CCLib::ScalarField *sf1, *sf2;
+		CCCoreLib::ScalarField *sf1, *sf2;
 		bool keepSF2;
 	};
 }

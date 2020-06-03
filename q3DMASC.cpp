@@ -439,7 +439,7 @@ void q3DMASCPlugin::doTrainAction()
 	}
 
 	//train / test subsets
-	QSharedPointer<CCLib::ReferenceCloud> trainSubset, testSubset;
+	QSharedPointer<CCCoreLib::ReferenceCloud> trainSubset, testSubset;
 	float previousTestSubsetRatio = -1.0f;
 	SFCollector generatedScalarFields, generatedScalarFieldsTest;
 
@@ -519,11 +519,11 @@ void q3DMASCPlugin::doTrainAction()
 				else if (previousTestSubsetRatio != testDataRatio)
 				{
 					if (!trainSubset)
-						trainSubset.reset(new CCLib::ReferenceCloud(corePoints.cloud));
+						trainSubset.reset(new CCCoreLib::ReferenceCloud(corePoints.cloud));
 					trainSubset->clear();
 
 					if (!testSubset)
-						testSubset.reset(new CCLib::ReferenceCloud(corePoints.cloud));
+						testSubset.reset(new CCCoreLib::ReferenceCloud(corePoints.cloud));
 					testSubset->clear();
 
 					//randomly select the training points

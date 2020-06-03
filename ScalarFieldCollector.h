@@ -25,7 +25,7 @@
 
 class ccPointCloud;
 
-namespace CCLib
+namespace CCCoreLib
 {
 	class ScalarField;
 };
@@ -39,17 +39,17 @@ class SFCollector
 
 		enum Behavior { ALWAYS_KEEP, CAN_REMOVE, ALWAYS_REMOVE };
 
-		void push(ccPointCloud* cloud, CCLib::ScalarField* sf, Behavior behavior);
+		void push(ccPointCloud* cloud, CCCoreLib::ScalarField* sf, Behavior behavior);
 
 		void releaseSFs(bool keepByDefault);
 
 		struct SFDesc
 		{
 			ccPointCloud* cloud = nullptr;
-			CCLib::ScalarField* sf = nullptr;
+			CCCoreLib::ScalarField* sf = nullptr;
 			Behavior behavior = CAN_REMOVE;
 		};
 
-		using Map = QMap< CCLib::ScalarField*, SFDesc >;
+		using Map = QMap< CCCoreLib::ScalarField*, SFDesc >;
 		Map scalarFields;
 };

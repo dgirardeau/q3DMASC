@@ -19,6 +19,7 @@
 
 //CCLib
 #include <DgmOctreeReferenceCloud.h>
+#include <Neighbourhood.h>
 #include <Jacobi.h>
 
 using namespace masc;
@@ -60,7 +61,7 @@ bool NeighborhoodFeature::checkValidity(QString corePointRole, QString &error) c
 
 bool NeighborhoodFeature::prepare(	const CorePoints& corePoints,
 									QString& error,
-									CCLib::GenericProgressCallback* progressCb/*=nullptr*/,
+									CCCoreLib::GenericProgressCallback* progressCb/*=nullptr*/,
 									SFCollector* generatedScalarFields/*=nullptr*/)
 {
 	if (!cloud1 || !corePoints.cloud)
@@ -194,7 +195,7 @@ QString NeighborhoodFeature::toString() const
 	return description;
 }
 
-bool NeighborhoodFeature::computeValue(CCLib::DgmOctree::NeighboursSet& pointsInNeighbourhood, const CCVector3& queryPoint, double& outputValue) const
+bool NeighborhoodFeature::computeValue(CCCoreLib::DgmOctree::NeighboursSet& pointsInNeighbourhood, const CCVector3& queryPoint, double& outputValue) const
 {
 	outputValue = std::numeric_limits<double>::quiet_NaN();
 
@@ -215,26 +216,26 @@ bool NeighborhoodFeature::computeValue(CCLib::DgmOctree::NeighboursSet& pointsIn
 	case LINEA:
 	case PLANA:
 	{
-		CCLib::Neighbourhood::GeomFeature f;
+		CCCoreLib::Neighbourhood::GeomFeature f;
 		switch (type)
 		{
 		case PCA1:
-			f = CCLib::Neighbourhood::PCA1;
+			f = CCCoreLib::Neighbourhood::PCA1;
 			break;
 		case PCA2:
-			f = CCLib::Neighbourhood::PCA2;
+			f = CCCoreLib::Neighbourhood::PCA2;
 			break;
 		case PCA3:
-			f = CCLib::Neighbourhood::SurfaceVariation;
+			f = CCCoreLib::Neighbourhood::SurfaceVariation;
 			break;
 		case SPHER:
-			f = CCLib::Neighbourhood::Sphericity;
+			f = CCCoreLib::Neighbourhood::Sphericity;
 			break;
 		case LINEA:
-			f = CCLib::Neighbourhood::Linearity;
+			f = CCCoreLib::Neighbourhood::Linearity;
 			break;
 		case PLANA:
-			f = CCLib::Neighbourhood::Planarity;
+			f = CCCoreLib::Neighbourhood::Planarity;
 			break;
 		default:
 			//impossible
@@ -242,16 +243,16 @@ bool NeighborhoodFeature::computeValue(CCLib::DgmOctree::NeighboursSet& pointsIn
 			return false;
 		}
 
-		CCLib::DgmOctreeReferenceCloud neighboursCloud(&pointsInNeighbourhood, static_cast<unsigned>(kNN));
-		CCLib::Neighbourhood Z(&neighboursCloud);
+		CCCoreLib::DgmOctreeReferenceCloud neighboursCloud(&pointsInNeighbourhood, static_cast<unsigned>(kNN));
+		CCCoreLib::Neighbourhood Z(&neighboursCloud);
 		outputValue = Z.computeFeature(f);
 	}
 	break;
 
 	case FOM:
 	{
-		CCLib::DgmOctreeReferenceCloud neighboursCloud(&pointsInNeighbourhood, static_cast<unsigned>(kNN));
-		CCLib::Neighbourhood Z(&neighboursCloud);
+		CCCoreLib::DgmOctreeReferenceCloud neighboursCloud(&pointsInNeighbourhood, static_cast<unsigned>(kNN));
+		CCCoreLib::Neighbourhood Z(&neighboursCloud);
 		outputValue = Z.computeMomentOrder1(queryPoint);
 	}
 	break;
@@ -260,13 +261,13 @@ bool NeighborhoodFeature::computeValue(CCLib::DgmOctree::NeighboursSet& pointsIn
 	case DipDir:
 	if (kNN >= 3)
 	{
-		CCLib::DgmOctreeReferenceCloud neighboursCloud(&pointsInNeighbourhood, static_cast<unsigned>(kNN));
-		CCLib::Neighbourhood Z(&neighboursCloud);
+		CCCoreLib::DgmOctreeReferenceCloud neighboursCloud(&pointsInNeighbourhood, static_cast<unsigned>(kNN));
+		CCCoreLib::Neighbourhood Z(&neighboursCloud);
 		const CCVector3* N = Z.getLSPlaneNormal();
 		if (N)
 		{
 			//force +Z
-			CCVector3 Np = (N->z < 0 ? -PC_ONE * *N : *N);
+			CCVector3 Np = (N->z < 0 ? -CCCoreLib::PC_ONE * *N : *N);
 			PointCoordinateType dip_deg, dipDir_deg;
 			ccNormalVectors::ConvertNormalToDipAndDipDir(Np, dip_deg, dipDir_deg);
 			outputValue = (type == Dip ? dip_deg : dipDir_deg);
@@ -280,17 +281,17 @@ bool NeighborhoodFeature::computeValue(CCLib::DgmOctree::NeighboursSet& pointsIn
 
 	case ROUGH:
 	{
-		CCLib::DgmOctreeReferenceCloud neighboursCloud(&pointsInNeighbourhood, static_cast<unsigned>(kNN));
-		CCLib::Neighbourhood Z(&neighboursCloud);
+		CCCoreLib::DgmOctreeReferenceCloud neighboursCloud(&pointsInNeighbourhood, static_cast<unsigned>(kNN));
+		CCCoreLib::Neighbourhood Z(&neighboursCloud);
 		outputValue = Z.computeRoughness(queryPoint);
 	}
 	break;
 
 	case CURV:
 	{
-		CCLib::DgmOctreeReferenceCloud neighboursCloud(&pointsInNeighbourhood, static_cast<unsigned>(kNN));
-		CCLib::Neighbourhood Z(&neighboursCloud);
-		outputValue = Z.computeCurvature(queryPoint, CCLib::Neighbourhood::MEAN_CURV); //TODO: is it really the default one?
+		CCCoreLib::DgmOctreeReferenceCloud neighboursCloud(&pointsInNeighbourhood, static_cast<unsigned>(kNN));
+		CCCoreLib::Neighbourhood Z(&neighboursCloud);
+		outputValue = Z.computeCurvature(queryPoint, CCCoreLib::Neighbourhood::MEAN_CURV); //TODO: is it really the default one?
 	}
 	break;
 
@@ -331,8 +332,8 @@ bool NeighborhoodFeature::computeValue(CCLib::DgmOctree::NeighboursSet& pointsIn
 	case ANISO:
 	if (kNN >= 3)
 	{
-		CCLib::DgmOctreeReferenceCloud neighboursCloud(&pointsInNeighbourhood, static_cast<unsigned>(kNN));
-		CCLib::Neighbourhood Z(&neighboursCloud);
+		CCCoreLib::DgmOctreeReferenceCloud neighboursCloud(&pointsInNeighbourhood, static_cast<unsigned>(kNN));
+		CCCoreLib::Neighbourhood Z(&neighboursCloud);
 		const CCVector3* G = Z.getGravityCenter();
 		if (G)
 		{

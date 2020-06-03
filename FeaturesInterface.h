@@ -174,7 +174,7 @@ namespace masc
 		virtual Feature::Shared clone() const = 0;
 
 		//! Prepares the feature (compute the scalar field, etc.)
-		virtual bool prepare(const CorePoints& corePoints, QString& error, CCLib::GenericProgressCallback* progressCb = nullptr, SFCollector* generatedScalarFields = nullptr) = 0;
+		virtual bool prepare(const CorePoints& corePoints, QString& error, CCCoreLib::GenericProgressCallback* progressCb = nullptr, SFCollector* generatedScalarFields = nullptr) = 0;
 
 		//! Finishes the feature preparation (update the scalar field, etc.)
 		virtual bool finish(const CorePoints& corePoints, QString& error) { /* does nothing by default*/return true; }
@@ -210,16 +210,16 @@ namespace masc
 	public: //helpers
 
 		//! Creates (or resets) a scalar field with the given name on the input core points cloud
-		static CCLib::ScalarField* PrepareSF(ccPointCloud* cloud, const char* resultSFName, SFCollector* generatedScalarFields/*= nullptr*/, SFCollector::Behavior behavior);
+		static CCCoreLib::ScalarField* PrepareSF(ccPointCloud* cloud, const char* resultSFName, SFCollector* generatedScalarFields/*= nullptr*/, SFCollector::Behavior behavior);
 
 		//! Performs a mathematical operation between two scalars
 		static ScalarType PerformMathOp(double s1, double s2, Operation op);
 
 		//! Performs a mathematical operation between two scalar fields (they must have the same size!)
-		static bool PerformMathOp(CCLib::ScalarField* sf1, const CCLib::ScalarField* sf2, Operation op);
+		static bool PerformMathOp(CCCoreLib::ScalarField* sf1, const CCCoreLib::ScalarField* sf2, Operation op);
 
 		//! Performs a mathematical operation between two scalar fields (they must have the same size!)
-		static bool PerformMathOp(const IScalarFieldWrapper& sf1, const IScalarFieldWrapper& sf2, Operation op, CCLib::ScalarField* outSF);
+		static bool PerformMathOp(const IScalarFieldWrapper& sf1, const IScalarFieldWrapper& sf2, Operation op, CCCoreLib::ScalarField* outSF);
 
 	public: //members
 

@@ -30,7 +30,7 @@
 #include <ccPointCloud.h>
 
 //qPDALIO
-#include "../../core/IO/qPDALIO/src/LASFields.h"
+#include "../../core/IO/qPDALIO/include/LASFields.h"
 
 //Qt
 #include <QTextStream>
@@ -908,7 +908,7 @@ bool Tools::LoadTrainingFile(	QString filename,
 	}
 }
 
-CCLib::ScalarField* Tools::RetrieveSF(const ccPointCloud* cloud, const QString& sfName, bool caseSensitive/*=true*/)
+CCCoreLib::ScalarField* Tools::RetrieveSF(const ccPointCloud* cloud, const QString& sfName, bool caseSensitive/*=true*/)
 {
 	if (!cloud)
 	{
@@ -952,7 +952,7 @@ struct FeaturesAndScales
 	QMap<double, std::vector<ContextBasedFeature::Shared> > contextBasedFeaturesPerScale;
 };
 
-bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features, QString& errorStr, CCLib::GenericProgressCallback* progressCb/*=nullptr*/, SFCollector* generatedScalarFields/*=nullptr*/)
+bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features, QString& errorStr, CCCoreLib::GenericProgressCallback* progressCb/*=nullptr*/, SFCollector* generatedScalarFields/*=nullptr*/)
 {
 	if (features.empty() || !corePoints.origin)
 	{
@@ -1116,7 +1116,7 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 				progressCb->setInfo(qPrintable(logMessage));
 			}
 			ccLog::Print(logMessage);
-			CCLib::NormalizedProgress nProgress(progressCb, pointCount);
+			CCCoreLib::NormalizedProgress nProgress(progressCb, pointCount);
 
 			QMutex mutex;
 #ifndef _DEBUG
@@ -1127,7 +1127,7 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 			for (int i = 0; i < static_cast<int>(pointCount); ++i)
 			{
 				//spherical neighborhood extraction structure
-				CCLib::DgmOctree::NearestNeighboursSphericalSearchStruct nNSS;
+				CCCoreLib::DgmOctree::NearestNeighboursSphericalSearchStruct nNSS;
 				{
 					nNSS.level = octreeLevel;
 					nNSS.queryPoint = *corePoints.cloud->getPoint(i);
@@ -1294,7 +1294,7 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 	return success;
 }
 
-bool Tools::RandomSubset(ccPointCloud* cloud, float ratio, CCLib::ReferenceCloud* inRatioSubset, CCLib::ReferenceCloud* outRatioSubset)
+bool Tools::RandomSubset(ccPointCloud* cloud, float ratio, CCCoreLib::ReferenceCloud* inRatioSubset, CCCoreLib::ReferenceCloud* outRatioSubset)
 {
 	if (!cloud)
 	{
@@ -1379,7 +1379,7 @@ bool Tools::RandomSubset(ccPointCloud* cloud, float ratio, CCLib::ReferenceCloud
 	return true;
 }
 
-CCLib::ScalarField* Tools::GetClassificationSF(const ccPointCloud* cloud)
+CCCoreLib::ScalarField* Tools::GetClassificationSF(const ccPointCloud* cloud)
 {
 	if (!cloud)
 	{

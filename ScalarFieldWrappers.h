@@ -38,7 +38,7 @@ public:
 class ScalarFieldWrapper : public IScalarFieldWrapper
 {
 public:
-	ScalarFieldWrapper(CCLib::ScalarField* sf)
+	ScalarFieldWrapper(CCCoreLib::ScalarField* sf)
 		: m_sf(sf)
 	{}
 
@@ -48,13 +48,13 @@ public:
 	virtual size_t size() const override { return m_sf->size(); }
 
 protected:
-	CCLib::ScalarField* m_sf;
+	CCCoreLib::ScalarField* m_sf;
 };
 
 class ScalarFieldRatioWrapper : public IScalarFieldWrapper
 {
 public:
-	ScalarFieldRatioWrapper(CCLib::ScalarField* sfp, CCLib::ScalarField* sfq, QString name)
+	ScalarFieldRatioWrapper(CCCoreLib::ScalarField* sfp, CCCoreLib::ScalarField* sfq, QString name)
 		: m_sfp(sfp)
 		, m_sfq(sfq)
 		, m_name(name)
@@ -64,7 +64,7 @@ public:
 	{
 		ScalarType p = m_sfp->getValue(index);
 		ScalarType q = m_sfq->getValue(index);
-		ScalarType ratio = (std::abs(q) > std::numeric_limits<ScalarType>::epsilon() ? p / q : NAN_VALUE);
+		ScalarType ratio = (std::abs(q) > std::numeric_limits<ScalarType>::epsilon() ? p / q : CCCoreLib::NAN_VALUE);
 		return ratio;
 	}
 	virtual inline bool isValid() const { return (m_sfp != nullptr && m_sfq != nullptr); }
@@ -72,7 +72,7 @@ public:
 	virtual inline size_t size() const override { return std::min(m_sfp->size(), m_sfq->size()); }
 
 protected:
-	CCLib::ScalarField *m_sfp, *m_sfq;
+	CCCoreLib::ScalarField *m_sfp, *m_sfq;
 	QString m_name;
 };
 

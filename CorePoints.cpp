@@ -28,7 +28,7 @@
 
 using namespace masc;
 
-bool CorePoints::prepare(CCLib::GenericProgressCallback* progressCb/*=nullptr*/)
+bool CorePoints::prepare(CCCoreLib::GenericProgressCallback* progressCb/*=nullptr*/)
 {
 	if (!origin)
 	{
@@ -43,7 +43,7 @@ bool CorePoints::prepare(CCLib::GenericProgressCallback* progressCb/*=nullptr*/)
 	}
 	
 	//now we can compute the subsampled version
-	CCLib::ReferenceCloud* ref = nullptr;
+	CCCoreLib::ReferenceCloud* ref = nullptr;
 	switch (selectionMethod)
 	{
 	case SPATIAL:
@@ -58,9 +58,9 @@ bool CorePoints::prepare(CCLib::GenericProgressCallback* progressCb/*=nullptr*/)
 			}
 		}
 
-		CCLib::CloudSamplingTools::SFModulationParams modParams;
+		CCCoreLib::CloudSamplingTools::SFModulationParams modParams;
 		modParams.enabled = false;
-		ref = CCLib::CloudSamplingTools::resampleCloudSpatially(
+		ref = CCCoreLib::CloudSamplingTools::resampleCloudSpatially(
 			origin,
 			static_cast<PointCoordinateType>(selectionParam),
 			modParams,
@@ -78,7 +78,7 @@ bool CorePoints::prepare(CCLib::GenericProgressCallback* progressCb/*=nullptr*/)
 			return false;
 		}
 		int targetCount = static_cast<int>(origin->size() * selectionParam);
-		ref = CCLib::CloudSamplingTools::subsampleCloudRandomly(origin, targetCount, progressCb);
+		ref = CCCoreLib::CloudSamplingTools::subsampleCloudRandomly(origin, targetCount, progressCb);
 		break;
 	}
 

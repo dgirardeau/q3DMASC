@@ -28,7 +28,7 @@
 #include <ccLog.h>
 
 //qPDALIO
-#include "../../core/IO/qPDALIO/src/LASFields.h"
+#include "../../core/IO/qPDALIO/include/LASFields.h"
 
 //qCC_plugins
 #include <ccMainAppInterface.h>
@@ -121,7 +121,7 @@ bool Classifier::classify(	const Feature::Source::Set& featureSources,
 	}
 
 	//look for the classification field
-	CCLib::ScalarField* classificationSF = Tools::GetClassificationSF(cloud);
+	CCCoreLib::ScalarField* classificationSF = Tools::GetClassificationSF(cloud);
 
 	if (classificationSF)
 	{
@@ -190,7 +190,7 @@ bool Classifier::classify(	const Feature::Source::Set& featureSources,
 		pDlg->show();
 		QCoreApplication::processEvents();
 	}
-	CCLib::NormalizedProgress nProgress(pDlg.data(), cloud->size());
+	CCCoreLib::NormalizedProgress nProgress(pDlg.data(), cloud->size());
 
 	bool success = true;
 #ifndef _DEBUG
@@ -264,7 +264,7 @@ bool Classifier::evaluate(const Feature::Source::Set& featureSources,
 							ccPointCloud* testCloud,
 							AccuracyMetrics& metrics,
 							QString& errorMessage,
-							CCLib::ReferenceCloud* testSubset/*=nullptr=*/,
+							CCCoreLib::ReferenceCloud* testSubset/*=nullptr=*/,
 							QString outputSFName/*=QString()*/,
 							QWidget* parentWidget/*=nullptr*/)
 {
@@ -296,7 +296,7 @@ bool Classifier::evaluate(const Feature::Source::Set& featureSources,
 	}
 
 	//look for the classification field
-	CCLib::ScalarField* classifSF = Tools::GetClassificationSF(testCloud);
+	CCCoreLib::ScalarField* classifSF = Tools::GetClassificationSF(testCloud);
 	if (!classifSF || classifSF->size() < testCloud->size())
 	{
 		assert(false);
@@ -304,7 +304,7 @@ bool Classifier::evaluate(const Feature::Source::Set& featureSources,
 		return false;
 	}
 
-	CCLib::ScalarField* outputSF = nullptr;
+	CCCoreLib::ScalarField* outputSF = nullptr;
 	if (!outputSFName.isEmpty())
 	{
 		int outSFIndex = testCloud->getScalarFieldIndexByName(qPrintable(outputSFName));
@@ -324,7 +324,7 @@ bool Classifier::evaluate(const Feature::Source::Set& featureSources,
 		{
 			outputSF = testCloud->getScalarField(outSFIndex);
 		}
-		outputSF->fill(NAN_VALUE);
+		outputSF->fill(CCCoreLib::NAN_VALUE);
 		outputSF->computeMinAndMax();
 	}
 
@@ -353,7 +353,7 @@ bool Classifier::evaluate(const Feature::Source::Set& featureSources,
 		pDlg->show();
 		QCoreApplication::processEvents();
 	}
-	CCLib::NormalizedProgress nProgress(pDlg.data(), testSampleCount);
+	CCCoreLib::NormalizedProgress nProgress(pDlg.data(), testSampleCount);
 
 	//fill the data matrix
 	for (int fIndex = 0; fIndex < attributesPerSample; ++fIndex)
@@ -422,7 +422,7 @@ bool Classifier::train(	const ccPointCloud* cloud,
 						const RandomTreesParams& params,
 						const Feature::Source::Set& featureSources,
 						QString& errorMessage,
-						CCLib::ReferenceCloud* trainSubset/*=nullptr*/,
+						CCCoreLib::ReferenceCloud* trainSubset/*=nullptr*/,
 						ccMainAppInterface* app/*=nullptr*/,
 						QWidget* parentWidget/*=nullptr*/)
 {
@@ -444,7 +444,7 @@ bool Classifier::train(	const ccPointCloud* cloud,
 	}
 
 	//look for the classification field
-	CCLib::ScalarField* classifSF = Tools::GetClassificationSF(cloud);
+	CCCoreLib::ScalarField* classifSF = Tools::GetClassificationSF(cloud);
 	if (!classifSF || classifSF->size() < cloud->size())
 	{
 		assert(false);

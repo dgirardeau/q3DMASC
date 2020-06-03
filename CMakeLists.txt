@@ -4,8 +4,10 @@ option( INSTALL_Q3DMASC_PLUGIN "Check to install q3DMASC plugin" OFF )
 
 if (INSTALL_Q3DMASC_PLUGIN)
 
-#New classification plugin (Dimitri Lague/OSUR)
-project( Q3DMASC_PLUGIN )
+	#New classification plugin (Dimitri Lague/OSUR)
+	project( Q3DMASC_PLUGIN )
+
+	AddPlugin( NAME ${PROJECT_NAME} )
 
 	include( CMakePolicies NO_POLICY_SCOPE )
 
@@ -20,15 +22,41 @@ project( Q3DMASC_PLUGIN )
 	include_directories( ${CloudCompare_SOURCE_DIR} )
 	#include_directories( ${OpenCV_INCLUDE_DIR} )
 	
-	#we need the "order choice" dialog
-	file( GLOB CC_PLUGIN_CUSTOM_HEADER_LIST ${CloudCompare_SOURCE_DIR}/ccOrderChoiceDlg*.h )
-	file( GLOB CC_PLUGIN_CUSTOM_SOURCE_LIST ${CloudCompare_SOURCE_DIR}/ccOrderChoiceDlg*.cpp )
-
-	#don't forget associated widgets(.ui)
-	set( CC_PLUGIN_CUSTOM_UI_LIST	${CloudCompare_SOURCE_DIR}/ui_templates/roleChoiceDlg.ui )
-
-	include( ../../CMakePluginTpl.cmake )
+	file( GLOB PLUGIN_HDR_LIST ${CMAKE_CURRENT_SOURCE_DIR}/*.h )
+	file( GLOB PLUGIN_SRC_LIST ${CMAKE_CURRENT_SOURCE_DIR}/*.cpp )
+	file( GLOB PLUGIN_UI_LIST ${CMAKE_CURRENT_SOURCE_DIR}/*.ui )
 	
+	#we need the "order choice" dialog
+	file( GLOB CC_HDR_LIST ${CloudCompare_SOURCE_DIR}/ccOrderChoiceDlg*.h )
+	file( GLOB CC_SRC_LIST ${CloudCompare_SOURCE_DIR}/ccOrderChoiceDlg*.cpp )
+	set( CC_UI_LIST	${CloudCompare_SOURCE_DIR}/ui_templates/roleChoiceDlg.ui )
+
+	# add source files
+	target_sources( ${PROJECT_NAME}
+		PRIVATE
+			${PLUGIN_HDR_LIST}
+			${PLUGIN_SRC_LIST}
+			${PLUGIN_UI_LIST}
+			${CC_HDR_LIST}
+			${CC_SRC_LIST}
+			${CC_UI_LIST}
+	)
+
+    #include( CMakePluginTemplate )
+	#include( ../../CMakePluginTpl.cmake )
+	
+    set_target_properties( ${PROJECT_NAME} PROPERTIES
+        # FIXME Remove after everything has moved to targets
+        AUTOUIC_SEARCH_PATHS "${CloudCompare_SOURCE_DIR}/ui_templates;${CMAKE_CURRENT_SOURCE_DIR}/ui"
+    )
+
+    # FIXME These are required becaue we have dependencies outside of the api
+    target_include_directories( ${PROJECT_NAME}
+        PRIVATE
+            ${CloudCompare_SOURCE_DIR}
+            ${CloudCompare_SOURCE_DIR}/../common
+    )
+
 	target_link_libraries( ${PROJECT_NAME} ${OpenCV_LIBS} )
 
 endif()

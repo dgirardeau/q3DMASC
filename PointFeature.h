@@ -180,13 +180,13 @@ namespace masc
 		//inherited from Feature
 		virtual Type getType() const override { return Type::PointFeature; }
 		virtual Feature::Shared clone() const override { return Feature::Shared(new PointFeature(*this)); }
-		virtual bool prepare(const CorePoints& corePoints, QString& error, CCLib::GenericProgressCallback* progressCb = nullptr, SFCollector* generatedScalarFields = nullptr) override;
+		virtual bool prepare(const CorePoints& corePoints, QString& error, CCCoreLib::GenericProgressCallback* progressCb = nullptr, SFCollector* generatedScalarFields = nullptr) override;
 		virtual bool finish(const CorePoints& corePoints, QString& error) override;
 		virtual bool checkValidity(QString corePointRole, QString &error) const override;
 		virtual QString toString() const override;
 
 		//! Compute the associated 'stat' on a set of points (and with a given field)
-		bool computeStat(const CCLib::DgmOctree::NeighboursSet& pointsInNeighbourhood, const IScalarFieldWrapper::Shared& sourceField, double& outputValue) const;
+		bool computeStat(const CCCoreLib::DgmOctree::NeighboursSet& pointsInNeighbourhood, const IScalarFieldWrapper::Shared& sourceField, double& outputValue) const;
 
 	protected: //methods
 
@@ -210,7 +210,7 @@ namespace masc
 		IScalarFieldWrapper::Shared field2;
 
 		//! For scaled features
-		CCLib::ScalarField *statSF1, *statSF2;
+		CCCoreLib::ScalarField *statSF1, *statSF2;
 		
 		//bool keepStatSF2;
 	};

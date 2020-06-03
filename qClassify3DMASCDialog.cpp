@@ -18,7 +18,7 @@
 #include "qClassify3DMASCDialog.h"
 
 //qCC_plugins
-#include "../../ccMainAppInterface.h"
+#include <ccMainAppInterface.h>
 
 //qCC_db
 #include <ccPointCloud.h>

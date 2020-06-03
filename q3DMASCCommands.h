@@ -18,7 +18,7 @@
 //##########################################################################
 
 //CloudCompare
-#include "../../ccCommandLineInterface.h"
+#include <ccCommandLineInterface.h>
 
 //Local
 #include "q3DMASCTools.h"
@@ -28,6 +28,7 @@
 
 //Qt
 #include <QDialog>
+#include <QFileInfo>
 
 static const char COMMAND_3DMASC_CLASSIFY[] = "3DMASC_CLASSIFY";
 static const char COMMAND_3DMASC_KEEP_ATTRIBS[] = "KEEP_ATTRIBUTES";
