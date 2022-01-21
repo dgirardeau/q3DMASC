@@ -1131,7 +1131,7 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 				{
 					nNSS.level = octreeLevel;
 					nNSS.queryPoint = *corePoints.cloud->getPoint(i);
-					nNSS.prepare(largestRadius, octree->getCellSize(nNSS.level));
+//					nNSS.prepare(largestRadius, octree->getCellSize(nNSS.level)); // removed in cac8ccb1d
 					octree->getTheCellPosWhichIncludesThePoint(&nNSS.queryPoint, nNSS.cellPos, nNSS.level);
 					octree->computeCellCenter(nNSS.cellPos, nNSS.level, nNSS.cellCenter);
 				}
