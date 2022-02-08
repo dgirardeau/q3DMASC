@@ -685,8 +685,8 @@ bool Tools::LoadFile(	const QString& filename,
 	{
 		loadParameters.alwaysDisplayLoadDialog = true;
 		loadParameters.shiftHandlingMode = ccGlobalShiftManager::DIALOG_IF_NECESSARY;
-		loadParameters.coordinatesShift = &loadCoordinatesShift;
-		loadParameters.coordinatesShiftEnabled = &loadCoordinatesTransEnabled;
+        loadParameters._coordinatesShift = &loadCoordinatesShift;
+        loadParameters._coordinatesShiftEnabled = &loadCoordinatesTransEnabled;
 		loadParameters.parentWidget = parent;
 		FileIOFilter::ResetSesionCounter();
 	}
