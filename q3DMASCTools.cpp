@@ -1127,7 +1127,7 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 			for (int i = 0; i < static_cast<int>(pointCount); ++i)
 			{
 				//spherical neighborhood extraction structure
-				CCCoreLib::DgmOctree::NearestNeighboursSphericalSearchStruct nNSS;
+                CCCoreLib::DgmOctree::NearestNeighboursSearchStruct nNSS;
 				{
 					nNSS.level = octreeLevel;
 					nNSS.queryPoint = *corePoints.cloud->getPoint(i);
