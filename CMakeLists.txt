@@ -58,7 +58,7 @@ if (INSTALL_Q3DMASC_PLUGIN)
     )
 
         target_link_libraries( ${PROJECT_NAME} ${OpenCV_LIBS} )
-        set( OPENCV_DEP_DLL_FILES ${OpenCV_DIR}/x64/vc15/bin/opencv_world455.dll.dll )
+        set( OPENCV_DEP_DLL_FILES ${OpenCV_DIR}/x64/vc15/bin/opencv_world455.dll )
         copy_files("${OPENCV_DEP_DLL_FILES}" "${CLOUDCOMPARE_DEST_FOLDER}") #mind the quotes!
 
 
