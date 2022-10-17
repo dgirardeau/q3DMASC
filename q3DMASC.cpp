@@ -272,6 +272,7 @@ void q3DMASCPlugin::doTrainAction()
 		//now show a dialog where the user will be able to set the cloud roles
 		Classify3DMASCDialog classifDlg(m_app, true);
 		classifDlg.setWindowTitle("3DMASC Train");
+		classifDlg.label_3->setText("TRAIN on");
 		classifDlg.setCloudRoles(cloudLabels, corePointsLabel);
 		classifDlg.classifierFileLineEdit->setText(inputFilename);
 		classifDlg.keepAttributesCheckBox->setChecked(s_keepAttributes);
