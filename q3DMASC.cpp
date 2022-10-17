@@ -444,7 +444,7 @@ void q3DMASCPlugin::doTrainAction()
 	float previousTestSubsetRatio = -1.0f;
 	SFCollector generatedScalarFields, generatedScalarFieldsTest;
 
-	//we will train + evaluate the classifier, then display the reuslts
+	//we will train + evaluate the classifier, then display the results
 	//then let the user change parameters and (potentially) start again
 	for (int iteration = 0; ; ++iteration)
 	{

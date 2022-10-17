@@ -700,11 +700,12 @@ bool Tools::LoadFile(	const QString& filename,
 		bool badFeatures = false;
 		for (int lineNumber = 1; ; ++lineNumber)
 		{
+			if (stream.atEnd())
+				break;
 			QString line = stream.readLine();
 			if (line.isNull())
 			{
-				//eof
-				break;
+				continue;
 			}
 
 			if (line.startsWith("#"))

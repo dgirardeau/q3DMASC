@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>400</width>
-    <height>550</height>
+    <width>834</width>
+    <height>795</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -185,15 +185,15 @@
      <property name="title">
       <string>Results</string>
      </property>
-     <layout class="QVBoxLayout" name="verticalLayout_2">
-      <item>
+     <layout class="QGridLayout" name="gridLayout" columnstretch="1,0">
+      <item row="0" column="0" colspan="2">
        <widget class="QLabel" name="resultLabel">
         <property name="text">
          <string>correct = 0/0 - accuracy = 0.0</string>
         </property>
        </widget>
       </item>
-      <item>
+      <item row="1" column="0" rowspan="2">
        <widget class="QTableWidget" name="tableWidget">
         <property name="verticalScrollBarPolicy">
          <enum>Qt::ScrollBarAlwaysOn</enum>
@@ -228,7 +228,29 @@
         </column>
        </widget>
       </item>
-      <item>
+      <item row="1" column="1">
+       <widget class="QTableWidget" name="tableWidgetScales">
+        <column>
+         <property name="text">
+          <string>Scales</string>
+         </property>
+        </column>
+       </widget>
+      </item>
+      <item row="2" column="1">
+       <spacer name="verticalSpacer">
+        <property name="orientation">
+         <enum>Qt::Vertical</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>20</width>
+          <height>190</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+      <item row="3" column="0">
        <widget class="QToolButton" name="exportToolButton">
         <property name="text">
          <string>export</string>

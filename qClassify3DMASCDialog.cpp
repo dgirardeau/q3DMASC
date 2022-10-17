@@ -111,6 +111,7 @@ Classify3DMASCDialog::Classify3DMASCDialog(ccMainAppInterface* app, bool trainMo
 	{
 		label->setText(tr("Trainer file"));
 		warningLabel->setVisible(false);
+		warningLabel->setText("Assign each role to the right cloud, and select the cloud on which to train the classifier");
 	}
 
 	onCloudChanged(0);
