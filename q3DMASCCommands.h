@@ -174,7 +174,7 @@ struct Command3DMASCClassif : public ccCommandLineInterface::Command
 			{
 				//we use the core points source as 'main role' by default
 				mainCloudRole = corePointsLabel;
-				cmd.print("Core points source: " + corePointsLabel + "(will be used as the classified cloud)");
+				cmd.print("Core points source: " + corePointsLabel + " (will be used as the classified cloud)");
 			}
 			cmd.print("The classified cloud role will be " + mainCloudRole);
 

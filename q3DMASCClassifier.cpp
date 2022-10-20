@@ -530,17 +530,17 @@ bool Classifier::train(	const ccPointCloud* cloud,
 	//m_rtrees->setMaxCategories(params.maxCategories); //not important?
 	m_rtrees->setCalculateVarImportance(true);
 	m_rtrees->setActiveVarCount(params.activeVarCount);
-    cv::TermCriteria terminationCriteria(cv::TermCriteria::MAX_ITER, params.maxTreeCount, std::numeric_limits<double>::epsilon());
+	cv::TermCriteria terminationCriteria(cv::TermCriteria::MAX_ITER, params.maxTreeCount, std::numeric_limits<double>::epsilon());
 	m_rtrees->setTermCriteria(terminationCriteria);
 
-    ccLog::Warning("[Classifier::train] cv::getNumThreads " + QString::number(cv::getNumThreads()));
+	ccLog::Warning("[Classifier::train] cv::getNumThreads " + QString::number(cv::getNumThreads()));
 
 	QFuture<bool> future = QtConcurrent::run([&]()
 	{
 		// Code in this block will run in another thread
 		try
 		{
-            ccLog::Warning("[QFuture] cv::getNumThreads " + QString::number(cv::getNumThreads()));
+			ccLog::Warning("[QFuture] cv::getNumThreads " + QString::number(cv::getNumThreads()));
 			cv::Mat sampleIndexes = cv::Mat::zeros(1, training_data.rows, CV_8U);
 			cv::Mat trainSamples = sampleIndexes.colRange(0, sampleCount);
 			trainSamples.setTo(cv::Scalar::all(1));

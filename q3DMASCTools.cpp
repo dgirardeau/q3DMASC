@@ -703,7 +703,7 @@ bool Tools::LoadFile(	const QString& filename,
 			if (stream.atEnd())
 				break;
 			QString line = stream.readLine();
-			if (line.isNull())
+			if (line.isEmpty())
 			{
 				continue;
 			}

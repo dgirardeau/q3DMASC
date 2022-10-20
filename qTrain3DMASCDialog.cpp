@@ -158,11 +158,11 @@ void Train3DMASCDialog::onExportResults()
 	}
 
 	QTextStream stream(&file);
-	stream << "Feature;Importance" << endl;
+	stream << "Feature;Importance" << Qt::endl;
 	for (int index = 0; index < tableWidget->rowCount(); ++index)
 	{
 		QString featureName = tableWidget->item(index, 0)->text();
 		QString importance = tableWidget->item(index, FeatureImportanceColumn)->text();
-		stream << featureName << ";" << importance << endl;
+		stream << featureName << ";" << importance << Qt::endl;
 	}
 }
