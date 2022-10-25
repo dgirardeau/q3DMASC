@@ -22,6 +22,7 @@
 #include "NeighborhoodFeature.h"
 #include "DualCloudFeature.h"
 #include "ContextBasedFeature.h"
+#include "ccMainAppInterface.h"
 
 //qCC_io
 #include <FileIOFilter.h>
@@ -606,7 +607,7 @@ static bool ReadCorePoints(const QString& command, const Tools::NamedClouds& clo
 	return true;
 }
 
-static bool ReadCloud(const QString& command, Tools::NamedClouds& clouds, QDir& defaultDir, int lineNumber, FileIOFilter::LoadParameters& loadParameters)
+static bool ReadCloud(const QString& command, Tools::NamedClouds& clouds, const QDir& defaultDir, int lineNumber, FileIOFilter::LoadParameters& loadParameters)
 {
 	QStringList tokens = command.split('=');
 	if (tokens.size() != 2)

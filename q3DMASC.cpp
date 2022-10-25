@@ -138,6 +138,7 @@ void q3DMASCPlugin::doClassifyAction()
 	//now show a dialog where the user will be able to set the cloud roles
 	Classify3DMASCDialog classifDlg(m_app);
 	classifDlg.setCloudRoles(cloudLabels, corePointsLabel);
+	classifDlg.label_trainOrClassify->setText("CLASSIFY " + corePointsLabel);
 	classifDlg.classifierFileLineEdit->setText(inputFilename);
 	static bool s_keepAttributes = false;
 	classifDlg.keepAttributesCheckBox->setChecked(s_keepAttributes);
@@ -272,8 +273,8 @@ void q3DMASCPlugin::doTrainAction()
 		//now show a dialog where the user will be able to set the cloud roles
 		Classify3DMASCDialog classifDlg(m_app, true);
 		classifDlg.setWindowTitle("3DMASC Train");
-		classifDlg.label_3->setText("TRAIN on");
 		classifDlg.setCloudRoles(cloudLabels, corePointsLabel);
+		classifDlg.label_trainOrClassify->setText("TRAIN on " + corePointsLabel);
 		classifDlg.classifierFileLineEdit->setText(inputFilename);
 		classifDlg.keepAttributesCheckBox->setChecked(s_keepAttributes);
 		if (!classifDlg.exec())
@@ -291,7 +292,7 @@ void q3DMASCPlugin::doTrainAction()
 
 	static masc::TrainParameters s_params;
 	masc::Feature::Set features;
-	if (!masc::Tools::LoadTrainingFile(inputFilename, features, loadedClouds, s_params, &corePoints, m_app->getMainWindow()))
+	if (!masc::Tools:: LoadTrainingFile(inputFilename, features, loadedClouds, s_params, &corePoints, m_app->getMainWindow()))
 	{
 		m_app->dispToConsole("Failed to load the training file", ccMainAppInterface::ERR_CONSOLE_MESSAGE);
 		return;
@@ -307,6 +308,8 @@ void q3DMASCPlugin::doTrainAction()
 	{
 		mainCloudLabel = corePoints.role;
 	}
+
+
 
 	if (!masc::Tools::GetClassificationSF(corePoints.origin))
 	{
@@ -324,7 +327,7 @@ void q3DMASCPlugin::doTrainAction()
 		}
 	}
 
-	for (masc::Tools::NamedClouds::const_iterator it = loadedClouds.begin(); it != loadedClouds.end(); ++it)
+	for (masc::Tools::NamedClouds::iterator it = loadedClouds.begin(); it != loadedClouds.end(); ++it)
 	{
 		m_app->dispToConsole(it.key() + " = " + it.value()->getName(), ccMainAppInterface::STD_CONSOLE_MESSAGE);
 	}

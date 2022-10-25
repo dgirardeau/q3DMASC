@@ -50,7 +50,7 @@ if (INSTALL_Q3DMASC_PLUGIN)
         AUTOUIC_SEARCH_PATHS "${CloudCompare_SOURCE_DIR}/ui_templates;${CMAKE_CURRENT_SOURCE_DIR}/ui"
     )
 
-    # FIXME These are required becaue we have dependencies outside of the api
+    # FIXME These are required because we have dependencies outside of the api
     target_include_directories( ${PROJECT_NAME}
         PRIVATE
             ${CloudCompare_SOURCE_DIR}

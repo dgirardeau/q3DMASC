@@ -126,23 +126,24 @@ void Classify3DMASCDialog::setCloudRoles(const QList<QString>& roles, QString co
 		{
 		case 0:
 			cloud1Label->setText(role);
-			if (corePointsLabel.isEmpty() || corePointsLabel == role)
-				cloud1RadioButton->setChecked(true);
+			if (corePointsLabel.isEmpty()) // if "core_points:" is not in the parameter file, the corePointsLabel is the first encountered role
+				corePointsLabel = role;
+//				cloud1RadioButton->setChecked(true);
 			break;
 		case 1:
 			cloud2Label->setText(role);
 			if (corePointsLabel == role)
-				cloud2RadioButton->setChecked(true);
+//				cloud2RadioButton->setChecked(true);
 			break;
 		case 2:
 			cloud3Label->setText(role);
 			if (corePointsLabel == role)
-				cloud3RadioButton->setChecked(true);
+//				cloud3RadioButton->setChecked(true);
 			break;
 		case 3:
 			cloud4Label->setText(role);
 			if (corePointsLabel == role)
-				cloud4RadioButton->setChecked(true);
+//				cloud4RadioButton->setChecked(true);
 			break;
 		default:
 			//this dialog can't handle more than 3 roles!
@@ -153,27 +154,27 @@ void Classify3DMASCDialog::setCloudRoles(const QList<QString>& roles, QString co
 
 	if (index < 1)
 	{
-		cloud1RadioButton->setEnabled(false);
+//		cloud1RadioButton->setEnabled(false);
 		cloud1ComboBox->setEnabled(false);
 	}
 	if (index < 2)
 	{
-		cloud2RadioButton->setEnabled(false);
-		cloud2RadioButton->setVisible(false);
+//		cloud2RadioButton->setEnabled(false);
+//		cloud2RadioButton->setVisible(false);
 		cloud2ComboBox->setVisible(false);
 		cloud2Label->setVisible(false);
 	}
 	if (index < 3)
 	{
-		cloud3RadioButton->setEnabled(false);
-		cloud3RadioButton->setVisible(false);
+//		cloud3RadioButton->setEnabled(false);
+//		cloud3RadioButton->setVisible(false);
 		cloud3ComboBox->setVisible(false);
 		cloud3Label->setVisible(false);
 	}
 	if (index < 4)
 	{
-		cloud4RadioButton->setEnabled(false);
-		cloud4RadioButton->setVisible(false);
+//		cloud4RadioButton->setEnabled(false);
+//		cloud4RadioButton->setVisible(false);
 		cloud4ComboBox->setVisible(false);
 		cloud4Label->setVisible(false);
 	}
@@ -187,37 +188,41 @@ void Classify3DMASCDialog::getClouds(QMap<QString, ccPointCloud*>& clouds, QStri
 		return;
 	}
 	
-	if (cloud1RadioButton->isEnabled())
+//	if (cloud1RadioButton->isEnabled())
+	if (cloud1ComboBox->isEnabled())
 	{
 		clouds.insert(cloud1Label->text(), GetCloudFromCombo(cloud1ComboBox, m_app->dbRootObject()));
-		if (cloud1RadioButton->isChecked())
-		{
-			mainCloud = cloud1Label->text();
-		}
+//		if (cloud1RadioButton->isChecked())
+//		{
+//			mainCloud = cloud1Label->text();
+//		}
 	}
-	if (cloud2RadioButton->isEnabled())
+//	if (cloud2RadioButton->isEnabled())
+	if (cloud2ComboBox->isVisible())
 	{
 		clouds.insert(cloud2Label->text(), GetCloudFromCombo(cloud2ComboBox, m_app->dbRootObject()));
-		if (cloud2RadioButton->isChecked())
-		{
-			mainCloud = cloud2Label->text();
-		}
+//		if (cloud2RadioButton->isChecked())
+//		{
+//			mainCloud = cloud2Label->text();
+//		}
 	}
-	if (cloud3RadioButton->isEnabled())
+//	if (cloud3RadioButton->isEnabled())
+	if (cloud3ComboBox->isVisible())
 	{
 		clouds.insert(cloud3Label->text(), GetCloudFromCombo(cloud3ComboBox, m_app->dbRootObject()));
-		if (cloud3RadioButton->isChecked())
-		{
-			mainCloud = cloud3Label->text();
-		}
+//		if (cloud3RadioButton->isChecked())
+//		{
+//			mainCloud = cloud3Label->text();
+//		}
 	}
-	if (cloud4RadioButton->isEnabled())
+//	if (cloud4RadioButton->isEnabled())
+	if (cloud4ComboBox->isVisible())
 	{
 		clouds.insert(cloud4Label->text(), GetCloudFromCombo(cloud4ComboBox, m_app->dbRootObject()));
-		if (cloud4RadioButton->isChecked())
-		{
-			mainCloud = cloud4Label->text();
-		}
+//		if (cloud4RadioButton->isChecked())
+//		{
+//			mainCloud = cloud4Label->text();
+//		}
 	}
 	if (testCloudComboBox->currentIndex() >= 0)
 	{
@@ -227,7 +232,7 @@ void Classify3DMASCDialog::getClouds(QMap<QString, ccPointCloud*>& clouds, QStri
 
 void Classify3DMASCDialog::onCloudChanged(int dummy)
 {
-	if (!cloud1RadioButton->isEnabled())
+	if (!cloud1ComboBox->isEnabled())
 	{
 		//this means that no role has been defined yet
 		buttonBox->button(QDialogButtonBox::Ok)->setEnabled(false);

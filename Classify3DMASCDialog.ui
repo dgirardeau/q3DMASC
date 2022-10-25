@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>700</width>
-    <height>343</height>
+    <height>365</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -51,52 +51,82 @@
      <property name="title">
       <string>Data</string>
      </property>
-     <layout class="QGridLayout" name="gridLayout" columnstretch="0,0,1">
-      <item row="0" column="2">
-       <widget class="QLabel" name="label_4">
+     <layout class="QGridLayout" name="gridLayout" columnstretch="0,0,0">
+      <item row="3" column="2">
+       <widget class="QComboBox" name="cloud1ComboBox">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+       </widget>
+      </item>
+      <item row="4" column="0">
+       <widget class="QLabel" name="cloud2Label">
         <property name="text">
-         <string>Cloud</string>
+         <string>PC2</string>
+        </property>
+       </widget>
+      </item>
+      <item row="5" column="0">
+       <widget class="QLabel" name="cloud3Label">
+        <property name="text">
+         <string>CTX</string>
+        </property>
+       </widget>
+      </item>
+      <item row="9" column="2">
+       <widget class="QLabel" name="warningLabel">
+        <property name="styleSheet">
+         <string notr="true">color:red;</string>
+        </property>
+        <property name="text">
+         <string>Assign each role to the right cloud, and select the role of the cloud to be classified</string>
         </property>
         <property name="alignment">
          <set>Qt::AlignCenter</set>
         </property>
        </widget>
       </item>
-      <item row="5" column="0">
-       <widget class="QRadioButton" name="cloud3RadioButton">
+      <item row="7" column="0">
+       <widget class="QLabel" name="label_trainOrClassify">
         <property name="text">
-         <string/>
+         <string>CLASSIFY</string>
+        </property>
+       </widget>
+      </item>
+      <item row="8" column="0">
+       <widget class="QLabel" name="testLabel">
+        <property name="text">
+         <string>TEST on (optional)</string>
+        </property>
+       </widget>
+      </item>
+      <item row="6" column="2">
+       <widget class="QComboBox" name="cloud4ComboBox"/>
+      </item>
+      <item row="0" column="0">
+       <widget class="QLabel" name="label_8">
+        <property name="toolTip">
+         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Role as defined in the parameter file.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        </property>
+        <property name="text">
+         <string>Label</string>
         </property>
        </widget>
       </item>
       <item row="3" column="0">
-       <widget class="QRadioButton" name="cloud1RadioButton">
+       <widget class="QLabel" name="cloud1Label">
         <property name="text">
-         <string/>
+         <string>PC1</string>
         </property>
        </widget>
       </item>
       <item row="6" column="0">
-       <widget class="QRadioButton" name="cloud4RadioButton">
+       <widget class="QLabel" name="cloud4Label">
         <property name="text">
-         <string/>
-        </property>
-       </widget>
-      </item>
-      <item row="4" column="0">
-       <widget class="QRadioButton" name="cloud2RadioButton">
-        <property name="text">
-         <string/>
-        </property>
-       </widget>
-      </item>
-      <item row="5" column="2">
-       <widget class="QComboBox" name="cloud3ComboBox">
-        <property name="sizePolicy">
-         <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-          <horstretch>0</horstretch>
-          <verstretch>0</verstretch>
-         </sizepolicy>
+         <string>PCX</string>
         </property>
        </widget>
       </item>
@@ -110,91 +140,33 @@
         </property>
        </widget>
       </item>
-      <item row="6" column="2">
-       <widget class="QComboBox" name="cloud4ComboBox"/>
-      </item>
-      <item row="0" column="0">
-       <widget class="QLabel" name="label_3">
-        <property name="text">
-         <string>CLASSIFY</string>
+      <item row="5" column="2">
+       <widget class="QComboBox" name="cloud3ComboBox">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
         </property>
        </widget>
       </item>
-      <item row="8" column="2">
-       <widget class="QLabel" name="warningLabel">
-        <property name="styleSheet">
-         <string notr="true">color:red;</string>
-        </property>
+      <item row="0" column="2">
+       <widget class="QLabel" name="label_4">
         <property name="text">
-         <string>Assign each role to the right cloud, and select the role of the cloud to be classified</string>
+         <string>Cloud</string>
         </property>
         <property name="alignment">
          <set>Qt::AlignCenter</set>
         </property>
        </widget>
       </item>
-      <item row="3" column="2">
-       <widget class="QComboBox" name="cloud1ComboBox">
-        <property name="sizePolicy">
-         <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-          <horstretch>0</horstretch>
-          <verstretch>0</verstretch>
-         </sizepolicy>
-        </property>
-       </widget>
-      </item>
-      <item row="7" column="2">
+      <item row="8" column="2">
        <widget class="QComboBox" name="testCloudComboBox">
         <property name="sizePolicy">
          <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
           <horstretch>0</horstretch>
           <verstretch>0</verstretch>
          </sizepolicy>
-        </property>
-       </widget>
-      </item>
-      <item row="3" column="1">
-       <widget class="QLabel" name="cloud1Label">
-        <property name="text">
-         <string>PC1</string>
-        </property>
-       </widget>
-      </item>
-      <item row="4" column="1">
-       <widget class="QLabel" name="cloud2Label">
-        <property name="text">
-         <string>PC2</string>
-        </property>
-       </widget>
-      </item>
-      <item row="5" column="1">
-       <widget class="QLabel" name="cloud3Label">
-        <property name="text">
-         <string>CTX</string>
-        </property>
-       </widget>
-      </item>
-      <item row="6" column="1">
-       <widget class="QLabel" name="cloud4Label">
-        <property name="text">
-         <string>PCX</string>
-        </property>
-       </widget>
-      </item>
-      <item row="0" column="1">
-       <widget class="QLabel" name="label_8">
-        <property name="toolTip">
-         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Role as defined in the parameter file.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-        </property>
-        <property name="text">
-         <string>Role</string>
-        </property>
-       </widget>
-      </item>
-      <item row="7" column="0" colspan="2">
-       <widget class="QLabel" name="testLabel">
-        <property name="text">
-         <string>TEST on (optional)</string>
         </property>
        </widget>
       </item>
