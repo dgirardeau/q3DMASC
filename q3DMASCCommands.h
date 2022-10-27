@@ -193,7 +193,8 @@ struct Command3DMASCClassif : public ccCommandLineInterface::Command
 
 			//load features
 			masc::Feature::Set features;
-			if (!masc::Tools::LoadFile(classifierFilename, &cloudPerRole, true, &features, nullptr, nullptr, nullptr, cmd.widgetParent()))
+			std::vector<double> scales;
+			if (!masc::Tools::LoadFile(classifierFilename, &cloudPerRole, true, &features, &scales, nullptr, nullptr, nullptr, cmd.widgetParent()))
 			{
 				return cmd.error("Failed to load the classifier");
 			}
@@ -272,7 +273,7 @@ struct Command3DMASCClassif : public ccCommandLineInterface::Command
 		if (!onlyFeatures)
 		{
 			masc::Classifier classifier;
-			if (!masc::Tools::LoadFile(classifierFilename, nullptr, false, nullptr, nullptr, &classifier, nullptr, cmd.widgetParent()))
+			if (!masc::Tools::LoadFile(classifierFilename, nullptr, false, nullptr, nullptr, nullptr, &classifier, nullptr, cmd.widgetParent()))
 			{
 				return cmd.error("Failed to load the classifier");
 			}

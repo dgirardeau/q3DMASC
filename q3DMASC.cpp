@@ -292,7 +292,8 @@ void q3DMASCPlugin::doTrainAction()
 
 	static masc::TrainParameters s_params;
 	masc::Feature::Set features;
-	if (!masc::Tools:: LoadTrainingFile(inputFilename, features, loadedClouds, s_params, &corePoints, m_app->getMainWindow()))
+	std::vector<double> scales;
+	if (!masc::Tools:: LoadTrainingFile(inputFilename, features, scales, loadedClouds, s_params, &corePoints, m_app->getMainWindow()))
 	{
 		m_app->dispToConsole("Failed to load the training file", ccMainAppInterface::ERR_CONSOLE_MESSAGE);
 		return;
@@ -336,6 +337,7 @@ void q3DMASCPlugin::doTrainAction()
 	ccPointCloud* testCloud = nullptr;
 	bool needTestSuite = false;
 	masc::Feature::Set featuresTest;
+	std::vector<double> scalesTest;
 	if (loadedClouds.contains("TEST"))
 	{
 		testCloud = loadedClouds["TEST"];
@@ -352,7 +354,7 @@ void q3DMASCPlugin::doTrainAction()
 
 			//simply reload the classification file to create duplicated features
 			masc::TrainParameters tempParams;
-			if (!masc::Tools::LoadTrainingFile(inputFilename, featuresTest, loadedCloudsTest, tempParams))
+			if (!masc::Tools::LoadTrainingFile(inputFilename, featuresTest, scalesTest, loadedCloudsTest, tempParams))
 			{
 				m_app->dispToConsole("Failed to load the training file (for test)", ccMainAppInterface::ERR_CONSOLE_MESSAGE);
 				return;
@@ -378,6 +380,8 @@ void q3DMASCPlugin::doTrainAction()
 		originalFeatures.push_back(FeatureSelection(f));
 		trainDlg.addFeature(f->toString(), originalFeatures.back().importance, originalFeatures.back().selected);
 	}
+	for(double scale : scales)
+		trainDlg.addScale(scale, true);
 
 	std::vector<FeatureSelection> originalFeaturesTest;
 	if (testCloud && needTestSuite)

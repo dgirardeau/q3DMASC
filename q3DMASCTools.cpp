@@ -659,6 +659,7 @@ bool Tools::LoadFile(	const QString& filename,
 						Tools::NamedClouds* clouds,
 						bool cloudsAreProvided,
 						std::vector<Feature::Shared>* rawFeatures/*=nullptr*/,	//requires 'clouds'
+						std::vector<double>* rawScales/*=nullptr*/,
 						masc::CorePoints* corePoints/*=nullptr*/,				//requires 'clouds'
 						masc::Classifier* classifier/*=nullptr*/,
 						TrainParameters* parameters/*=nullptr*/,
@@ -801,6 +802,12 @@ bool Tools::LoadFile(	const QString& filename,
 				{
 					return false;
 				}
+				else
+				{
+					if (rawScales)
+						for (auto scale : scales)
+							rawScales->push_back(scale);
+				}
 			}
 			else if (upperLine.startsWith("FEATURE:")) //feature
 			{
@@ -883,18 +890,19 @@ bool Tools::LoadFile(	const QString& filename,
 
 bool Tools::LoadClassifier(QString filename, NamedClouds& clouds, Feature::Set& rawFeatures, masc::Classifier& classifier, QWidget* parent/*=nullptr*/)
 {
-	return LoadFile(filename, &clouds, true, &rawFeatures, nullptr, &classifier, nullptr, parent);
+	return LoadFile(filename, &clouds, true, &rawFeatures, nullptr, nullptr, &classifier, nullptr, parent);
 }
 
 bool Tools::LoadTrainingFile(	QString filename,
 								Feature::Set& rawFeatures,
+								std::vector<double>& rawScales,
 								NamedClouds& loadedClouds,
 								TrainParameters& parameters,
 								CorePoints* corePoints/*=nullptr*/,
 								QWidget* parentWidget/*=nullptr*/)
 {
 	bool cloudsWereProvided = !loadedClouds.empty();
-	if (LoadFile(filename, &loadedClouds, cloudsWereProvided, &rawFeatures, corePoints, nullptr, &parameters, parentWidget))
+	if (LoadFile(filename, &loadedClouds, cloudsWereProvided, &rawFeatures, &rawScales, corePoints, nullptr, &parameters, parentWidget))
 	{
 		return true;
 	}

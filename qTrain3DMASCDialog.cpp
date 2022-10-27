@@ -65,12 +65,12 @@ int Train3DMASCDialog::addFeature(QString name, float importance, bool isChecked
 
 int Train3DMASCDialog::addScale(double scale, bool isChecked/*=true*/)
 {
-	int index = tableWidget->rowCount();
-	tableWidget->setRowCount(index + 1);
+	int index = tableWidgetScales->rowCount();
+	tableWidgetScales->setRowCount(index + 1);
 
 	QTableWidgetItem* nameItem = new QTableWidgetItem(QString::number(scale));
 	nameItem->setCheckState(isChecked ? Qt::Checked : Qt::Unchecked);
-	tableWidget->setItem(index, 0, nameItem);
+	tableWidgetScales->setItem(index, 0, nameItem);
 
 	return index;
 }
