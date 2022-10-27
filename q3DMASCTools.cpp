@@ -903,7 +903,7 @@ bool Tools::LoadTrainingFile(	QString filename,
 		if (!cloudsWereProvided)
 		{
 			//delete the already loaded clouds (if any)
-			for (NamedClouds::const_iterator it = loadedClouds.begin(); it != loadedClouds.end(); ++it)
+			for (NamedClouds::iterator it = loadedClouds.begin(); it != loadedClouds.end(); ++it)
 				delete it.value();
 		}
 		return false;

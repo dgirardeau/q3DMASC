@@ -154,7 +154,7 @@ void q3DMASCPlugin::doClassifyAction()
 
 	masc::Tools::NamedClouds clouds;
 	QString mainCloudLabel;
-	classifDlg.getClouds(clouds, mainCloudLabel);
+	classifDlg.getClouds(clouds);
 
 	masc::Feature::Set features;
 	masc::Classifier classifier;
@@ -284,7 +284,7 @@ void q3DMASCPlugin::doTrainAction()
 		}
 		s_keepAttributes = classifDlg.keepAttributesCheckBox->isChecked();
 
-		classifDlg.getClouds(loadedClouds, mainCloudLabel);
+		classifDlg.getClouds(loadedClouds);
 		m_app->dispToConsole("Training cloud: " + mainCloudLabel, ccMainAppInterface::STD_CONSOLE_MESSAGE);
 		corePoints.origin = loadedClouds[mainCloudLabel];
 		corePoints.role = mainCloudLabel;

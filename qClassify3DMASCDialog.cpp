@@ -161,6 +161,7 @@ void Classify3DMASCDialog::setCloudRoles(const QList<QString>& roles, QString co
 	{
 //		cloud2RadioButton->setEnabled(false);
 //		cloud2RadioButton->setVisible(false);
+		cloud2ComboBox->setEnabled(false);
 		cloud2ComboBox->setVisible(false);
 		cloud2Label->setVisible(false);
 	}
@@ -168,6 +169,7 @@ void Classify3DMASCDialog::setCloudRoles(const QList<QString>& roles, QString co
 	{
 //		cloud3RadioButton->setEnabled(false);
 //		cloud3RadioButton->setVisible(false);
+		cloud3ComboBox->setEnabled(false);
 		cloud3ComboBox->setVisible(false);
 		cloud3Label->setVisible(false);
 	}
@@ -175,12 +177,13 @@ void Classify3DMASCDialog::setCloudRoles(const QList<QString>& roles, QString co
 	{
 //		cloud4RadioButton->setEnabled(false);
 //		cloud4RadioButton->setVisible(false);
+		cloud4ComboBox->setEnabled(false);
 		cloud4ComboBox->setVisible(false);
 		cloud4Label->setVisible(false);
 	}
 }
 
-void Classify3DMASCDialog::getClouds(QMap<QString, ccPointCloud*>& clouds, QString& mainCloud) const
+void Classify3DMASCDialog::getClouds(QMap<QString, ccPointCloud*>& clouds) const
 {
 	if (!m_app)
 	{
@@ -198,7 +201,7 @@ void Classify3DMASCDialog::getClouds(QMap<QString, ccPointCloud*>& clouds, QStri
 //		}
 	}
 //	if (cloud2RadioButton->isEnabled())
-	if (cloud2ComboBox->isVisible())
+	if (cloud2ComboBox->isEnabled())
 	{
 		clouds.insert(cloud2Label->text(), GetCloudFromCombo(cloud2ComboBox, m_app->dbRootObject()));
 //		if (cloud2RadioButton->isChecked())
@@ -207,7 +210,7 @@ void Classify3DMASCDialog::getClouds(QMap<QString, ccPointCloud*>& clouds, QStri
 //		}
 	}
 //	if (cloud3RadioButton->isEnabled())
-	if (cloud3ComboBox->isVisible())
+	if (cloud3ComboBox->isEnabled())
 	{
 		clouds.insert(cloud3Label->text(), GetCloudFromCombo(cloud3ComboBox, m_app->dbRootObject()));
 //		if (cloud3RadioButton->isChecked())
@@ -216,7 +219,7 @@ void Classify3DMASCDialog::getClouds(QMap<QString, ccPointCloud*>& clouds, QStri
 //		}
 	}
 //	if (cloud4RadioButton->isEnabled())
-	if (cloud4ComboBox->isVisible())
+	if (cloud4ComboBox->isEnabled())
 	{
 		clouds.insert(cloud4Label->text(), GetCloudFromCombo(cloud4ComboBox, m_app->dbRootObject()));
 //		if (cloud4RadioButton->isChecked())
