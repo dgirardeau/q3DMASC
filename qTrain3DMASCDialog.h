@@ -39,6 +39,8 @@ public:
 	**/
 	int addFeature(QString name, float importance, bool isChecked = true);
 	int addScale(double scale, bool isChecked = true);
+	void scaleStateChanged(QTableWidgetItem* item);
+	void connectScaleSelectionToFeatureSelection();
 	void setResultText(QString text);
 	void setFirstRunDone();
 	inline void setClassifierSaved() { classifierSaved = true; saveRequested = false; }

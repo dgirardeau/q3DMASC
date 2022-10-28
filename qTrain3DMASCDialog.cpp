@@ -75,6 +75,24 @@ int Train3DMASCDialog::addScale(double scale, bool isChecked/*=true*/)
 	return index;
 }
 
+void Train3DMASCDialog::scaleStateChanged(QTableWidgetItem* item)
+{
+	// if the scale is not checked, remove automatically features based on this scale
+	QString scale = "_SC" + item->text() + "_";
+	for (int row = 0; row < tableWidget->rowCount(); row++)
+	{
+		QTableWidgetItem* nameItem = tableWidget->item(row, 0);
+		QString name = nameItem->text();
+		if (name.contains(scale))
+			nameItem->setCheckState(item->checkState());
+	}
+}
+
+void Train3DMASCDialog::connectScaleSelectionToFeatureSelection()
+{
+	connect(tableWidgetScales, &QTableWidget::itemChanged, this, &Train3DMASCDialog::scaleStateChanged);
+}
+
 void Train3DMASCDialog::setResultText(QString text)
 {
 	resultLabel->setText(text);

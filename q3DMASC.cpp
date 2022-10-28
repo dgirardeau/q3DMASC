@@ -382,6 +382,7 @@ void q3DMASCPlugin::doTrainAction()
 	}
 	for(double scale : scales)
 		trainDlg.addScale(scale, true);
+	trainDlg.connectScaleSelectionToFeatureSelection();
 
 	std::vector<FeatureSelection> originalFeaturesTest;
 	if (testCloud && needTestSuite)

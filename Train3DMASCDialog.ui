@@ -228,6 +228,13 @@
         </column>
        </widget>
       </item>
+      <item row="3" column="0">
+       <widget class="QToolButton" name="exportToolButton">
+        <property name="text">
+         <string>export</string>
+        </property>
+       </widget>
+      </item>
       <item row="1" column="1">
        <widget class="QTableWidget" name="tableWidgetScales">
         <column>
@@ -235,26 +242,6 @@
           <string>Scales</string>
          </property>
         </column>
-       </widget>
-      </item>
-      <item row="2" column="1">
-       <spacer name="verticalSpacer">
-        <property name="orientation">
-         <enum>Qt::Vertical</enum>
-        </property>
-        <property name="sizeHint" stdset="0">
-         <size>
-          <width>20</width>
-          <height>190</height>
-         </size>
-        </property>
-       </spacer>
-      </item>
-      <item row="3" column="0">
-       <widget class="QToolButton" name="exportToolButton">
-        <property name="text">
-         <string>export</string>
-        </property>
        </widget>
       </item>
      </layout>
