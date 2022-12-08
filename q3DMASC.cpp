@@ -153,7 +153,7 @@ void q3DMASCPlugin::doClassifyAction()
 	s_keepAttributes = classifDlg.keepAttributesCheckBox->isChecked();
 
 	masc::Tools::NamedClouds clouds;
-	QString mainCloudLabel;
+	QString mainCloudLabel = corePointsLabel;
 	classifDlg.getClouds(clouds);
 
 	masc::Feature::Set features;

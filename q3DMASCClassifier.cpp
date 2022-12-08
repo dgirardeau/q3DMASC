@@ -122,6 +122,11 @@ bool Classifier::classify(	const Feature::Source::Set& featureSources,
 
 	//look for the classification field
 	CCCoreLib::ScalarField* classificationSF = Tools::GetClassificationSF(cloud);
+	// add a ccConfidence value if needed
+	int cvConfidenceIdx = cloud->getScalarFieldIndexByName("cvConfidence");
+	if (cvConfidenceIdx < 0) // if the scalar field does not exists, create it
+		cvConfidenceIdx = cloud->addScalarField("cvConfidence");
+	CCCoreLib::ScalarField* cvConfidenceSF = cloud->getScalarField(cvConfidenceIdx);
 
 	if (classificationSF)
 	{
@@ -193,6 +198,8 @@ bool Classifier::classify(	const Feature::Source::Set& featureSources,
 	CCCoreLib::NormalizedProgress nProgress(pDlg.data(), cloud->size());
 
 	bool success = true;
+	cv::TermCriteria termCriteria = m_rtrees->getTermCriteria();
+	int numberOfTrees = termCriteria.maxCount;
 #ifndef _DEBUG
 #if defined(_OPENMP)
 #pragma omp parallel for
@@ -219,22 +226,23 @@ bool Classifier::classify(	const Feature::Source::Set& featureSources,
 			test_data.at<float>(0, fIndex) = static_cast<float>(value);
 		}
 
-#if 0
-		cv::Mat result;
-		try
-		{
-			m_rtrees->getVotes(test_data, result, cv::ml::DTrees::PREDICT_AUTO);
-		}
-		catch (const cv::Exception& cvex)
-		{
-			errorMessage = cvex.msg.c_str();
-			success = false;
-			break;
-		}
-#else
 		float predictedClass = m_rtrees->predict(test_data.row(0), cv::noArray(), cv::ml::DTrees::PREDICT_MAX_VOTE);
 		classificationSF->setValue(i, static_cast<int>(predictedClass));
-#endif
+		// compute the confidence
+		cv::Mat result;
+		m_rtrees->getVotes(test_data, result, cv::ml::DTrees::PREDICT_MAX_VOTE);
+		int classIndex = -1;
+		for (int col = 0; col < result.cols; col++)
+			if (predictedClass == result.at<float>(0, col))
+			{
+				classIndex = col;
+				break;
+			}
+		if (classIndex != -1)
+			cvConfidenceSF->setValue(i, static_cast<ScalarType>(result.at<float>(1, classIndex) / numberOfTrees));
+		else
+			cvConfidenceSF->setValue(i, CCCoreLib::NAN_VALUE);
+
 		if (pDlg && !nProgress.oneStep())
 		{
 			//process cancelled by the user
@@ -542,14 +550,16 @@ bool Classifier::train(	const ccPointCloud* cloud,
 		{
 			ccLog::Warning("[QFuture] cv::getNumThreads " + QString::number(cv::getNumThreads()));
 			cv::Mat sampleIndexes = cv::Mat::zeros(1, training_data.rows, CV_8U);
-			cv::Mat trainSamples = sampleIndexes.colRange(0, sampleCount);
-			trainSamples.setTo(cv::Scalar::all(1));
+//			cv::Mat trainSamples = sampleIndexes.colRange(0, sampleCount);
+//			trainSamples.setTo(cv::Scalar::all(1));
 			
 			cv::Mat varTypes(training_data.cols + 1, 1, CV_8U);
 			varTypes.setTo(cv::Scalar::all(cv::ml::VAR_ORDERED));
 			varTypes.at<uchar>(training_data.cols) = cv::ml::VAR_CATEGORICAL;
 			
-			cv::Ptr<cv::ml::TrainData> trainData = cv::ml::TrainData::create(training_data, cv::ml::ROW_SAMPLE, train_labels, cv::noArray(), sampleIndexes, cv::noArray(), varTypes);
+			cv::Ptr<cv::ml::TrainData> trainData = cv::ml::TrainData::create(training_data, cv::ml::ROW_SAMPLE, train_labels,  /* samples layout responses */
+																			 cv::noArray(), sampleIndexes, /* varIdx sampleIdx */
+																			 cv::noArray(), varTypes); // sampleWeights varType
 
 			bool success = m_rtrees->train(trainData);
 			if (!success || !m_rtrees->isClassifier())
@@ -557,7 +567,6 @@ bool Classifier::train(	const ccPointCloud* cloud,
 				errorMessage = "Training failed";
 				return false;
 			}
-			//m_rtrees->train(training_data, cv::ml::ROW_SAMPLE, train_labels);
 		}
 		catch (const cv::Exception& cvex)
 		{
@@ -575,6 +584,7 @@ bool Classifier::train(	const ccPointCloud* cloud,
 			errorMessage = QObject::tr("Unknown error");
 			return false;
 		}
+
 		return true;
 	});
 
