@@ -21,7 +21,62 @@
 #include "q3DMASCTools.h"
 
 //qPDALIO
+#ifdef PLUGIN_IO_QPDAL
 #include "../../core/IO/qPDALIO/include/LASFields.h"
+#else
+#include "../../core/IO/qLASIO/include/LasDetails.h"
+enum LAS_FIELDS {
+	LAS_X = 0,
+	LAS_Y = 1,
+	LAS_Z = 2,
+	LAS_INTENSITY = 3,
+	LAS_RETURN_NUMBER = 4,
+	LAS_NUMBER_OF_RETURNS = 5,
+	LAS_SCAN_DIRECTION = 6,
+	LAS_FLIGHT_LINE_EDGE = 7,
+	LAS_CLASSIFICATION = 8,
+	LAS_SCAN_ANGLE_RANK = 9,
+	LAS_USER_DATA = 10,
+	LAS_POINT_SOURCE_ID = 11,
+	LAS_RED = 12,
+	LAS_GREEN = 13,
+	LAS_BLUE = 14,
+	LAS_TIME = 15,
+	LAS_EXTRA = 16,
+	//Sub fields
+	LAS_CLASSIF_VALUE = 17,
+	LAS_CLASSIF_SYNTHETIC = 18,
+	LAS_CLASSIF_KEYPOINT = 19,
+	LAS_CLASSIF_WITHHELD = 20,
+	LAS_CLASSIF_OVERLAP = 21,
+	//Invald flag
+	LAS_INVALID = 255
+};
+
+constexpr const char* LAS_FIELD_NAMES[22] = {"X",
+									"Y",
+									"Z",
+									LasNames::Intensity,
+									LasNames::ReturnNumber,
+									LasNames::NumberOfReturns,
+									LasNames::ScanDirectionFlag,
+									LasNames::EdgeOfFlightLine,
+									LasNames::Classification,
+									LasNames::ScanAngleRank,
+									LasNames::UserData,
+									LasNames::PointSourceId,
+									"Red",
+									"Green",
+									"Blue",
+									LasNames::GpsTime,
+									"extra",
+									"[Classif] Value",
+									"[Classif] Synthetic flag",
+									"[Classif] Key-point flag",
+									"[Classif] Withheld flag",
+									"[Classif] Overlap flag",
+};
+#endif
 
 //qCC_db
 #include <ccPointCloud.h>
