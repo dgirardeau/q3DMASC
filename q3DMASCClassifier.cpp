@@ -124,7 +124,9 @@ bool Classifier::classify(	const Feature::Source::Set& featureSources,
 	CCCoreLib::ScalarField* classificationSF = Tools::GetClassificationSF(cloud);
 	// add a ccConfidence value if needed
 	int cvConfidenceIdx = cloud->getScalarFieldIndexByName("cvConfidence");
-	if (cvConfidenceIdx < 0) // if the scalar field does not exists, create it
+	if (cvConfidenceIdx > 0) // if the scalar field exists, delete it
+		cloud->deleteScalarField(cvConfidenceIdx);
+	else
 		cvConfidenceIdx = cloud->addScalarField("cvConfidence");
 	CCCoreLib::ScalarField* cvConfidenceSF = cloud->getScalarField(cvConfidenceIdx);
 
@@ -132,7 +134,7 @@ bool Classifier::classify(	const Feature::Source::Set& featureSources,
 	{
 		//save previous classification field (if any)
 		int sfIdx = cloud->getScalarFieldIndexByName("Classification_prev");
-		if (sfIdx < 0)
+		if (sfIdx > 0)
 			cloud->deleteScalarField(sfIdx);
 
 		try
