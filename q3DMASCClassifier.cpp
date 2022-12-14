@@ -38,6 +38,8 @@
 #include <QProgressDialog>
 #include <QtConcurrent>
 
+#include "confusionmatrix.h"
+
 using namespace masc;
 
 Classifier::Classifier()
@@ -123,12 +125,14 @@ bool Classifier::classify(	const Feature::Source::Set& featureSources,
 	//look for the classification field
 	CCCoreLib::ScalarField* classificationSF = Tools::GetClassificationSF(cloud);
 	// add a ccConfidence value if needed
-	int cvConfidenceIdx = cloud->getScalarFieldIndexByName("cvConfidence");
+	int cvConfidenceIdx = cloud->getScalarFieldIndexByName("Classification_confidence");
 	if (cvConfidenceIdx > 0) // if the scalar field exists, delete it
 		cloud->deleteScalarField(cvConfidenceIdx);
 	else
-		cvConfidenceIdx = cloud->addScalarField("cvConfidence");
+		cvConfidenceIdx = cloud->addScalarField("Classification_confidence");
 	CCCoreLib::ScalarField* cvConfidenceSF = cloud->getScalarField(cvConfidenceIdx);
+
+	ccScalarField* classifSFBackup = nullptr;
 
 	if (classificationSF)
 	{
@@ -139,7 +143,7 @@ bool Classifier::classify(	const Feature::Source::Set& featureSources,
 
 		try
 		{
-			ccScalarField* classifSFBackup = new ccScalarField(*static_cast<ccScalarField*>(classificationSF));
+			classifSFBackup = new ccScalarField(*static_cast<ccScalarField*>(classificationSF));
 			classifSFBackup->setName("Classification_prev");
 			cloud->addScalarField(classifSFBackup);
 		}
@@ -200,8 +204,7 @@ bool Classifier::classify(	const Feature::Source::Set& featureSources,
 	CCCoreLib::NormalizedProgress nProgress(pDlg.data(), cloud->size());
 
 	bool success = true;
-	cv::TermCriteria termCriteria = m_rtrees->getTermCriteria();
-	int numberOfTrees = termCriteria.maxCount;
+	int numberOfTrees = m_rtrees->getRoots().size();
 #ifndef _DEBUG
 #if defined(_OPENMP)
 #pragma omp parallel for
@@ -235,13 +238,16 @@ bool Classifier::classify(	const Feature::Source::Set& featureSources,
 		m_rtrees->getVotes(test_data, result, cv::ml::DTrees::PREDICT_MAX_VOTE);
 		int classIndex = -1;
 		for (int col = 0; col < result.cols; col++)
-			if (predictedClass == result.at<float>(0, col))
+			if (predictedClass == result.at<int>(0, col))
 			{
 				classIndex = col;
 				break;
 			}
 		if (classIndex != -1)
-			cvConfidenceSF->setValue(i, static_cast<ScalarType>(result.at<float>(1, classIndex) / numberOfTrees));
+		{
+			float nbVotes = result.at<int>(1, classIndex);
+			cvConfidenceSF->setValue(i, static_cast<ScalarType>(nbVotes / numberOfTrees));
+		}
 		else
 			cvConfidenceSF->setValue(i, CCCoreLib::NAN_VALUE);
 
@@ -253,6 +259,7 @@ bool Classifier::classify(	const Feature::Source::Set& featureSources,
 		}
 	}
 	classificationSF->computeMinAndMax();
+	cvConfidenceSF->computeMinAndMax();
 
 	//show the classification field by default
 	{
@@ -266,6 +273,10 @@ bool Classifier::classify(	const Feature::Source::Set& featureSources,
 		cloud->getDisplay()->redraw();
 		QCoreApplication::processEvents();
 	}
+
+	ConfusionMatrix *confusionMatrix = new ConfusionMatrix();
+	confusionMatrix->compute(*classifSFBackup, *classificationSF);
+	confusionMatrix->show();
 
 	return success;
 }
