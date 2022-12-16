@@ -1,9 +1,15 @@
 #include "confusionmatrix.h"
 #include "ui_confusionmatrix.h"
 
+#include <CCConst.h>
+
 #include <iterator>
 #include <set>
 #include <algorithm>
+
+#define PRECISION 0
+#define RECALL 1
+#define F1_SCORE 2
 
 ConfusionMatrix::ConfusionMatrix(QWidget *parent) :
 	QWidget(parent),
@@ -19,6 +25,45 @@ ConfusionMatrix::~ConfusionMatrix()
 
 void ConfusionMatrix::compute_precision_recall_f1_score(cv::Mat& confusion_matrix, cv::Mat& precision_recall_f1_score)
 {
+	int nbClasses = confusion_matrix.rows;
+	// compute precision
+	for (int realIdx = 0; realIdx < nbClasses; realIdx++)
+	{
+		int TP = 0;
+		int FP = 0;
+		for (int predictedIdx = 0; predictedIdx< nbClasses; predictedIdx++)
+		{
+			if (realIdx == predictedIdx)
+				TP = confusion_matrix.at<int>(realIdx, predictedIdx);
+			else
+				FP += confusion_matrix.at<int>(realIdx, predictedIdx);
+		}
+		int den = TP + FP;
+		if (den == 0)
+			precision_recall_f1_score.at<float>(PRECISION, realIdx) = CCCoreLib::NAN_VALUE;
+		else
+			precision_recall_f1_score.at<float>(PRECISION, realIdx) = TP / den;
+	}
+	// compute recall
+	for (int predictedIdx = 0; predictedIdx < nbClasses; predictedIdx++)
+	{
+		int TP = 0;
+		int FN = 0;
+		for (int realIdx = 0; realIdx< nbClasses; realIdx++)
+		{
+			if (realIdx == predictedIdx)
+				TP = confusion_matrix.at<int>(realIdx, predictedIdx);
+			else
+				FN += confusion_matrix.at<int>(realIdx, predictedIdx);
+		}
+		int den = TP + FN;
+		if (den == 0)
+			precision_recall_f1_score.at<float>(RECALL, realIdx) = CCCoreLib::NAN_VALUE;
+		else
+			precision_recall_f1_score.at<float>(RECALL, realIdx) = TP / den;
+	}
+
+	// compute F1-score
 
 }
 
