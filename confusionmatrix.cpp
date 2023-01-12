@@ -57,10 +57,10 @@ void ConfusionMatrix::compute_precision_recall_f1_score(cv::Mat& confusion_matri
 				FN += confusion_matrix.at<int>(realIdx, predictedIdx);
 		}
 		int den = TP + FN;
-		if (den == 0)
-			precision_recall_f1_score.at<float>(RECALL, realIdx) = CCCoreLib::NAN_VALUE;
-		else
-			precision_recall_f1_score.at<float>(RECALL, realIdx) = TP / den;
+//		if (den == 0)
+//			precision_recall_f1_score.at<float>(RECALL, realIdx) = CCCoreLib::NAN_VALUE;
+//		else
+//			precision_recall_f1_score.at<float>(RECALL, realIdx) = TP / den;
 	}
 
 	// compute F1-score
