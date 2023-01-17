@@ -9,11 +9,12 @@
 
 #include <QBrush>
 
-ConfusionMatrix::ConfusionMatrix(QWidget *parent) :
+ConfusionMatrix::ConfusionMatrix(std::vector<ScalarType> &actual, std::vector<ScalarType> &predicted, QWidget *parent) :
 	QWidget(parent),
 	ui(new Ui::ConfusionMatrix)
 {
 	ui->setupUi(this);
+	compute(actual, predicted);
 }
 
 ConfusionMatrix::~ConfusionMatrix()
@@ -214,9 +215,6 @@ void ConfusionMatrix::compute(std::vector<ScalarType>& actual, std::vector<Scala
 		newItem = new QTableWidgetItem(QString::number(precisionRecallF1Score.at<float>(realIdx, F1_SCORE), 'g', 2));
 		this->ui->tableWidget->setItem(2 + realIdx, 2 + nbClasses + F1_SCORE, newItem);
 	}
-
-//	this->ui->tableWidget->horizontalHeader()->sectionResizeMode(QHeaderView::ResizeToContents);
-//	this->ui->tableWidget->verticalHeader()->sectionResizeMode(QHeaderView::ResizeToContents);
 
 	this->show();
 	this->setMinimumSize(this->ui->tableWidget->sizeHint());

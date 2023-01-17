@@ -82,17 +82,10 @@
          <string notr="true">color:red;</string>
         </property>
         <property name="text">
-         <string>Assign each role to the right cloud, and select the role of the cloud to be classified</string>
+         <string>Assign each label to the right cloud</string>
         </property>
         <property name="alignment">
          <set>Qt::AlignCenter</set>
-        </property>
-       </widget>
-      </item>
-      <item row="7" column="0">
-       <widget class="QLabel" name="label_trainOrClassify">
-        <property name="text">
-         <string>CLASSIFY</string>
         </property>
        </widget>
       </item>
@@ -167,6 +160,18 @@
           <horstretch>0</horstretch>
           <verstretch>0</verstretch>
          </sizepolicy>
+        </property>
+       </widget>
+      </item>
+      <item row="7" column="2">
+       <widget class="QLabel" name="label_trainOrClassify">
+        <property name="font">
+         <font>
+          <bold>true</bold>
+         </font>
+        </property>
+        <property name="text">
+         <string>CLASSIFY</string>
         </property>
        </widget>
       </item>

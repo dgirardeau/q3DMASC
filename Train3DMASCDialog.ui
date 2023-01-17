@@ -157,7 +157,7 @@
          <bool>false</bool>
         </property>
         <property name="text">
-         <string>Save</string>
+         <string>Save classifier</string>
         </property>
        </widget>
       </item>
@@ -231,7 +231,7 @@
       <item row="3" column="0">
        <widget class="QToolButton" name="exportToolButton">
         <property name="text">
-         <string>export</string>
+         <string>Export feature list</string>
         </property>
        </widget>
       </item>

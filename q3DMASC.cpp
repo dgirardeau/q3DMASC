@@ -138,7 +138,7 @@ void q3DMASCPlugin::doClassifyAction()
 	//now show a dialog where the user will be able to set the cloud roles
 	Classify3DMASCDialog classifDlg(m_app);
 	classifDlg.setCloudRoles(cloudLabels, corePointsLabel);
-	classifDlg.label_trainOrClassify->setText("CLASSIFY " + corePointsLabel);
+	classifDlg.label_trainOrClassify->setText(corePointsLabel + " will be classified");
 	classifDlg.classifierFileLineEdit->setText(inputFilename);
 	static bool s_keepAttributes = false;
 	classifDlg.keepAttributesCheckBox->setChecked(s_keepAttributes);
@@ -274,7 +274,7 @@ void q3DMASCPlugin::doTrainAction()
 		Classify3DMASCDialog classifDlg(m_app, true);
 		classifDlg.setWindowTitle("3DMASC Train");
 		classifDlg.setCloudRoles(cloudLabels, corePointsLabel);
-		classifDlg.label_trainOrClassify->setText("TRAIN on " + corePointsLabel);
+		classifDlg.label_trainOrClassify->setText("The classifier will be trained on " + corePointsLabel);
 		classifDlg.classifierFileLineEdit->setText(inputFilename);
 		classifDlg.keepAttributesCheckBox->setChecked(s_keepAttributes);
 		if (!classifDlg.exec())
@@ -672,7 +672,7 @@ void q3DMASCPlugin::doTrainAction()
 		}
 
 		//now wait for the user input
-		while (true)
+		while (true) // ew!
 		{
 			if (!trainDlg.exec())
 			{

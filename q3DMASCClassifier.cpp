@@ -274,8 +274,7 @@ bool Classifier::classify(	const Feature::Source::Set& featureSources,
 		QCoreApplication::processEvents();
 	}
 
-	ConfusionMatrix *confusionMatrix = new ConfusionMatrix();
-	confusionMatrix->compute(*classifSFBackup, *classificationSF);
+	ConfusionMatrix *confusionMatrix = new ConfusionMatrix(*classifSFBackup, *classificationSF);
 
 	return success;
 }
@@ -434,6 +433,8 @@ bool Classifier::evaluate(const Feature::Source::Set& featureSources,
 
 		metrics.ratio = static_cast<float>(metrics.goodGuess) / metrics.sampleCount;
 	}
+
+	ConfusionMatrix *confusionMatrix = new ConfusionMatrix(*classifSF, *outputSF);
 
 	return true;
 }

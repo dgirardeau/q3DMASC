@@ -23,7 +23,7 @@ public:
 		F1_SCORE = 2
 	};
 
-	explicit ConfusionMatrix(QWidget *parent = nullptr);
+	explicit ConfusionMatrix(std::vector<ScalarType>& actual, std::vector<ScalarType>& predicted, QWidget *parent = nullptr);
 	~ConfusionMatrix();
 
 	void computePrecisionRecallF1Score(cv::Mat& matrix, cv::Mat& precisionRecallF1Score);
