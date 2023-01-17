@@ -7,9 +7,7 @@
 #include <set>
 #include <algorithm>
 
-#define PRECISION 0
-#define RECALL 1
-#define F1_SCORE 2
+#include <QBrush>
 
 ConfusionMatrix::ConfusionMatrix(QWidget *parent) :
 	QWidget(parent),
@@ -23,106 +21,163 @@ ConfusionMatrix::~ConfusionMatrix()
 	delete ui;
 }
 
-void ConfusionMatrix::compute_precision_recall_f1_score(cv::Mat& confusion_matrix, cv::Mat& precision_recall_f1_score)
+void ConfusionMatrix::computePrecisionRecallF1Score(cv::Mat& matrix, cv::Mat& precisionRecallF1Score)
 {
-	int nbClasses = confusion_matrix.rows;
+	int nbClasses = matrix.rows;
+
 	// compute precision
+	for (int predictedIdx = 0; predictedIdx < nbClasses; predictedIdx++)
+	{
+		float TP = 0;
+		float FP = 0;
+		for (int realIdx = 0; realIdx < nbClasses; realIdx++)
+		{
+			if (realIdx == predictedIdx)
+				TP = matrix.at<int>(realIdx, realIdx);
+			else
+				FP += matrix.at<int>(realIdx, predictedIdx);
+		}
+		float TP_FP = TP + FP;
+		if (TP_FP == 0)
+			precisionRecallF1Score.at<float>(predictedIdx, PRECISION) = CCCoreLib::NAN_VALUE;
+		else
+			precisionRecallF1Score.at<float>(predictedIdx, PRECISION) = TP / TP_FP;
+	}
+
+	// compute recall
 	for (int realIdx = 0; realIdx < nbClasses; realIdx++)
 	{
-		int TP = 0;
-		int FP = 0;
+		float TP = 0;
+		float FN = 0;
 		for (int predictedIdx = 0; predictedIdx< nbClasses; predictedIdx++)
 		{
 			if (realIdx == predictedIdx)
-				TP = confusion_matrix.at<int>(realIdx, predictedIdx);
+				TP = matrix.at<int>(realIdx, realIdx);
 			else
-				FP += confusion_matrix.at<int>(realIdx, predictedIdx);
+				FN += matrix.at<int>(realIdx, predictedIdx);
 		}
-		int den = TP + FP;
-		if (den == 0)
-			precision_recall_f1_score.at<float>(PRECISION, realIdx) = CCCoreLib::NAN_VALUE;
+		float TP_FN = TP + FN;
+		if (TP_FN == 0)
+			precisionRecallF1Score.at<float>(realIdx, RECALL) = CCCoreLib::NAN_VALUE;
 		else
-			precision_recall_f1_score.at<float>(PRECISION, realIdx) = TP / den;
-	}
-	// compute recall
-	for (int predictedIdx = 0; predictedIdx < nbClasses; predictedIdx++)
-	{
-		int TP = 0;
-		int FN = 0;
-		for (int realIdx = 0; realIdx< nbClasses; realIdx++)
-		{
-			if (realIdx == predictedIdx)
-				TP = confusion_matrix.at<int>(realIdx, predictedIdx);
-			else
-				FN += confusion_matrix.at<int>(realIdx, predictedIdx);
-		}
-		int den = TP + FN;
-//		if (den == 0)
-//			precision_recall_f1_score.at<float>(RECALL, realIdx) = CCCoreLib::NAN_VALUE;
-//		else
-//			precision_recall_f1_score.at<float>(RECALL, realIdx) = TP / den;
+			precisionRecallF1Score.at<float>(realIdx, RECALL) = TP / TP_FN;
 	}
 
 	// compute F1-score
+	for (int realIdx = 0; realIdx < nbClasses; realIdx++)
+	{
+		float den = precisionRecallF1Score.at<float>(realIdx, PRECISION)
+				+ precisionRecallF1Score.at<float>(realIdx, RECALL);
+		if (den == 0)
+			precisionRecallF1Score.at<float>(realIdx, F1_SCORE) = CCCoreLib::NAN_VALUE;
+		else
+			precisionRecallF1Score.at<float>(realIdx, F1_SCORE) =
+					2
+					* precisionRecallF1Score.at<float>(realIdx, PRECISION)
+					* precisionRecallF1Score.at<float>(realIdx, RECALL)
+					/ den;
+	}
 
 }
 
-void ConfusionMatrix::compute(std::vector<ScalarType> &reality, std::vector<ScalarType> &predicted)
+float ConfusionMatrix::computeOverallAccuracy(cv::Mat& matrix)
 {
-	std::set<ScalarType> classes(reality.begin(), reality.end());
-	int idx_actual;
-	int idx_predicted;
-	int nbClasses = classes.size();
-	int actual_class;
-	int predicted_class;
-	cv::Mat confusion_matrix(nbClasses, nbClasses, CV_32S, cv::Scalar(0));
-	cv::Mat precision_recall_f1_score(nbClasses, 3, CV_32F, cv::Scalar(0));
-
-	for (int i = 0; i < reality.size(); i++)
+	int nbClasses = matrix.rows;
+	float totalTrue = 0;
+	float totalFalse = 0;
+	float overallAccuracy = 0.;
+	for (int realIdx = 0; realIdx < nbClasses; realIdx++)
 	{
-		actual_class = reality.at(i);
-		idx_actual = std::distance(classes.begin(), classes.find(actual_class));
-		predicted_class = predicted.at(i);
-		idx_predicted = std::distance(classes.begin(), classes.find(predicted_class));
-		confusion_matrix.at<int>(idx_actual, idx_predicted)++;
-	}
-	// update the qTableWidget
-	this->ui->tableWidget->setColumnCount(nbClasses + 2);
-	this->ui->tableWidget->setRowCount(nbClasses + 2);
-	for (uint row = 0; row < nbClasses; row++)
-		for (uint column = 0; column < nbClasses; column++)
+		for (int predictedIdx = 0; predictedIdx< nbClasses; predictedIdx++)
 		{
-			QTableWidgetItem *newItem = new QTableWidgetItem(QString::number(confusion_matrix.at<int>(row, column)));
-			if (row == column)
-				newItem->setBackground(QColor(37, 190, 147, 1)); // green
+			if (realIdx == predictedIdx)
+				totalTrue += matrix.at<int>(realIdx, realIdx);
 			else
-				newItem->setBackground(QColor(255, 129, 129, 1));
-			this->ui->tableWidget->setItem(row + 2, column + 2, newItem);
+				totalFalse += matrix.at<int>(realIdx, predictedIdx);
 		}
+	}
+	if ((totalTrue + totalFalse) != 0)
+		overallAccuracy = totalTrue / (totalTrue + totalFalse);
+	else
+		overallAccuracy = CCCoreLib::NAN_VALUE;
+
+	return overallAccuracy;
+}
+
+void ConfusionMatrix::compute(std::vector<ScalarType>& actual, std::vector<ScalarType>& predicted)
+{
+	int idxActual;
+	int idxPredicted;
+	int actualClass;
+	int predictedClass;
+
+	// get the set of classes with the contents of the actual classes
+	std::set<ScalarType> classes(actual.begin(), actual.end());
+	int nbClasses = classes.size();
+	cv::Mat confusionMatrix(nbClasses, nbClasses, CV_32S, cv::Scalar(0));
+	cv::Mat precisionRecallF1Score(nbClasses, 3, CV_32F, cv::Scalar(0));
+
+	// fill the confusion matrix
+	for (int i = 0; i < actual.size(); i++)
+	{
+		actualClass = actual.at(i);
+		idxActual = std::distance(classes.begin(), classes.find(actualClass));
+		predictedClass = predicted.at(i);
+		idxPredicted = std::distance(classes.begin(), classes.find(predictedClass));
+		confusionMatrix.at<int>(idxActual, idxPredicted)++;
+	}
+
+	// compute precision recall F1-score
+	computePrecisionRecallF1Score(confusionMatrix, precisionRecallF1Score);
+	float overallAccuracy = computeOverallAccuracy(confusionMatrix);
+
+	// display the overall accuracy
+	this->ui->label_overallAccuracy->setText(QString::number(overallAccuracy, 'g', 2));
 
 	std::set<ScalarType>::iterator itB = classes.begin();
 	std::set<ScalarType>::iterator itE = classes.end();
 	std::vector<ScalarType> vtr;
 	vtr.assign(itB, itE);
-	QTableWidgetItem *newItem = nullptr;
 
-	// set the row andd column names
-	newItem = new QTableWidgetItem(QString::number(vtr[1]));
-	this->ui->tableWidget->setItem(3, 1, newItem);
-	this->ui->tableWidget->setSpan(0, 2, 1, 2);
-	this->ui->tableWidget->setSpan(2, 0, 2, 1);
-	newItem = new QTableWidgetItem("Predicted");
-	QFont font(newItem->font());
+	// BUILD THE QTABLEWIDGET
+
+	this->ui->tableWidget->setColumnCount(2+ nbClasses + 3); // +2 for titles, +3 for precision / recall / F1-score
+	this->ui->tableWidget->setRowCount(2 + nbClasses);
+	// create a font for the table widgets
+	QFont font;
 	font.setBold(true);
+	QTableWidgetItem *newItem = nullptr;
+	// set the row and column names
+	this->ui->tableWidget->setSpan(0, 0, 2, 2); // empty area
+	this->ui->tableWidget->setSpan(0, 2, 1, nbClasses); // 'Predicted' header
+	this->ui->tableWidget->setSpan(2, 0, nbClasses, 1); // 'Actual' header
+	this->ui->tableWidget->setSpan(0, 2 + nbClasses, 1, 3); // empty area
+	// Predicted
+	newItem = new QTableWidgetItem("Predicted");
 	newItem->setFont(font);
 	newItem->setBackground(Qt::lightGray);
+	newItem->setTextAlignment(Qt::AlignCenter);
 	this->ui->tableWidget->setItem(0, 2, newItem);
-	newItem = new QTableWidgetItem("True");
+	// Actual
+	newItem = new QTableWidgetItem("Actual");
 	newItem->setFont(font);
 	newItem->setBackground(Qt::lightGray);
+	newItem->setTextAlignment(Qt::AlignCenter);
 	this->ui->tableWidget->setItem(2, 0, newItem);
-
-	// add data to the QTableWidget
+	// add precision / recall / F1-score headers
+	newItem = new QTableWidgetItem("Precision");
+	newItem->setToolTip("TP / (TP + FP)");
+	newItem->setFont(font);
+	this->ui->tableWidget->setItem(1, 2 + nbClasses + PRECISION, newItem);
+	newItem = new QTableWidgetItem("Recall");
+	newItem->setToolTip("TP / (TP + FN)");
+	newItem->setFont(font);
+	this->ui->tableWidget->setItem(1, 2 + nbClasses + RECALL, newItem);
+	newItem = new QTableWidgetItem("F1-score");
+	newItem->setToolTip("Harmonic mean of precision and recall (the closer to 1 the better)\n2 x precision x recall / (precision + recall)");
+	newItem->setFont(font);
+	this->ui->tableWidget->setItem(1, 2 + nbClasses + F1_SCORE, newItem);
+	// add column names and row names
 	for (int idx = 0; idx < vtr.size(); idx++)
 	{
 		QString str = QString::number(vtr[idx]);
@@ -134,6 +189,35 @@ void ConfusionMatrix::compute(std::vector<ScalarType> &reality, std::vector<Scal
 		this->ui->tableWidget->setItem(2 + idx, 1, newItem);
 	}
 
-	// compute precision recall F1-score
+	// FILL THE QTABLEWIDGET
 
+	// add the confusion matrix values
+	QBrush greenBrush(QColorConstants::Svg::palegreen);
+	for (int row = 0; row < nbClasses; row++)
+		for (int column = 0; column < nbClasses; column++)
+		{
+			QTableWidgetItem *newItem = new QTableWidgetItem(QString::number(confusionMatrix.at<int>(row, column)));
+			if (row == column)
+				newItem->setBackground(greenBrush); // green QColor(37, 190, 147, 1)
+			else
+				newItem->setBackground(QColorConstants::Svg::orange); // QColor(255, 129, 129, 1)
+			this->ui->tableWidget->setItem(2 + row, + 2 + column, newItem);
+		}
+
+	// set precision / recall / F1-score values
+	for (int realIdx=0; realIdx < nbClasses; realIdx++)
+	{
+		newItem = new QTableWidgetItem(QString::number(precisionRecallF1Score.at<float>(realIdx, PRECISION), 'g', 2));
+		this->ui->tableWidget->setItem(2 + realIdx, 2 + nbClasses + PRECISION, newItem);
+		newItem = new QTableWidgetItem(QString::number(precisionRecallF1Score.at<float>(realIdx, RECALL), 'g', 2));
+		this->ui->tableWidget->setItem(2 + realIdx, 2 + nbClasses + RECALL, newItem);
+		newItem = new QTableWidgetItem(QString::number(precisionRecallF1Score.at<float>(realIdx, F1_SCORE), 'g', 2));
+		this->ui->tableWidget->setItem(2 + realIdx, 2 + nbClasses + F1_SCORE, newItem);
+	}
+
+//	this->ui->tableWidget->horizontalHeader()->sectionResizeMode(QHeaderView::ResizeToContents);
+//	this->ui->tableWidget->verticalHeader()->sectionResizeMode(QHeaderView::ResizeToContents);
+
+	this->show();
+	this->setMinimumSize(this->ui->tableWidget->sizeHint());
 }

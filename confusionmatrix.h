@@ -16,11 +16,19 @@ class ConfusionMatrix : public QWidget
 	Q_OBJECT
 
 public:
+	enum metrics
+	{
+		PRECISION = 0,
+		RECALL = 1,
+		F1_SCORE = 2
+	};
+
 	explicit ConfusionMatrix(QWidget *parent = nullptr);
 	~ConfusionMatrix();
 
-	void compute_precision_recall_f1_score(cv::Mat& confusion_matrix, cv::Mat &precision_recall_f1_score);
-	void compute(std::vector<ScalarType>& reality, std::vector<ScalarType>& predicted);
+	void computePrecisionRecallF1Score(cv::Mat& matrix, cv::Mat& precisionRecallF1Score);
+	float computeOverallAccuracy(cv::Mat& matrix);
+	void compute(std::vector<ScalarType>& actual, std::vector<ScalarType>& predicted);
 
 private:
 	Ui::ConfusionMatrix *ui;

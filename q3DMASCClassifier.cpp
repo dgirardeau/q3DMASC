@@ -276,7 +276,6 @@ bool Classifier::classify(	const Feature::Source::Set& featureSources,
 
 	ConfusionMatrix *confusionMatrix = new ConfusionMatrix();
 	confusionMatrix->compute(*classifSFBackup, *classificationSF);
-	confusionMatrix->show();
 
 	return success;
 }
