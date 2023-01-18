@@ -38,6 +38,7 @@
 #include <QProgressDialog>
 #include <QtConcurrent>
 
+#include "qTrain3DMASCDialog.h"
 #include "confusionmatrix.h"
 
 using namespace masc;
@@ -274,7 +275,7 @@ bool Classifier::classify(	const Feature::Source::Set& featureSources,
 		QCoreApplication::processEvents();
 	}
 
-	ConfusionMatrix *confusionMatrix = new ConfusionMatrix(*classifSFBackup, *classificationSF);
+	ConfusionMatrix *confusionMatrix = new ConfusionMatrix(*classifSFBackup, *classificationSF, parentWidget);
 
 	return success;
 }
@@ -283,6 +284,7 @@ bool Classifier::evaluate(const Feature::Source::Set& featureSources,
 							ccPointCloud* testCloud,
 							AccuracyMetrics& metrics,
 							QString& errorMessage,
+							Train3DMASCDialog& train3DMASCDialog,
 							CCCoreLib::ReferenceCloud* testSubset/*=nullptr=*/,
 							QString outputSFName/*=QString()*/,
 							QWidget* parentWidget/*=nullptr*/)
@@ -394,7 +396,10 @@ bool Classifier::evaluate(const Feature::Source::Set& featureSources,
 		}
 	}
 
+
 	//estimate the efficiency of the classifier
+	std::vector<ScalarType> actualClass(testSampleCount);
+	std::vector<ScalarType> predictectedClass(testSampleCount);
 	{
 		metrics.sampleCount = testSampleCount;
 		metrics.goodGuess = 0;
@@ -412,6 +417,8 @@ bool Classifier::evaluate(const Feature::Source::Set& featureSources,
 
 			float fPredictedClass = m_rtrees->predict(test_data.row(i), cv::noArray(), cv::ml::DTrees::PREDICT_MAX_VOTE);
 			int iPredictedClass = static_cast<int>(fPredictedClass);
+			actualClass.at(i) = iClass;
+			predictectedClass.at(i) = iPredictedClass;
 			if (iPredictedClass == iClass)
 			{
 				++metrics.goodGuess;
@@ -434,7 +441,8 @@ bool Classifier::evaluate(const Feature::Source::Set& featureSources,
 		metrics.ratio = static_cast<float>(metrics.goodGuess) / metrics.sampleCount;
 	}
 
-	ConfusionMatrix *confusionMatrix = new ConfusionMatrix(*classifSF, *outputSF);
+	std::unique_ptr<ConfusionMatrix> confusionMatrix(new ConfusionMatrix(actualClass, predictectedClass));
+	train3DMASCDialog.deleteLaterConfusionMatrix(confusionMatrix);
 
 	return true;
 }

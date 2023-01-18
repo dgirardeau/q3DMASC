@@ -364,6 +364,7 @@ void q3DMASCPlugin::doTrainAction()
 
 	//show the training dialog for the first time
 	Train3DMASCDialog trainDlg(m_app->getMainWindow());
+	trainDlg.setWindowModality(Qt::WindowModal); // to be able to move the confusion matrix window
 	trainDlg.maxDepthSpinBox->setValue(s_params.rt.maxDepth);
 	trainDlg.maxTreeCountSpinBox->setValue(s_params.rt.maxTreeCount);
 	trainDlg.activeVarCountSpinBox->setValue(s_params.rt.activeVarCount);
@@ -633,6 +634,7 @@ void q3DMASCPlugin::doTrainAction()
 											testCloud ? testCloud : corePoints.cloud,
 											metrics,
 											errorMessage,
+											trainDlg,
 											testCloud ? nullptr : testSubset.data(),
 											"Classification_pred",
 											m_app->getMainWindow()))

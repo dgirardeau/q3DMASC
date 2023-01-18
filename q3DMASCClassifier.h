@@ -32,6 +32,8 @@
 
 class QWidget;
 class ccMainAppInterface;
+class ConfusionMatrix;
+class Train3DMASCDialog;
 
 //! 3DMASC classifier
 namespace masc
@@ -65,6 +67,7 @@ namespace masc
 						ccPointCloud* testCloud,
 						AccuracyMetrics& metrics,
 						QString& errorMessage,
+						Train3DMASCDialog& train3DMASCDialog,
 						CCCoreLib::ReferenceCloud* testSubset = nullptr,
 						QString outputSFName = QString(),
 						QWidget* parentWidget = nullptr);

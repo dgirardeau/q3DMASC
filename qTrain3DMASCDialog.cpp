@@ -27,6 +27,8 @@
 //System
 #include <assert.h>
 
+#include <iostream>
+
 static const int FeatureImportanceColumn = 1;
 
 Train3DMASCDialog::Train3DMASCDialog(QWidget* parent/*=nullptr*/)
@@ -183,4 +185,9 @@ void Train3DMASCDialog::onExportResults()
 		QString importance = tableWidget->item(index, FeatureImportanceColumn)->text();
 		stream << featureName << ";" << importance << Qt::endl;
 	}
+}
+
+void Train3DMASCDialog::deleteLaterConfusionMatrix(std::unique_ptr<ConfusionMatrix>& ptr)
+{
+	m_confusionMatrixToDeleteLater.push_back(std::move(ptr));
 }

@@ -22,6 +22,8 @@
 
 #include <ui_Train3DMASCDialog.h>
 
+#include "confusionmatrix.h"
+
 //! 3DMASC plugin 'train' dialog
 class Train3DMASCDialog : public QDialog, public Ui::Train3DMASCDialog
 {
@@ -51,6 +53,8 @@ public:
 	
 	inline bool shouldSaveClassifier() const { return saveRequested; }
 
+	void deleteLaterConfusionMatrix(std::unique_ptr<ConfusionMatrix>& ptr);
+
 protected slots:
 
 	void onClose();
@@ -61,4 +65,5 @@ protected: //members
 
 	bool classifierSaved;
 	bool saveRequested;
+	std::vector<std::unique_ptr<ConfusionMatrix>> m_confusionMatrixToDeleteLater;
 };

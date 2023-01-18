@@ -14,7 +14,10 @@ ConfusionMatrix::ConfusionMatrix(std::vector<ScalarType> &actual, std::vector<Sc
 	ui(new Ui::ConfusionMatrix)
 {
 	ui->setupUi(this);
+	this->setWindowFlag(Qt::WindowStaysOnTopHint);
 	compute(actual, predicted);
+	this->show();
+	this->setMinimumSize(this->ui->tableWidget->sizeHint());
 }
 
 ConfusionMatrix::~ConfusionMatrix()
@@ -215,7 +218,4 @@ void ConfusionMatrix::compute(std::vector<ScalarType>& actual, std::vector<Scala
 		newItem = new QTableWidgetItem(QString::number(precisionRecallF1Score.at<float>(realIdx, F1_SCORE), 'g', 2));
 		this->ui->tableWidget->setItem(2 + realIdx, 2 + nbClasses + F1_SCORE, newItem);
 	}
-
-	this->show();
-	this->setMinimumSize(this->ui->tableWidget->sizeHint());
 }
