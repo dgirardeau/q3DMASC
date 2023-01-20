@@ -442,7 +442,7 @@ bool Classifier::evaluate(const Feature::Source::Set& featureSources,
 	}
 
 	std::unique_ptr<ConfusionMatrix> confusionMatrix(new ConfusionMatrix(actualClass, predictectedClass));
-	train3DMASCDialog.deleteLaterConfusionMatrix(confusionMatrix);
+	train3DMASCDialog.addConfusionMatrix(confusionMatrix);
 
 	return true;
 }

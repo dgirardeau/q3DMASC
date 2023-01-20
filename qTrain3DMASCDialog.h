@@ -53,7 +53,7 @@ public:
 	
 	inline bool shouldSaveClassifier() const { return saveRequested; }
 
-	void deleteLaterConfusionMatrix(std::unique_ptr<ConfusionMatrix>& ptr);
+	void addConfusionMatrix(std::unique_ptr<ConfusionMatrix>& ptr);
 
 protected slots:
 
@@ -65,5 +65,5 @@ protected: //members
 
 	bool classifierSaved;
 	bool saveRequested;
-	std::vector<std::unique_ptr<ConfusionMatrix>> m_confusionMatrixToDeleteLater;
+	std::vector<std::unique_ptr<ConfusionMatrix>> m_confusionMatrices;
 };

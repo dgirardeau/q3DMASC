@@ -310,8 +310,6 @@ void q3DMASCPlugin::doTrainAction()
 		mainCloudLabel = corePoints.role;
 	}
 
-
-
 	if (!masc::Tools::GetClassificationSF(corePoints.origin))
 	{
 		m_app->dispToConsole("Missing 'Classification' field on core points cloud", ccMainAppInterface::ERR_CONSOLE_MESSAGE);

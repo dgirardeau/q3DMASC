@@ -187,7 +187,7 @@ void Train3DMASCDialog::onExportResults()
 	}
 }
 
-void Train3DMASCDialog::deleteLaterConfusionMatrix(std::unique_ptr<ConfusionMatrix>& ptr)
+void Train3DMASCDialog::addConfusionMatrix(std::unique_ptr<ConfusionMatrix>& ptr)
 {
-	m_confusionMatrixToDeleteLater.push_back(std::move(ptr));
+	m_confusionMatrices.push_back(std::move(ptr));
 }
