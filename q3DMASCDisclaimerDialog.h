@@ -37,6 +37,24 @@ public:
 		, Ui::TrainDisclaimerDialog()
 	{
 		setupUi(this);
+
+		QString compilationInfo;
+		compilationInfo += "Version " + QString(Q3DMASC_VERSION);
+		compilationInfo += QStringLiteral("<br><i>Compiled with");
+
+#if defined(_MSC_VER)
+		compilationInfo += QStringLiteral(" MSVC %1 and").arg(_MSC_VER);
+#endif
+
+		compilationInfo += QStringLiteral(" Qt %1").arg(QT_VERSION_STR);
+		compilationInfo += QStringLiteral("</i>");
+		compilationInfo += " [cc " + QString(GIT_BRANCH_CC) + "/" + QString(GIT_COMMMIT_HASH_CC) + "]";
+		compilationInfo += " [3dmasc " +
+				QString(GIT_TAG_3DMASC) + " " +
+				QString(GIT_BRANCH_3DMASC) + "/" +
+				QString(GIT_COMMMIT_HASH_3DMASC) + "]";
+
+		label_compilationInformation->setText(compilationInfo);
 	}
 };
 
@@ -64,6 +82,24 @@ public:
 		, Ui::ClassifyDisclaimerDialog()
 	{
 		setupUi(this);
+
+		QString compilationInfo;
+		compilationInfo += "Version " + QString(Q3DMASC_VERSION);
+		compilationInfo += QStringLiteral("<br><i>Compiled with");
+
+#if defined(_MSC_VER)
+		compilationInfo += QStringLiteral(" MSVC %1 and").arg(_MSC_VER);
+#endif
+
+		compilationInfo += QStringLiteral(" Qt %1").arg(QT_VERSION_STR);
+		compilationInfo += QStringLiteral("</i>");
+		compilationInfo += " [cc " + QString(GIT_BRANCH_CC) + "/" + QString(GIT_COMMMIT_HASH_CC) + "]";
+		compilationInfo += " [3dmasc " +
+				QString(GIT_TAG_3DMASC) + " " +
+				QString(GIT_BRANCH_3DMASC) + "/" +
+				QString(GIT_COMMMIT_HASH_3DMASC) + "]";
+
+		label_compilationInformation->setText(compilationInfo);
 	}
 };
 

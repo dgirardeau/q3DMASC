@@ -8,6 +8,7 @@ if (INSTALL_Q3DMASC_PLUGIN)
 	project( Q3DMASC_PLUGIN )
 
 	AddPlugin( NAME ${PROJECT_NAME} )
+	set(Q3DMASC_PLUGIN_VERSION "0.1")
 
 	include( CMakePolicies NO_POLICY_SCOPE )
 
@@ -58,8 +59,61 @@ if (INSTALL_Q3DMASC_PLUGIN)
     )
 
         target_link_libraries( ${PROJECT_NAME} ${OpenCV_LIBS} )
-		set( OPENCV_DEP_DLL_FILES ${OpenCV_DIR}/x64/vc15/bin/opencv_world460.dll )
+		set( OPENCV_DEP_DLL_FILES ${OpenCV_DIR}/x64/vc15/bin/opencv_world340.dll )
         copy_files("${OPENCV_DEP_DLL_FILES}" "${CLOUDCOMPARE_DEST_FOLDER}") #mind the quotes!
+
+	#================
+	# git commit hash
+	# Get the current working branch
+	execute_process(
+		COMMAND git rev-parse --abbrev-ref HEAD
+		WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+		OUTPUT_VARIABLE GIT_BRANCH_3DMASC
+		OUTPUT_STRIP_TRAILING_WHITESPACE)
+
+	# Get the latest commit hash
+	execute_process(
+		COMMAND git rev-parse --short HEAD
+		WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+		OUTPUT_VARIABLE GIT_COMMIT_HASH_3DMASC
+		OUTPUT_STRIP_TRAILING_WHITESPACE)
+
+	# Get the latest commit hash
+	execute_process(
+		COMMAND git describe
+		WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+		OUTPUT_VARIABLE GIT_TAG_3DMASC
+		OUTPUT_STRIP_TRAILING_WHITESPACE)
+
+	# Get the current working branch
+	execute_process(
+		COMMAND git rev-parse --abbrev-ref HEAD
+		WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+		OUTPUT_VARIABLE GIT_BRANCH_CC
+		OUTPUT_STRIP_TRAILING_WHITESPACE)
+
+	# Get the latest commit hash
+	execute_process(
+		COMMAND git rev-parse --short HEAD
+		WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+		OUTPUT_VARIABLE GIT_COMMIT_HASH_CC
+		OUTPUT_STRIP_TRAILING_WHITESPACE)
+
+	message(${PROJECT_NAME} " " GIT_BRANCH_3DMASC " " ${GIT_BRANCH_3DMASC})
+	message(${PROJECT_NAME} " " GIT_COMMIT_HASH_3DMASC " " ${GIT_COMMIT_HASH_3DMASC})
+	message(${PROJECT_NAME} " " GIT_TAG_3DMASC " " ${GIT_TAG_3DMASC})
+	message(${PROJECT_NAME} " " GIT_BRANCH_CC " " ${GIT_BRANCH_CC})
+	message(${PROJECT_NAME} " " GIT_COMMIT_HASH_CC " " ${GIT_COMMIT_HASH_CC})
+	message(${PROJECT_NAME} " " Q3DMASC_VERSION " " ${Q3DMASC_PLUGIN_VERSION})
+
+	target_compile_definitions(${PROJECT_NAME} PRIVATE
+		GIT_BRANCH_CC="${GIT_BRANCH_CC}"
+		GIT_COMMMIT_HASH_CC="${GIT_COMMIT_HASH_CC}"
+		PUBLIC GIT_BRANCH_3DMASC="${GIT_BRANCH_3DMASC}"
+		GIT_COMMMIT_HASH_3DMASC="${GIT_COMMIT_HASH_3DMASC}"
+		GIT_TAG_3DMASC="${GIT_TAG_3DMASC}"
+		Q3DMASC_VERSION="${Q3DMASC_PLUGIN_VERSION}"
+		)
 
 
 endif()
