@@ -182,6 +182,7 @@ void q3DMASCPlugin::doClassifyAction()
 
 	//prepare the main cloud
 	ccProgressDialog progressDlg(true, m_app->getMainWindow());
+	progressDlg.show();
 	progressDlg.setAutoClose(false); //we don't want the progress dialog to 'pop' for each feature
 	QString error;
 	SFCollector generatedScalarFields;

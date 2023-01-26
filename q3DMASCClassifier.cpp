@@ -275,7 +275,7 @@ bool Classifier::classify(	const Feature::Source::Set& featureSources,
 		QCoreApplication::processEvents();
 	}
 
-	ConfusionMatrix *confusionMatrix = new ConfusionMatrix(*classifSFBackup, *classificationSF, parentWidget);
+	ConfusionMatrix *confusionMatrix = new ConfusionMatrix(*classifSFBackup, *classificationSF);
 
 	return success;
 }
@@ -562,14 +562,11 @@ bool Classifier::train(	const ccPointCloud* cloud,
 	cv::TermCriteria terminationCriteria(cv::TermCriteria::MAX_ITER, params.maxTreeCount, std::numeric_limits<double>::epsilon());
 	m_rtrees->setTermCriteria(terminationCriteria);
 
-	ccLog::Warning("[Classifier::train] cv::getNumThreads " + QString::number(cv::getNumThreads()));
-
 	QFuture<bool> future = QtConcurrent::run([&]()
 	{
 		// Code in this block will run in another thread
 		try
 		{
-			ccLog::Warning("[QFuture] cv::getNumThreads " + QString::number(cv::getNumThreads()));
 			cv::Mat sampleIndexes = cv::Mat::zeros(1, training_data.rows, CV_8U);
 //			cv::Mat trainSamples = sampleIndexes.colRange(0, sampleCount);
 //			trainSamples.setTo(cv::Scalar::all(1));
