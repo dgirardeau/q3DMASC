@@ -20,6 +20,8 @@
 //qCC
 #include <ccStdPluginInterface.h>
 
+#include "Parameters.h"
+
 //! 3DMASC plugin
 /** 3D Multi-cloud, multi-Attribute, multi-Scale, multi-Class classification
 **/
@@ -43,6 +45,8 @@ public:
 protected slots:
 
 	void doClassifyAction();
+	void saveTrainParameters(const masc::TrainParameters& params);
+	void loadTrainParameters(masc::TrainParameters& params);
 	void doTrainAction();
 
 protected:

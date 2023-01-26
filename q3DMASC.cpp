@@ -35,6 +35,7 @@
 #include <QApplication>
 #include <QFileDialog>
 #include <QMessageBox>
+#include <QSettings>
 
 q3DMASCPlugin::q3DMASCPlugin(QObject* parent/*=0*/)
 	: QObject(parent)
@@ -219,6 +220,24 @@ struct FeatureSelection
 	float importance = std::numeric_limits<float>::quiet_NaN();
 };
 
+void q3DMASCPlugin::saveTrainParameters(const masc::TrainParameters& params)
+{
+	QSettings settings("OSUR", "q3DMASC");
+	settings.setValue("TrainParameters/maxDepth", params.rt.maxDepth);
+	settings.setValue("TrainParameters/minSampleCount", params.rt.minSampleCount);
+	settings.setValue("TrainParameters/activeVarCount", params.rt.activeVarCount);
+	settings.setValue("TrainParameters/maxTreeCount", params.rt.maxTreeCount);
+}
+
+void q3DMASCPlugin::loadTrainParameters(masc::TrainParameters& params)
+{
+	QSettings settings("OSUR", "q3DMASC");
+	params.rt.maxDepth = settings.value("TrainParameters/maxDepth", 25).toInt();
+	params.rt.minSampleCount = settings.value("TrainParameters/minSampleCount", 10).toInt();
+	params.rt.activeVarCount = settings.value("TrainParameters/activeVarCount", 0).toInt();
+	params.rt.maxTreeCount = settings.value("TrainParameters/maxTreeCount", 100).toInt();
+}
+
 void q3DMASCPlugin::doTrainAction()
 {
 	//disclaimer accepted?
@@ -291,6 +310,7 @@ void q3DMASCPlugin::doTrainAction()
 	}
 
 	static masc::TrainParameters s_params;
+	loadTrainParameters(s_params); // load the saved parameters or the default values if any
 	masc::Feature::Set features;
 	std::vector<double> scales;
 	if (!masc::Tools:: LoadTrainingFile(inputFilename, features, scales, loadedClouds, s_params, &corePoints, m_app->getMainWindow()))
@@ -676,6 +696,7 @@ void q3DMASCPlugin::doTrainAction()
 		{
 			if (!trainDlg.exec())
 			{
+				saveTrainParameters(s_params);
 				//the dialog can be closed
 				generatedScalarFields.releaseSFs(s_keepAttributes);
 				generatedScalarFieldsTest.releaseSFs(s_keepAttributes);
