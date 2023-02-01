@@ -311,7 +311,7 @@ void q3DMASCPlugin::doTrainAction()
 	}
 
 	static masc::TrainParameters s_params;
-	loadTrainParameters(s_params); // load the saved parameters or the default values if any
+	loadTrainParameters(s_params); // load the saved parameters or the default values
 	masc::Feature::Set features;
 	std::vector<double> scales;
 	if (!masc::Tools:: LoadTrainingFile(inputFilename, features, scales, loadedClouds, s_params, &corePoints, m_app->getMainWindow()))
