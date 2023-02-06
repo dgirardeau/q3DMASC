@@ -275,7 +275,8 @@ bool Classifier::classify(	const Feature::Source::Set& featureSources,
 		QCoreApplication::processEvents();
 	}
 
-	ConfusionMatrix *confusionMatrix = new ConfusionMatrix(*classifSFBackup, *classificationSF);
+	if (classifSFBackup != nullptr)
+		ConfusionMatrix *confusionMatrix = new ConfusionMatrix(*classifSFBackup, *classificationSF);
 
 	return success;
 }
