@@ -687,8 +687,8 @@ bool Tools::LoadFile(	const QString& filename,
 	{
 		loadParameters.alwaysDisplayLoadDialog = true;
 		loadParameters.shiftHandlingMode = ccGlobalShiftManager::DIALOG_IF_NECESSARY;
-        loadParameters._coordinatesShift = &loadCoordinatesShift;
-        loadParameters._coordinatesShiftEnabled = &loadCoordinatesTransEnabled;
+		loadParameters._coordinatesShift = &loadCoordinatesShift;
+		loadParameters._coordinatesShiftEnabled = &loadCoordinatesTransEnabled;
 		loadParameters.parentWidget = parent;
 		FileIOFilter::ResetSesionCounter();
 	}
@@ -1137,7 +1137,7 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 			for (int i = 0; i < static_cast<int>(pointCount); ++i)
 			{
 				//spherical neighborhood extraction structure
-                CCCoreLib::DgmOctree::NearestNeighboursSearchStruct nNSS;
+				CCCoreLib::DgmOctree::NearestNeighboursSearchStruct nNSS;
 				{
 					nNSS.level = octreeLevel;
 					nNSS.queryPoint = *corePoints.cloud->getPoint(i);

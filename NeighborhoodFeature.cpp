@@ -304,9 +304,9 @@ bool NeighborhoodFeature::computeValue(CCCoreLib::DgmOctree::NeighboursSet& poin
 		minZ = maxZ = pointsInNeighbourhood[0].point->z;
 		for (size_t i = 1; i < kNN; ++i)
 		{
-			if (minZ < pointsInNeighbourhood[i].point->z)
+			if (minZ > pointsInNeighbourhood[i].point->z)
 				minZ = pointsInNeighbourhood[i].point->z;
-			else if (maxZ > pointsInNeighbourhood[i].point->z)
+			else if (maxZ < pointsInNeighbourhood[i].point->z)
 				maxZ = pointsInNeighbourhood[i].point->z;
 		}
 
