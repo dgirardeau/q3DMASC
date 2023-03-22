@@ -19,6 +19,8 @@
 
 //Qt
 #include <QDialog>
+#include <QFile>
+#include <QTextStream>
 
 #include <ui_Train3DMASCDialog.h>
 
@@ -33,6 +35,10 @@ public:
 
 	//! Default constructor
 	Train3DMASCDialog(QWidget* parent = nullptr);
+	~Train3DMASCDialog();
+
+	void readSettings();
+	void writeSettings();
 
 	void clearResults();
 
@@ -54,6 +60,14 @@ public:
 	inline bool shouldSaveClassifier() const { return saveRequested; }
 
 	void addConfusionMatrix(std::unique_ptr<ConfusionMatrix>& ptr);
+	void setInputFilePath(QString filename);
+	void setCheckBoxSaveTrace(bool state);
+	bool openTraceFile();
+	bool closeTraceFile();
+	void saveTraces(ConfusionMatrix &confusionMatrix);
+	bool getSaveTrace();
+	QString getTracePath();
+	int getRun();
 
 protected slots:
 
@@ -66,4 +80,11 @@ protected: //members
 	bool classifierSaved;
 	bool saveRequested;
 	std::vector<std::unique_ptr<ConfusionMatrix>> m_confusionMatrices;
+	bool traceFileConfigured;
+	QFile *m_traceFile;
+	QString m_tracePath;
+	QTextStream m_traceStream;
+	QString m_parameterFilePath;
+	QString m_baseName;
+	uint run;
 };

@@ -29,6 +29,8 @@ public:
 	void computePrecisionRecallF1Score(cv::Mat& matrix, cv::Mat& precisionRecallF1Score);
 	float computeOverallAccuracy(cv::Mat& matrix);
 	void compute(std::vector<ScalarType>& actual, std::vector<ScalarType>& predicted);
+	void setSessionRun(QString session, int run);
+	float m_overallAccuracy;
 
 private:
 	Ui::ConfusionMatrix *ui;

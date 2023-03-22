@@ -259,6 +259,16 @@
         </column>
        </widget>
       </item>
+      <item row="3" column="1">
+       <widget class="QCheckBox" name="checkBox_keepTraces">
+        <property name="toolTip">
+         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;If checked, a directory is created near the parameters file. Each time you click on Run, the features used to train the random forest will be stored and an entry will be created in a specific file to save the metrics associated with the classifier.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        </property>
+        <property name="text">
+         <string>Keep traces</string>
+        </property>
+       </widget>
+      </item>
      </layout>
     </widget>
    </item>

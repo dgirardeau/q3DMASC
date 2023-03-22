@@ -390,6 +390,7 @@ void q3DMASCPlugin::doTrainAction()
 	trainDlg.minSampleCountSpinBox->setValue(s_params.rt.minSampleCount);
 	trainDlg.testDataRatioSpinBox->setValue(static_cast<int>(s_params.testDataRatio * 100));
 	trainDlg.testDataRatioSpinBox->setEnabled(testCloud == nullptr);
+	trainDlg.setInputFilePath(inputFilename);
 
 	//display the loaded features and let the user select the ones to use
 	trainDlg.setResultText("Select features and press 'Run'");
@@ -689,6 +690,26 @@ void q3DMASCPlugin::doTrainAction()
 				}
 
 				trainDlg.sortByFeatureImportance();
+
+				// if the checkbox "Save traces" is checked
+				if (trainDlg.getSaveTrace())
+				{
+					//save the classifier in the trace directory with a generic name depending on the run
+					QString tracePath = trainDlg.getTracePath();
+					if (!tracePath.isEmpty())
+					{
+						QString outputFilename = tracePath + "/run_" + QString::number(trainDlg.getRun()) + ".txt";
+						if (masc::Tools::SaveClassifier(outputFilename, features, mainCloudLabel, classifier, m_app->getMainWindow()))
+						{
+							m_app->dispToConsole("Classifier succesfully saved to " + outputFilename, ccMainAppInterface::STD_CONSOLE_MESSAGE);
+							trainDlg.setClassifierSaved();
+						}
+						else
+						{
+							m_app->dispToConsole("Failed to save classifier file");
+						}
+					}
+				}
 			}
 		}
 

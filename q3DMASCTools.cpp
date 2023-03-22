@@ -51,7 +51,7 @@ bool Tools::SaveClassifier(	QString filename,
 							const masc::Classifier& classifier,
 							QWidget* parent/*=nullptr*/)
 {
-	//first save the classifier data (same base filename but with the ymal extension)
+	//first save the classifier data (same base filename but with the yaml extension)
 	QFileInfo fi(filename);
 	QString yamlFilename = fi.baseName() + ".yaml";
 	QString yamlAbsoluteFilename = fi.absoluteDir().absoluteFilePath(yamlFilename);

@@ -89,7 +89,9 @@ float ConfusionMatrix::computeOverallAccuracy(cv::Mat& matrix)
 	int nbClasses = matrix.rows;
 	float totalTrue = 0;
 	float totalFalse = 0;
-	float overallAccuracy = 0.;
+
+	m_overallAccuracy = 0.0;
+
 	for (int realIdx = 0; realIdx < nbClasses; realIdx++)
 	{
 		for (int predictedIdx = 0; predictedIdx< nbClasses; predictedIdx++)
@@ -101,11 +103,11 @@ float ConfusionMatrix::computeOverallAccuracy(cv::Mat& matrix)
 		}
 	}
 	if ((totalTrue + totalFalse) != 0)
-		overallAccuracy = totalTrue / (totalTrue + totalFalse);
+		m_overallAccuracy = totalTrue / (totalTrue + totalFalse);
 	else
-		overallAccuracy = CCCoreLib::NAN_VALUE;
+		m_overallAccuracy = CCCoreLib::NAN_VALUE;
 
-	return overallAccuracy;
+	return m_overallAccuracy;
 }
 
 void ConfusionMatrix::compute(std::vector<ScalarType>& actual, std::vector<ScalarType>& predicted)
@@ -218,4 +220,13 @@ void ConfusionMatrix::compute(std::vector<ScalarType>& actual, std::vector<Scala
 		newItem = new QTableWidgetItem(QString::number(precisionRecallF1Score.at<float>(realIdx, F1_SCORE), 'g', 2));
 		this->ui->tableWidget->setItem(2 + realIdx, 2 + nbClasses + F1_SCORE, newItem);
 	}
+}
+
+void ConfusionMatrix::setSessionRun(QString session, int run)
+{
+	QString label;
+
+	label = session + " / " + QString::number(run);
+
+	this->ui->label_sessionRun->setText(label);
 }

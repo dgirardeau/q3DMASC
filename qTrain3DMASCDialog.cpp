@@ -23,6 +23,10 @@
 #include <QFileDialog>
 #include <QSettings>
 #include <QTextStream>
+#include <QStandardPaths>
+#include <QDateTime>
+
+#include <ccLog.h>
 
 //System
 #include <assert.h>
@@ -36,12 +40,41 @@ Train3DMASCDialog::Train3DMASCDialog(QWidget* parent/*=nullptr*/)
 	, Ui::Train3DMASCDialog()
 	, classifierSaved(false)
 	, saveRequested(false)
+	, traceFileConfigured(false)
+	, m_traceFile(nullptr)
 {
 	setupUi(this);
+
+	QDateTime dateTime = QDateTime::currentDateTime();
+	m_baseName = "3dmasc_" + dateTime.toString("yyyyMMdd") + "_" + dateTime.toString("hh") + "h" + dateTime.toString("mm");
+	run = 0;
+
+	readSettings();
 
 	connect(closePushButton, SIGNAL(clicked()), this, SLOT(onClose()));
 	connect(savePushButton, SIGNAL(clicked()), this, SLOT(onSave()));
 	connect(exportToolButton, SIGNAL(clicked()), this, SLOT(onExportResults()));
+}
+
+Train3DMASCDialog::~Train3DMASCDialog()
+{
+	writeSettings();
+	closeTraceFile();
+}
+
+void Train3DMASCDialog::readSettings()
+{
+	QSettings settings;
+	settings.beginGroup("3DMASC");
+	bool saveTrace = settings.value("saveTrace", false).toBool();
+	setCheckBoxSaveTrace(saveTrace);
+}
+
+void Train3DMASCDialog::writeSettings()
+{
+	QSettings settings;
+	settings.beginGroup("3DMASC");
+	settings.setValue("saveTrace", checkBox_keepTraces->isChecked());
 }
 
 void Train3DMASCDialog::clearResults()
@@ -189,5 +222,132 @@ void Train3DMASCDialog::onExportResults()
 
 void Train3DMASCDialog::addConfusionMatrix(std::unique_ptr<ConfusionMatrix>& ptr)
 {
+	run++; // increment the run number
+	ptr->setSessionRun(m_baseName, run);
+	saveTraces(*ptr);
 	m_confusionMatrices.push_back(std::move(ptr));
+}
+
+void Train3DMASCDialog::setInputFilePath(QString filePath)
+{
+	m_parameterFilePath = filePath;
+}
+
+void Train3DMASCDialog::setCheckBoxSaveTrace(bool state)
+{
+	checkBox_keepTraces->setChecked(state);
+}
+
+bool Train3DMASCDialog::openTraceFile()
+{
+	QString traceFileName;
+	QString traceFilePath;
+
+	// get currentPath
+	QFileInfo info(m_parameterFilePath);
+	QDir parameterDir = QDir(info.path());
+
+	QFileDialog dialog(this);
+	dialog.setFileMode(QFileDialog::DirectoryOnly);
+	dialog.setWindowTitle("Choose a valid directory for the traces");
+	dialog.setDirectory(QStandardPaths::standardLocations(QStandardPaths::DocumentsLocation).at(0));
+
+	if (!m_traceFile) // create trace file if it does not exists already
+	{
+		m_tracePath = parameterDir.absolutePath() + "/" + m_baseName;
+		traceFileName = m_baseName + ".txt";
+
+		if (!parameterDir.mkdir(m_baseName)) // create a specific directory to store the traces
+		{
+			ccLog::Error("impossible to save in the default directory: " + m_tracePath);
+			// impossible to save in the default directory, you have to propose another path
+			if(dialog.exec())
+				m_tracePath = dialog.selectedFiles().at(0);
+			else
+				return false;
+		}
+		else
+			ccLog::Print("directory for traces created: " + m_tracePath);
+
+		traceFilePath = m_tracePath + "/" + traceFileName;
+		m_traceFile = new QFile(traceFilePath);
+
+		if(!m_traceFile->open(QIODevice::WriteOnly | QIODevice::Text))
+		{
+			ccLog::Error("impossible to open trace file: " + traceFilePath);
+			delete m_traceFile;
+			m_tracePath.clear();
+			return false;
+		}
+	}
+
+	if (m_traceFile && m_traceFile->isOpen())
+	{
+		traceFileConfigured = true;
+		ccLog::Print("save trace in: " + traceFilePath);
+		m_traceStream.setDevice(m_traceFile);
+		m_traceStream << "run overallAccuracy\n";
+		return true;
+	}
+	else
+		return false;
+}
+
+bool Train3DMASCDialog::closeTraceFile()
+{
+	if (m_traceFile)
+		if (m_traceFile->isOpen())
+		{
+			ccLog::Print("[3DMASC] traces stored in: " + m_traceFile->fileName());
+			m_traceFile->close();
+		}
+
+	return true;
+}
+
+void Train3DMASCDialog::saveTraces(ConfusionMatrix &confusionMatrix)
+{
+	if (checkBox_keepTraces->isChecked())
+	{
+		if (!traceFileConfigured) // if the trace file is not configured yet, do it
+		{
+			if (!openTraceFile())
+				return;
+		}
+		else // save the trace
+		{
+			// save the run number and the overall accuracy
+			if (m_traceStream.device())
+				m_traceStream << run << " " << confusionMatrix.m_overallAccuracy << Qt::endl;
+			// save the confusion matrix
+			// save the features
+			// save the classifier
+		}
+	}
+}
+
+bool Train3DMASCDialog::getSaveTrace()
+{
+	return checkBox_keepTraces->isChecked();
+}
+
+QString Train3DMASCDialog::getTracePath()
+{
+	if (traceFileConfigured)
+	{
+		QFileInfo fi(*m_traceFile);
+		return fi.absoluteDir().absolutePath();
+	}
+	else if (openTraceFile())
+	{
+		QFileInfo fi(*m_traceFile);
+		return fi.absoluteDir().absolutePath();
+	}
+	else
+		return QString();
+}
+
+int Train3DMASCDialog::getRun()
+{
+	return run;
 }
