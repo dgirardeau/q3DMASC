@@ -148,6 +148,8 @@ namespace masc
 			, field2(nullptr)
 			, statSF1(nullptr)
 			, statSF2(nullptr)
+			, value1AlreadyComputed(false)
+			, value2AlreadyComputed(false)
 			//, keepStatSF2(false)
 		{
 			//auomatically set the right source for specific features
@@ -180,7 +182,8 @@ namespace masc
 		//inherited from Feature
 		virtual Type getType() const override { return Type::PointFeature; }
 		virtual Feature::Shared clone() const override { return Feature::Shared(new PointFeature(*this)); }
-		virtual bool prepare(const CorePoints& corePoints, QString& error, CCCoreLib::GenericProgressCallback* progressCb = nullptr, SFCollector* generatedScalarFields = nullptr) override;
+		virtual bool prepare(const CorePoints& corePoints, QString& error,
+							 CCCoreLib::GenericProgressCallback* progressCb = nullptr, SFCollector* generatedScalarFields = nullptr, bool useExistingScalarFileds = false) override;
 		virtual bool finish(const CorePoints& corePoints, QString& error) override;
 		virtual bool checkValidity(QString corePointRole, QString &error) const override;
 		virtual QString toString() const override;
@@ -213,5 +216,8 @@ namespace masc
 		CCCoreLib::ScalarField *statSF1, *statSF2;
 		
 		//bool keepStatSF2;
+
+		bool value1AlreadyComputed;
+		bool value2AlreadyComputed;
 	};
 }

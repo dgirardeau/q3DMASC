@@ -68,7 +68,7 @@ static IScalarFieldWrapper::Shared GetSource(const Feature::Source& fs, const cc
 		}
 		else
 		{
-			ccLog::Warning(QObject::tr("Internal error: unknwon scalar field '%1'").arg(fs.name));
+			ccLog::Warning(QObject::tr("Internal error: unknown scalar field '%1'").arg(fs.name));
 			return IScalarFieldWrapper::Shared(nullptr);
 		}
 	}

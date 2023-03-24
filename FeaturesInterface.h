@@ -174,7 +174,8 @@ namespace masc
 		virtual Feature::Shared clone() const = 0;
 
 		//! Prepares the feature (compute the scalar field, etc.)
-		virtual bool prepare(const CorePoints& corePoints, QString& error, CCCoreLib::GenericProgressCallback* progressCb = nullptr, SFCollector* generatedScalarFields = nullptr) = 0;
+		virtual bool prepare(const CorePoints& corePoints, QString& error,
+							 CCCoreLib::GenericProgressCallback* progressCb = nullptr, SFCollector* generatedScalarFields = nullptr, bool useExistingScalarFields = false) = 0;
 
 		//! Finishes the feature preparation (update the scalar field, etc.)
 		virtual bool finish(const CorePoints& corePoints, QString& error) { /* does nothing by default*/return true; }

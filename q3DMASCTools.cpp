@@ -984,8 +984,10 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 			return false;
 		}
 
+		// if the feature already exists and if useExistingFeatures is checked, simply populate generatedScalarFields
 		//prepare the feature
-		if (!feature->prepare(corePoints, errorStr, progressCb, generatedScalarFields))
+		bool useExistingScalarFileds = true;
+		if (!feature->prepare(corePoints, errorStr, progressCb, generatedScalarFields, useExistingScalarFileds))
 		{
 			//something failed (error should be up to date)
 			return false;
@@ -1180,7 +1182,7 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 						//Point features
 						for (PointFeature::Shared& feature : fas.pointFeaturesPerScale[currentScale])
 						{
-							if (feature->cloud1 == sourceCloud && feature->statSF1 && feature->field1)
+							if (feature->cloud1 == sourceCloud && feature->statSF1 && feature->field1 && !feature->value1AlreadyComputed)
 							{
 								double outputValue = 0;
 								if (!feature->computeStat(nNSS.pointsInNeighbourhood, feature->field1, outputValue))
@@ -1194,7 +1196,7 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 								feature->statSF1->setValue(i, v1);
 							}
 
-							if (feature->cloud2 == sourceCloud && feature->statSF2 && feature->field2)
+							if (feature->cloud2 == sourceCloud && feature->statSF2 && feature->field2 && !feature->value2AlreadyComputed)
 							{
 								assert(feature->op != Feature::NO_OPERATION);
 								double outputValue = 0;
@@ -1213,7 +1215,7 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 						//Neighborhood features
 						for (NeighborhoodFeature::Shared& feature : fas.neighborhoodFeaturesPerScale[currentScale])
 						{
-							if (feature->cloud1 == sourceCloud && feature->sf1)
+							if (feature->cloud1 == sourceCloud && feature->sf1 && !feature->value1AlreadyComputed)
 							{
 								double outputValue = 0;
 								if (!feature->computeValue(nNSS.pointsInNeighbourhood, nNSS.queryPoint, outputValue))
@@ -1228,7 +1230,7 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 								feature->sf1->setValue(i, v1);
 							}
 
-							if (feature->cloud2 == sourceCloud && feature->sf2)
+							if (feature->cloud2 == sourceCloud && feature->sf2 && !feature->value2AlreadyComputed)
 							{
 								assert(feature->op != Feature::NO_OPERATION);
 								double outputValue = 0;
@@ -1248,7 +1250,7 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 						//Context-based features
 						for (ContextBasedFeature::Shared& feature : fas.contextBasedFeaturesPerScale[currentScale])
 						{
-							if (feature->cloud2 == sourceCloud && feature->sf)
+							if (feature->cloud2 == sourceCloud && feature->sf && !feature->valueAlreadyComputed)
 							{
 								ScalarType outputValue = 0;
 								if (!feature->computeValue(nNSS.pointsInNeighbourhood, nNSS.queryPoint, outputValue))

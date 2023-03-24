@@ -75,6 +75,7 @@ namespace masc
 			, kNN(p_kNN)
 			, ctxClassLabel(p_ctxClassLabel)
 			, sf(nullptr)
+			, valueAlreadyComputed(false)
 		{
 			scale = p_scale;
 		}
@@ -82,7 +83,8 @@ namespace masc
 		//inherited from Feature
 		virtual Type getType() const override { return Type::ContextBasedFeature; }
 		virtual Feature::Shared clone() const override { return Feature::Shared(new ContextBasedFeature(*this)); }
-		virtual bool prepare(const CorePoints& corePoints, QString& error, CCCoreLib::GenericProgressCallback* progressCb = nullptr, SFCollector* generatedScalarFields = nullptr) override;
+		virtual bool prepare(const CorePoints& corePoints, QString& error,
+							 CCCoreLib::GenericProgressCallback* progressCb = nullptr, SFCollector* generatedScalarFields = nullptr, bool useExistingScalarFields = false) override;
 		virtual bool finish(const CorePoints& corePoints, QString& error) override;
 		virtual bool checkValidity(QString corePointRole, QString &error) const override;
 		virtual QString toString() const override;
@@ -103,5 +105,6 @@ namespace masc
 		int ctxClassLabel;
 		//! The computed scalar
 		CCCoreLib::ScalarField* sf;
+		bool valueAlreadyComputed;
 	};
 }

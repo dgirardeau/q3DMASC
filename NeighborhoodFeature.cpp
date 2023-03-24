@@ -62,7 +62,8 @@ bool NeighborhoodFeature::checkValidity(QString corePointRole, QString &error) c
 bool NeighborhoodFeature::prepare(	const CorePoints& corePoints,
 									QString& error,
 									CCCoreLib::GenericProgressCallback* progressCb/*=nullptr*/,
-									SFCollector* generatedScalarFields/*=nullptr*/)
+									SFCollector* generatedScalarFields/*=nullptr*/,
+									bool useExistingScalarFields /*=false*/)
 {
 	if (!cloud1 || !corePoints.cloud)
 	{
@@ -87,9 +88,25 @@ bool NeighborhoodFeature::prepare(	const CorePoints& corePoints,
 	}
 	resultSFName += "@" + QString::number(scale);
 
+	// check if there exists a scalar field with the same name
+	int sfIdx = corePoints.cloud->getScalarFieldIndexByName(qPrintable(resultSFName));
+	if (sfIdx >= 0)
+	{
+		if (useExistingScalarFields)
+		{
+			ccLog::Warning("use existing scalar field: " + resultSFName);
+			sf1 = corePoints.cloud->getScalarField(sfIdx);
+			generatedScalarFields->push(corePoints.cloud, sf1, SFCollector::ALWAYS_KEEP);
+			this->value1AlreadyComputed = true;
+		}
+	}
+	else
+	{
+		assert(!sf1);
+		sf1 = PrepareSF(corePoints.cloud, qPrintable(resultSFName), generatedScalarFields, SFCollector::CAN_REMOVE);
+	}
+
 	//and the scalar field
-	assert(!sf1);
-	sf1 = PrepareSF(corePoints.cloud, qPrintable(resultSFName), generatedScalarFields, SFCollector::CAN_REMOVE);
 	if (!sf1)
 	{
 		error = QString("Failed to prepare scalar %1 @ scale %2").arg(resultSFName).arg(scale);
@@ -102,8 +119,25 @@ bool NeighborhoodFeature::prepare(	const CorePoints& corePoints,
 		QString resultSFName2 = ToString(type) + "_" + cloud2Label + "@" + QString::number(scale);
 		keepSF2 = (corePoints.cloud->getScalarFieldIndexByName(qPrintable(resultSFName2)) >= 0); //we remember that the scalar field was already existing!
 
-		assert(!sf2);
-		sf2 = PrepareSF(corePoints.cloud, qPrintable(resultSFName2), generatedScalarFields, SFCollector::ALWAYS_REMOVE);
+		// check if there exists a scalar field with the same name, if so, use it
+		int sfIdx = corePoints.cloud->getScalarFieldIndexByName(qPrintable(resultSFName));
+		useExistingScalarFields = true;
+		if (sfIdx >= 0)
+		{
+			if (useExistingScalarFields)
+			{
+				ccLog::Warning("use existing scalar field: " + resultSFName);
+				sf2 = corePoints.cloud->getScalarField(sfIdx);
+				generatedScalarFields->push(corePoints.cloud, sf2, SFCollector::ALWAYS_KEEP);
+				this->value2AlreadyComputed = true;
+			}
+		}
+		else
+		{
+			assert(!sf2);
+			sf2 = PrepareSF(corePoints.cloud, qPrintable(resultSFName), generatedScalarFields, SFCollector::ALWAYS_REMOVE);
+		}
+
 		if (!sf2)
 		{
 			error = QString("Failed to prepare scalar field for %1 @ scale %2").arg(cloud2Label).arg(scale);
