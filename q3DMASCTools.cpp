@@ -962,7 +962,8 @@ struct FeaturesAndScales
 	QMap<double, std::vector<ContextBasedFeature::Shared> > contextBasedFeaturesPerScale;
 };
 
-bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features, QString& errorStr, CCCoreLib::GenericProgressCallback* progressCb/*=nullptr*/, SFCollector* generatedScalarFields/*=nullptr*/)
+bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features, QString& errorStr,
+							CCCoreLib::GenericProgressCallback* progressCb/*=nullptr*/, SFCollector* generatedScalarFields/*=nullptr*/, bool useExistingScalarFields/*=false*/)
 {
 	if (features.empty() || !corePoints.origin)
 	{
@@ -986,8 +987,7 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 
 		// if the feature already exists and if useExistingFeatures is checked, simply populate generatedScalarFields
 		//prepare the feature
-		bool useExistingScalarFileds = true;
-		if (!feature->prepare(corePoints, errorStr, progressCb, generatedScalarFields, useExistingScalarFileds))
+		if (!feature->prepare(corePoints, errorStr, progressCb, generatedScalarFields, useExistingScalarFields))
 		{
 			//something failed (error should be up to date)
 			return false;

@@ -35,6 +35,11 @@ public:
 	//! Default constructor
 	Classify3DMASCDialog(ccMainAppInterface* app, bool trainMode = false);
 
+	//! read settings
+	void readSettings();
+	//! write settings
+	void writeSettings();
+
 	//! Sets the clouds roles
 	void setCloudRoles(const QList<QString>& roles, QString corePointsLabel);
 

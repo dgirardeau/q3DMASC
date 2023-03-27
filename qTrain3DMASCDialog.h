@@ -59,12 +59,12 @@ public:
 	
 	inline bool shouldSaveClassifier() const { return saveRequested; }
 
-	void addConfusionMatrix(std::unique_ptr<ConfusionMatrix>& ptr);
+	void addConfusionMatrixAndSaveTraces(ConfusionMatrix* ptr);
 	void setInputFilePath(QString filename);
 	void setCheckBoxSaveTrace(bool state);
 	bool openTraceFile();
 	bool closeTraceFile();
-	void saveTraces(ConfusionMatrix &confusionMatrix);
+	void saveTraces(ConfusionMatrix *confusionMatrix);
 	bool getSaveTrace();
 	QString getTracePath();
 	int getRun();
@@ -79,7 +79,7 @@ protected: //members
 
 	bool classifierSaved;
 	bool saveRequested;
-	std::vector<std::unique_ptr<ConfusionMatrix>> m_confusionMatrices;
+	std::vector<ConfusionMatrix*> toDeleteLater;
 	bool traceFileConfigured;
 	QFile *m_traceFile;
 	QString m_tracePath;

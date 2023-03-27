@@ -141,8 +141,6 @@ void q3DMASCPlugin::doClassifyAction()
 	classifDlg.setCloudRoles(cloudLabels, corePointsLabel);
 	classifDlg.label_trainOrClassify->setText(corePointsLabel + " will be classified");
 	classifDlg.classifierFileLineEdit->setText(inputFilename);
-	static bool s_keepAttributes = false;
-	classifDlg.keepAttributesCheckBox->setChecked(s_keepAttributes);
 	classifDlg.testCloudComboBox->hide();
 	classifDlg.testLabel->hide();
 	if (!classifDlg.exec())
@@ -150,8 +148,8 @@ void q3DMASCPlugin::doClassifyAction()
 		//process cancelled by the user
 		return;
 	}
-
-	s_keepAttributes = classifDlg.keepAttributesCheckBox->isChecked();
+	bool useExistingScalarFields = classifDlg.checkBox_useExistingScalarFields->isChecked();
+	static bool s_keepAttributes = classifDlg.keepAttributesCheckBox->isChecked();
 
 	masc::Tools::NamedClouds clouds;
 	QString mainCloudLabel = corePointsLabel;
@@ -186,7 +184,7 @@ void q3DMASCPlugin::doClassifyAction()
 	progressDlg.setAutoClose(false); //we don't want the progress dialog to 'pop' for each feature
 	QString error;
 	SFCollector generatedScalarFields;
-	if (!masc::Tools::PrepareFeatures(corePoints, features, error, &progressDlg, &generatedScalarFields))
+	if (!masc::Tools::PrepareFeatures(corePoints, features, error, &progressDlg, &generatedScalarFields, useExistingScalarFields))
 	{
 		m_app->dispToConsole(error, ccMainAppInterface::ERR_CONSOLE_MESSAGE);
 		generatedScalarFields.releaseSFs(false);
@@ -275,7 +273,6 @@ void q3DMASCPlugin::doTrainAction()
 		return;
 	}
 
-	static bool s_keepAttributes = false;
 	masc::Tools::NamedClouds loadedClouds;
 	masc::CorePoints corePoints;
 
@@ -296,13 +293,13 @@ void q3DMASCPlugin::doTrainAction()
 		classifDlg.setCloudRoles(cloudLabels, corePointsLabel);
 		classifDlg.label_trainOrClassify->setText("The classifier will be trained on " + corePointsLabel);
 		classifDlg.classifierFileLineEdit->setText(inputFilename);
-		classifDlg.keepAttributesCheckBox->setChecked(s_keepAttributes);
+		classifDlg.keepAttributesCheckBox->hide(); // this parameter is set in the trainDlg dialog
+		classifDlg.checkBox_useExistingScalarFields->hide(); // this parameter is set in the trainDlg dialog
 		if (!classifDlg.exec())
 		{
 			//process cancelled by the user
 			return;
 		}
-		s_keepAttributes = classifDlg.keepAttributesCheckBox->isChecked();
 
 		classifDlg.getClouds(loadedClouds);
 		m_app->dispToConsole("Training cloud: " + mainCloudLabel, ccMainAppInterface::STD_CONSOLE_MESSAGE);
@@ -391,6 +388,8 @@ void q3DMASCPlugin::doTrainAction()
 	trainDlg.testDataRatioSpinBox->setValue(static_cast<int>(s_params.testDataRatio * 100));
 	trainDlg.testDataRatioSpinBox->setEnabled(testCloud == nullptr);
 	trainDlg.setInputFilePath(inputFilename);
+	static bool s_keepAttributes = trainDlg.checkBox_useExistingScalarFields->isChecked();
+	bool useExistingScalarFields = trainDlg.checkBox_useExistingScalarFields->isChecked();
 
 	//display the loaded features and let the user select the ones to use
 	trainDlg.setResultText("Select features and press 'Run'");
@@ -508,7 +507,7 @@ void q3DMASCPlugin::doTrainAction()
 			{
 				progressDlg.setAutoClose(false); //we don't want the progress dialog to 'pop' for each feature
 				QString error;
-				if (!masc::Tools::PrepareFeatures(corePoints, toPrepare, error, &progressDlg, &generatedScalarFields))
+				if (!masc::Tools::PrepareFeatures(corePoints, toPrepare, error, &progressDlg, &generatedScalarFields, useExistingScalarFields))
 				{
 					m_app->dispToConsole(error, ccMainAppInterface::ERR_CONSOLE_MESSAGE);
 					generatedScalarFields.releaseSFs(false);
@@ -590,7 +589,7 @@ void q3DMASCPlugin::doTrainAction()
 					return;
 				}
 				trainDlg.setFirstRunDone();
-				trainDlg.shouldSaveClassifier();
+//				trainDlg.shouldSaveClassifier(); // useless?
 			}
 
 			//test the trained classifier
@@ -626,7 +625,7 @@ void q3DMASCPlugin::doTrainAction()
 							masc::CorePoints corePointsTest;
 							corePointsTest.cloud = corePointsTest.origin = testCloud;
 							corePointsTest.role = mainCloudLabel;
-							if (!masc::Tools::PrepareFeatures(corePointsTest, toPrepareTest, error, &progressDlg, &generatedScalarFieldsTest))
+							if (!masc::Tools::PrepareFeatures(corePointsTest, toPrepareTest, error, &progressDlg, &generatedScalarFieldsTest, useExistingScalarFields))
 							{
 								m_app->dispToConsole(error, ccMainAppInterface::ERR_CONSOLE_MESSAGE);
 								generatedScalarFields.releaseSFs(false);

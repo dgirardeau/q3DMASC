@@ -27,6 +27,7 @@
 #include <QMainWindow>
 #include <QPushButton>
 #include <QComboBox>
+#include <QSettings>
 //#include <QApplication>
 
 //system
@@ -115,6 +116,24 @@ Classify3DMASCDialog::Classify3DMASCDialog(ccMainAppInterface* app, bool trainMo
 	}
 
 	onCloudChanged(0);
+}
+
+void Classify3DMASCDialog::readSettings()
+{
+	QSettings settings;
+	settings.beginGroup("3DMASC");
+	bool keepAttributes = settings.value("keepAttributes", false).toBool();
+	this->keepAttributesCheckBox->setChecked(keepAttributes);
+	bool useExistingScalarFields = settings.value("useExistingScalarFields", false).toBool();
+	this->checkBox_useExistingScalarFields->setChecked(useExistingScalarFields);
+}
+
+void Classify3DMASCDialog::writeSettings()
+{
+	QSettings settings;
+	settings.beginGroup("3DMASC");
+	settings.setValue("keepAttributes", keepAttributesCheckBox->isChecked());
+	settings.setValue("useExistingScalarFields", checkBox_useExistingScalarFields->isChecked());
 }
 
 void Classify3DMASCDialog::setCloudRoles(const QList<QString>& roles, QString corePointsLabel)

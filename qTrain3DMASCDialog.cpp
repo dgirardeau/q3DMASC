@@ -42,12 +42,12 @@ Train3DMASCDialog::Train3DMASCDialog(QWidget* parent/*=nullptr*/)
 	, saveRequested(false)
 	, traceFileConfigured(false)
 	, m_traceFile(nullptr)
+	, run(0)
 {
 	setupUi(this);
 
 	QDateTime dateTime = QDateTime::currentDateTime();
 	m_baseName = "3dmasc_" + dateTime.toString("yyyyMMdd") + "_" + dateTime.toString("hh") + "h" + dateTime.toString("mm");
-	run = 0;
 
 	readSettings();
 
@@ -60,12 +60,21 @@ Train3DMASCDialog::~Train3DMASCDialog()
 {
 	writeSettings();
 	closeTraceFile();
+	for (auto m : toDeleteLater)
+	{
+		if (m != nullptr)
+			delete m;
+	}
 }
 
 void Train3DMASCDialog::readSettings()
 {
 	QSettings settings;
 	settings.beginGroup("3DMASC");
+	bool keepAttributes = settings.value("keepAttributes", false).toBool();
+	this->keepAttributesCheckBox->setChecked(keepAttributes);
+	bool useExistingScalarFields = settings.value("useExistingScalarFields", false).toBool();
+	this->checkBox_useExistingScalarFields->setChecked(useExistingScalarFields);
 	bool saveTrace = settings.value("saveTrace", false).toBool();
 	setCheckBoxSaveTrace(saveTrace);
 }
@@ -74,6 +83,8 @@ void Train3DMASCDialog::writeSettings()
 {
 	QSettings settings;
 	settings.beginGroup("3DMASC");
+	settings.setValue("keepAttributes", keepAttributesCheckBox->isChecked());
+	settings.setValue("useExistingScalarFields", checkBox_useExistingScalarFields->isChecked());
 	settings.setValue("saveTrace", checkBox_keepTraces->isChecked());
 }
 
@@ -220,12 +231,10 @@ void Train3DMASCDialog::onExportResults()
 	}
 }
 
-void Train3DMASCDialog::addConfusionMatrix(std::unique_ptr<ConfusionMatrix>& ptr)
+void Train3DMASCDialog::addConfusionMatrixAndSaveTraces(ConfusionMatrix* confusionMatrix)
 {
-	run++; // increment the run number
-	ptr->setSessionRun(m_baseName, run);
-	saveTraces(*ptr);
-	m_confusionMatrices.push_back(std::move(ptr));
+	toDeleteLater.push_back(confusionMatrix);
+	saveTraces(confusionMatrix);
 }
 
 void Train3DMASCDialog::setInputFilePath(QString filePath)
@@ -305,8 +314,10 @@ bool Train3DMASCDialog::closeTraceFile()
 	return true;
 }
 
-void Train3DMASCDialog::saveTraces(ConfusionMatrix &confusionMatrix)
+void Train3DMASCDialog::saveTraces(ConfusionMatrix *confusionMatrix)
 {
+	run++; // increment the run number
+	confusionMatrix->setSessionRun(m_baseName, run);
 	if (checkBox_keepTraces->isChecked())
 	{
 		if (!traceFileConfigured) // if the trace file is not configured yet, do it
@@ -314,15 +325,13 @@ void Train3DMASCDialog::saveTraces(ConfusionMatrix &confusionMatrix)
 			if (!openTraceFile())
 				return;
 		}
-		else // save the trace
-		{
-			// save the run number and the overall accuracy
-			if (m_traceStream.device())
-				m_traceStream << run << " " << confusionMatrix.m_overallAccuracy << Qt::endl;
-			// save the confusion matrix
-			// save the features
-			// save the classifier
-		}
+		// save the trace
+
+		// save the run number and the overall accuracy
+		if (m_traceStream.device())
+			m_traceStream << run << " " << confusionMatrix->m_overallAccuracy << Qt::endl;
+		confusionMatrix->save(m_tracePath + "/" + "run_" + QString::number(run) + "_confusion_matrix.txt");
+
 	}
 }
 

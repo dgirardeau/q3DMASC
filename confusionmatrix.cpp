@@ -8,6 +8,11 @@
 #include <algorithm>
 
 #include <QBrush>
+#include <QFile>
+#include <QTextStream>
+#include <iostream>
+
+#include <ccLog.h>
 
 ConfusionMatrix::ConfusionMatrix(std::vector<ScalarType> &actual, std::vector<ScalarType> &predicted, QWidget *parent) :
 	QWidget(parent),
@@ -15,7 +20,9 @@ ConfusionMatrix::ConfusionMatrix(std::vector<ScalarType> &actual, std::vector<Sc
 {
 	ui->setupUi(this);
 	this->setWindowFlag(Qt::WindowStaysOnTopHint);
+
 	compute(actual, predicted);
+
 	this->show();
 	this->setMinimumSize(this->ui->tableWidget->sizeHint());
 }
@@ -119,9 +126,10 @@ void ConfusionMatrix::compute(std::vector<ScalarType>& actual, std::vector<Scala
 
 	// get the set of classes with the contents of the actual classes
 	std::set<ScalarType> classes(actual.begin(), actual.end());
-	int nbClasses = classes.size();
-	cv::Mat confusionMatrix(nbClasses, nbClasses, CV_32S, cv::Scalar(0));
-	cv::Mat precisionRecallF1Score(nbClasses, 3, CV_32F, cv::Scalar(0));
+	nbClasses = classes.size();
+
+	confusionMatrix = cv::Mat(nbClasses, nbClasses, CV_32S, cv::Scalar(0));
+	precisionRecallF1Score = cv::Mat(nbClasses, 3, CV_32F, cv::Scalar(0));
 
 	// fill the confusion matrix
 	for (int i = 0; i < actual.size(); i++)
@@ -142,8 +150,7 @@ void ConfusionMatrix::compute(std::vector<ScalarType>& actual, std::vector<Scala
 
 	std::set<ScalarType>::iterator itB = classes.begin();
 	std::set<ScalarType>::iterator itE = classes.end();
-	std::vector<ScalarType> vtr;
-	vtr.assign(itB, itE);
+	class_numbers.assign(itB, itE);
 
 	// BUILD THE QTABLEWIDGET
 
@@ -184,9 +191,9 @@ void ConfusionMatrix::compute(std::vector<ScalarType>& actual, std::vector<Scala
 	newItem->setFont(font);
 	this->ui->tableWidget->setItem(1, 2 + nbClasses + F1_SCORE, newItem);
 	// add column names and row names
-	for (int idx = 0; idx < vtr.size(); idx++)
+	for (int idx = 0; idx < class_numbers.size(); idx++)
 	{
-		QString str = QString::number(vtr[idx]);
+		QString str = QString::number(class_numbers[idx]);
 		newItem = new QTableWidgetItem(str);
 		newItem->setFont(font);
 		this->ui->tableWidget->setItem(1, 2 + idx, newItem);
@@ -229,4 +236,43 @@ void ConfusionMatrix::setSessionRun(QString session, int run)
 	label = session + " / " + QString::number(run);
 
 	this->ui->label_sessionRun->setText(label);
+}
+
+bool ConfusionMatrix::save(QString filePath)
+{
+	std::unique_ptr<QFile> file(new QFile(filePath));
+	QTextStream stream;
+
+	if(!file->open(QIODevice::WriteOnly | QIODevice::Text))
+	{
+		ccLog::Error("impossible to open file: " + filePath);
+		return false;
+	}
+
+	if (file && file->isOpen())
+	{
+		stream.setDevice(file.get());
+		stream << "# columns: predicted classes\n# rows: actual classes\n";
+		stream << "# last three colums: precision / recall / F1-score\n";
+		for (auto class_number : class_numbers)
+		{
+			stream << class_number << " ";
+		}
+		stream << Qt::endl;
+		for (int row = 0; row < confusionMatrix.rows; row++)
+		{
+			stream << class_numbers.at(row) << " ";
+			for (int col = 0; col < confusionMatrix.cols; col++)
+			{
+				stream << confusionMatrix.at<int>(row, col) << " ";
+			}
+			stream << precisionRecallF1Score.at<float>(row, PRECISION) << " ";
+			stream << precisionRecallF1Score.at<float>(row, RECALL) << " ";
+			stream << precisionRecallF1Score.at<float>(row, F1_SCORE) << Qt::endl;
+		}
+		file->close();
+		return true;
+	}
+	else
+		return false;
 }

@@ -442,8 +442,7 @@ bool Classifier::evaluate(const Feature::Source::Set& featureSources,
 		metrics.ratio = static_cast<float>(metrics.goodGuess) / metrics.sampleCount;
 	}
 
-	std::unique_ptr<ConfusionMatrix> confusionMatrix(new ConfusionMatrix(actualClass, predictectedClass));
-	train3DMASCDialog.addConfusionMatrix(confusionMatrix);
+	train3DMASCDialog.addConfusionMatrixAndSaveTraces(new ConfusionMatrix(actualClass, predictectedClass));
 
 	return true;
 }
