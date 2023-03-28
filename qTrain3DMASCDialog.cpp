@@ -47,7 +47,8 @@ Train3DMASCDialog::Train3DMASCDialog(QWidget* parent/*=nullptr*/)
 	setupUi(this);
 
 	QDateTime dateTime = QDateTime::currentDateTime();
-	m_baseName = "3dmasc_" + dateTime.toString("yyyyMMdd") + "_" + dateTime.toString("hh") + "h" + dateTime.toString("mm");
+	m_baseName = "3dmasc_" + dateTime.toString("yyyyMMdd_hh")
+			+  "h" + dateTime.toString("mm");
 
 	readSettings();
 
@@ -199,7 +200,7 @@ void Train3DMASCDialog::onSave()
 	accept();
 }
 
-void Train3DMASCDialog::onExportResults()
+void Train3DMASCDialog::onExportResults(QString filePath/*=""*/)
 {
 	QSettings settings;
 	settings.beginGroup("3DMASC");
@@ -266,6 +267,11 @@ bool Train3DMASCDialog::openTraceFile()
 		m_tracePath = parameterDir.absolutePath() + "/" + m_baseName;
 		traceFileName = m_baseName + ".txt";
 
+		if (parameterDir.exists(m_baseName))
+		{
+			QDateTime dateTime = QDateTime::currentDateTime();
+			m_baseName += "min" + dateTime.toString("ss") + "s";
+		}
 		if (!parameterDir.mkdir(m_baseName)) // create a specific directory to store the traces
 		{
 			ccLog::Error("impossible to save in the default directory: " + m_tracePath);

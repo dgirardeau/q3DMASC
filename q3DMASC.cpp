@@ -697,16 +697,18 @@ void q3DMASCPlugin::doTrainAction()
 					QString tracePath = trainDlg.getTracePath();
 					if (!tracePath.isEmpty())
 					{
-						QString outputFilename = tracePath + "/run_" + QString::number(trainDlg.getRun()) + ".txt";
-						if (masc::Tools::SaveClassifier(outputFilename, features, mainCloudLabel, classifier, m_app->getMainWindow()))
+						QString outputFilePath = tracePath + "/run_" + QString::number(trainDlg.getRun()) + ".txt";
+						if (masc::Tools::SaveClassifier(outputFilePath, features, mainCloudLabel, classifier, m_app->getMainWindow()))
 						{
-							m_app->dispToConsole("Classifier succesfully saved to " + outputFilename, ccMainAppInterface::STD_CONSOLE_MESSAGE);
+							m_app->dispToConsole("Classifier succesfully saved to " + outputFilePath, ccMainAppInterface::STD_CONSOLE_MESSAGE);
 							trainDlg.setClassifierSaved();
 						}
 						else
 						{
 							m_app->dispToConsole("Failed to save classifier file");
 						}
+						QString exportFilePath = tracePath + "/run_" + QString::number(trainDlg.getRun()) + ".csv";
+
 					}
 				}
 			}
@@ -719,6 +721,8 @@ void q3DMASCPlugin::doTrainAction()
 			{
 				saveTrainParameters(s_params);
 				//the dialog can be closed
+				if (trainDlg.keepAttributesCheckBox->isChecked())
+					s_keepAttributes = true;
 				generatedScalarFields.releaseSFs(s_keepAttributes);
 				generatedScalarFieldsTest.releaseSFs(s_keepAttributes);
 				return;

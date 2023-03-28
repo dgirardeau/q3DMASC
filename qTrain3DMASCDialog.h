@@ -73,7 +73,7 @@ protected slots:
 
 	void onClose();
 	void onSave();
-	void onExportResults();
+	void onExportResults(QString filePath = "");
 
 protected: //members
 
