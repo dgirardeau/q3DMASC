@@ -42,21 +42,21 @@ bool ContextBasedFeature::checkValidity(QString corePointRole, QString &error) c
 		return false;
 	}
 
-	if (!cloud1 || !cloud2)
+	if (!cloud1)
 	{
-		error = "two clouds are required to compute context-based features";
+		error = "one cloud is required to compute context-based features";
 		return false;
 	}
 
-	CCCoreLib::ScalarField* classifSF = Tools::GetClassificationSF(cloud2);
+	CCCoreLib::ScalarField* classifSF = Tools::GetClassificationSF(cloud1);
 	if (!classifSF)
 	{
-		error = QString("Context cloud (%1) has no classification field").arg(cloud2Label);
+		error = QString("Context cloud (%1) has no classification field").arg(cloud1Label);
 		return false;
 	}
-	if (classifSF->size() < cloud2->size())
+	if (classifSF->size() < cloud1->size())
 	{
-		error = QString("Context cloud (%1) has an invalid classification field").arg(cloud2Label);
+		error = QString("Context cloud (%1) has an invalid classification field").arg(cloud1Label);
 		return false;
 	}
 
@@ -75,7 +75,7 @@ bool ContextBasedFeature::prepare(	const CorePoints& corePoints,
 									SFCollector* generatedScalarFields/*=nullptr*/,
 									bool useExistingScalarFields /*=false*/)
 {
-	if (!cloud1 || !corePoints.cloud)
+	if (!corePoints.cloud)
 	{
 		//invalid input
 		assert(false);
@@ -83,7 +83,7 @@ bool ContextBasedFeature::prepare(	const CorePoints& corePoints,
 		return false;
 	}
 
-	if (!cloud2)
+	if (!cloud1)
 	{
 		//invalid input
 		assert(false);
@@ -97,18 +97,18 @@ bool ContextBasedFeature::prepare(	const CorePoints& corePoints,
 		return false;
 	}
 
-	CCCoreLib::ScalarField* classifSF = Tools::GetClassificationSF(cloud2);
-	if (!classifSF || classifSF->size() < cloud2->size())
+	CCCoreLib::ScalarField* classifSF = Tools::GetClassificationSF(cloud1);
+	if (!classifSF || classifSF->size() < cloud1->size())
 	{
 		assert(false);
 		//already checked by 'checkValidity'
 		return false;
 	}
-	cloud2->setCurrentOutScalarField(cloud2->getScalarFieldIndexByName(classifSF->getName()));
+	cloud1->setCurrentOutScalarField(cloud1->getScalarFieldIndexByName(classifSF->getName()));
 
 	//build the final SF name
 	QString typeStr = ToString(type);
-	QString resultSFName = typeStr + "_" + cloud1Label + "_" + cloud2Label + "_" + QString::number(ctxClassLabel);
+	QString resultSFName = typeStr + "_" + cloud1Label + "_" + QString::number(ctxClassLabel);
 	if (scaled())
 	{
 		resultSFName += "@" + QString::number(scale);
@@ -170,7 +170,7 @@ bool ContextBasedFeature::prepare(	const CorePoints& corePoints,
 			{
 				if (classifSF->getValue(i) == fClass)
 				{
-					classCloud.addPoint(*cloud2->getPoint(i));
+					classCloud.addPoint(*cloud1->getPoint(i));
 				}
 			}
 
@@ -287,7 +287,7 @@ bool ContextBasedFeature::prepare(	const CorePoints& corePoints,
 		{
 			//specific case: not enough points of this class in the whole cloud!
 			//sf->fill(NAN_VALUE); //already the case
-			ccLog::Warning(QString("Cloud %1 has less than %2 points of class %3").arg(cloud2Label).arg(classCount).arg(ctxClassLabel));
+			ccLog::Warning(QString("Cloud %1 has less than %2 points of class %3").arg(cloud1Label).arg(classCount).arg(ctxClassLabel));
 		}
 
 		sf->computeMinAndMax();
@@ -305,7 +305,7 @@ bool ContextBasedFeature::computeValue(CCCoreLib::DgmOctree::NeighboursSet& poin
 	for (CCCoreLib::DgmOctree::PointDescriptor& Pd : pointsInNeighbourhood)
 	{
 		//we only consider points with the right class!!!
-		if (cloud2->getPointScalarValue(Pd.pointIndex) != fClass)
+		if (cloud1->getPointScalarValue(Pd.pointIndex) != fClass)
 			continue;
 		sumQ += CCVector3d::fromArray(Pd.point->u);
 		++validCount;
@@ -379,7 +379,7 @@ QString ContextBasedFeature::toString() const
 		str += "_SC" + QString::number(scale);
 	}
 
-	str += "_" + cloud1Label + "_" + cloud2Label + "_" + QString::number(ctxClassLabel);
+	str += "_" + cloud1Label + "_" + QString::number(ctxClassLabel);
 
 	return str;
 }

@@ -357,15 +357,10 @@ static bool CreateFeaturesFromCommand(const QString& command, QString corePoints
 					{
 						feature->cloud1 = it.value();
 						feature->cloud1Label = key;
-					}
-					else if (cloudCount == 1)
-					{
-						feature->cloud2 = it.value();
-						feature->cloud2Label = key;
 
 						if (feature && feature->getType() == Feature::Type::ContextBasedFeature)
 						{
-							//context cloud is always the second one for context based features
+							//only one cloud is necessary for context based features
 							//and the class is just after the cloud name
 							if (i + 1 < tokens.size())
 							{
@@ -379,7 +374,17 @@ static bool CreateFeaturesFromCommand(const QString& command, QString corePoints
 								qSharedPointerCast<ContextBasedFeature>(feature)->ctxClassLabel = classLabel;
 								++i;
 							}
+							else
+							{
+								ccLog::Warning(QString("Malformed context based features at line %1").arg(lineNumber));
+								return false;
+							}
 						}
+					}
+					else if (cloudCount == 1)
+					{
+						feature->cloud2 = it.value();
+						feature->cloud2Label = key;
 					}
 					else
 					{
