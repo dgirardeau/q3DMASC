@@ -300,6 +300,7 @@ static bool CreateFeaturesFromCommand(const QString& command, QString corePoints
 	int cloudCount = 0;
 	bool statDefined = false;
 	bool mathDefined = false;
+	bool contextBasedFeatureDeprecatedSyntax = false;
 	for (int i = 2; i < tokens.size(); ++i)
 	{
 		QString token = tokens[i].trimmed().toUpper();
@@ -360,19 +361,21 @@ static bool CreateFeaturesFromCommand(const QString& command, QString corePoints
 
 						if (feature && feature->getType() == Feature::Type::ContextBasedFeature)
 						{
-							//only one cloud is necessary for context based features
-							//and the class is just after the cloud name
+							// only one cloud is necessary for context based features
+							// the class should be just after the cloud name in the regular syntax
 							if (i + 1 < tokens.size())
 							{
 								bool ok = false;
 								int classLabel = tokens[i + 1].toInt(&ok);
 								if (!ok)
 								{
-									ccLog::Warning(QString("Malformed file: expecting a class number after the context cloud '%1' on line #%2").arg(token).arg(lineNumber));
-									return false;
+									contextBasedFeatureDeprecatedSyntax = true; // let's try the deprecated syntax
 								}
-								qSharedPointerCast<ContextBasedFeature>(feature)->ctxClassLabel = classLabel;
-								++i;
+								else
+								{
+									qSharedPointerCast<ContextBasedFeature>(feature)->ctxClassLabel = classLabel;
+									++i;
+								}
 							}
 							else
 							{
@@ -380,11 +383,47 @@ static bool CreateFeaturesFromCommand(const QString& command, QString corePoints
 								return false;
 							}
 						}
+
 					}
 					else if (cloudCount == 1)
 					{
-						feature->cloud2 = it.value();
-						feature->cloud2Label = key;
+						if (contextBasedFeatureDeprecatedSyntax)
+						{
+							feature->cloud1 = it.value();
+							feature->cloud1Label = key;
+						}
+						else
+						{
+							feature->cloud2 = it.value();
+							feature->cloud2Label = key;
+						}
+
+						if (feature && feature->getType() == Feature::Type::ContextBasedFeature)
+						{
+							// this is the DEPRECATED syntax for the context based feature
+							// the class is just after the cloud name
+							if (i + 1 < tokens.size())
+							{
+								bool ok = false;
+								int classLabel = tokens[i + 1].toInt(&ok);
+								if (!ok)
+								{
+									ccLog::Warning(QString("ContextBasedFeature: expecting a class number after the context cloud '%1' on line #%2").arg(token).arg(lineNumber));
+									return false;
+								}
+								else
+								{
+									ccLog::Warning(QString("ContextBasedFeature: you are using the DEPRECATED syntax").arg(token).arg(lineNumber));
+									qSharedPointerCast<ContextBasedFeature>(feature)->ctxClassLabel = classLabel;
+									++i;
+								}
+							}
+							else
+							{
+								ccLog::Warning(QString("Malformed context based features at line %1").arg(lineNumber));
+								return false;
+							}
+						}
 					}
 					else
 					{
@@ -1255,13 +1294,13 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 						//Context-based features
 						for (ContextBasedFeature::Shared& feature : fas.contextBasedFeaturesPerScale[currentScale])
 						{
-							if (feature->cloud2 == sourceCloud && feature->sf && !feature->valueAlreadyComputed)
+							if (feature->cloud1 == sourceCloud && feature->sf && !feature->valueAlreadyComputed)
 							{
 								ScalarType outputValue = 0;
 								if (!feature->computeValue(nNSS.pointsInNeighbourhood, nNSS.queryPoint, outputValue))
 								{
 									//an error occurred
-									errorStr = "An error occurred during the computation of feature " + feature->toString() + "on cloud " + feature->cloud2->getName();
+									errorStr = "An error occurred during the computation of feature " + feature->toString() + "on cloud " + feature->cloud1->getName();
 									success = false;
 									break;
 								}

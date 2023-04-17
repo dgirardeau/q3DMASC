@@ -148,7 +148,7 @@ bool ContextBasedFeature::prepare(	const CorePoints& corePoints,
 		unsigned pointCount = corePoints.size();
 		QString logMessage = QString("Computing %1 on cloud %2 with context cloud %3\n(core points: %4)").arg(typeStr).arg(corePoints.cloud->getName()).arg(cloud2Label).arg(pointCount);
 
-		//first: look for the number of points that 
+		//first: look for the number of points in the relevent class
 		const ScalarType fClass = static_cast<ScalarType>(ctxClassLabel);
 		unsigned classCount = 0;
 		for (unsigned i = 0; i < classifSF->size(); ++i)
