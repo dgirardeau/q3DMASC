@@ -130,9 +130,9 @@ bool ContextBasedFeature::prepare(	const CorePoints& corePoints,
 			this->valueAlreadyComputed = true;
 		}
 	}
-	else
+
+	if (!sf) // prepare the scalar field if needed
 	{
-		assert(!sf);
 		sf = PrepareSF(corePoints.cloud, qPrintable(resultSFName), generatedScalarFields, SFCollector::CAN_REMOVE);
 	}
 

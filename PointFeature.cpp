@@ -590,8 +590,10 @@ bool PointFeature::prepare(	const CorePoints& corePoints,
 				this->value1AlreadyComputed = true;
 			}
 		}
-		else //prepare the corresponding scalar field
+		if (!statSF1) // prepare the scalar field if needed
+		{
 			statSF1 = PrepareSF(corePoints.cloud, qPrintable(resultSFName), generatedScalarFields, SFCollector::CAN_REMOVE);
+		}
 
 		if (!statSF1)
 		{
@@ -617,9 +619,9 @@ bool PointFeature::prepare(	const CorePoints& corePoints,
 					this->value2AlreadyComputed = true;
 				}
 			}
-			else
+
+			if (!statSF2) // prepare the scalar field if needed
 			{
-				assert(!statSF2);
 				statSF2 = PrepareSF(corePoints.cloud, qPrintable(resultSFName), generatedScalarFields, SFCollector::ALWAYS_REMOVE);
 			}
 
