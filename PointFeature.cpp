@@ -579,7 +579,6 @@ bool PointFeature::prepare(	const CorePoints& corePoints,
 
 		// check if there exists a scalar field with the same name
 		int sfIdx = corePoints.cloud->getScalarFieldIndexByName(qPrintable(resultSFName));
-		useExistingScalarFields = true;
 		if (sfIdx >= 0)
 		{
 			if (useExistingScalarFields)

@@ -120,7 +120,6 @@ bool NeighborhoodFeature::prepare(	const CorePoints& corePoints,
 
 		// check if there exists a scalar field with the same name, if so, use it
 		int sfIdx = corePoints.cloud->getScalarFieldIndexByName(qPrintable(resultSFName));
-		useExistingScalarFields = true;
 		if (sfIdx >= 0)
 		{
 			if (useExistingScalarFields)
