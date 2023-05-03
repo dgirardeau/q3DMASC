@@ -346,7 +346,10 @@ void q3DMASCPlugin::doTrainAction()
 
 	for (masc::Tools::NamedClouds::iterator it = loadedClouds.begin(); it != loadedClouds.end(); ++it)
 	{
-		m_app->dispToConsole(it.key() + " = " + it.value()->getName(), ccMainAppInterface::STD_CONSOLE_MESSAGE);
+		if (it.value())
+			m_app->dispToConsole(it.key() + " = " + it.value()->getName(), ccMainAppInterface::STD_CONSOLE_MESSAGE);
+		else
+			ccLog::Warning(it.key() + " is not associated to a point cloud");
 	}
 
 	//test role
