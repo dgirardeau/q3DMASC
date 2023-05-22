@@ -392,7 +392,6 @@ void q3DMASCPlugin::doTrainAction()
 	trainDlg.testDataRatioSpinBox->setEnabled(testCloud == nullptr);
 	trainDlg.setInputFilePath(inputFilename);
 	static bool s_keepAttributes = trainDlg.checkBox_useExistingScalarFields->isChecked();
-	bool useExistingScalarFields = trainDlg.checkBox_useExistingScalarFields->isChecked();
 
 	//display the loaded features and let the user select the ones to use
 	trainDlg.setResultText("Select features and press 'Run'");
@@ -477,6 +476,7 @@ void q3DMASCPlugin::doTrainAction()
 
 	//we will train + evaluate the classifier, then display the results
 	//then let the user change parameters and (potentially) start again
+	bool useExistingScalarFields = trainDlg.checkBox_useExistingScalarFields->isChecked();
 	for (int iteration = 0; ; ++iteration)
 	{
 		//look for selected features
@@ -769,6 +769,7 @@ void q3DMASCPlugin::doTrainAction()
 		}
 
 		//we are going to restart the classification process
+		useExistingScalarFields = trainDlg.checkBox_useExistingScalarFields->isChecked();
 	}
 }
 

@@ -179,6 +179,7 @@ namespace masc
 		//! Feature values
 		CCCoreLib::ScalarField *sf1, *sf2;
 		bool keepSF2;
+		static bool sf2ExistenceInitialTestAlreadyPerformed;
 		bool value1AlreadyComputed;
 		bool value2AlreadyComputed;
 	};

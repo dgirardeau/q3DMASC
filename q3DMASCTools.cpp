@@ -39,6 +39,7 @@
 #include <QFileInfo>
 #include <QDir>
 #include <QMutex>
+#include <iostream>
 
 //system
 #include <assert.h>
@@ -285,7 +286,7 @@ static bool CreateFeaturesFromCommand(const QString& command, QString corePoints
 		}
 		else
 		{
-			//read the specific scale index
+            //read the specific scale index (is it really an index? it looks like a scale value!)
 			bool ok = true;
 			feature->scale = scaleStr.mid(2).toDouble(&ok);
 			if (!ok)
@@ -1274,7 +1275,8 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 								feature->sf1->setValue(i, v1);
 							}
 
-							if (feature->cloud2 == sourceCloud && feature->sf2 && !feature->value2AlreadyComputed)
+							// remember that if value1 is already computed, it is not necessary to compute value2!
+							if (feature->cloud2 == sourceCloud && feature->sf2 && !feature->value2AlreadyComputed && !feature->value1AlreadyComputed)
 							{
 								assert(feature->op != Feature::NO_OPERATION);
 								double outputValue = 0;
@@ -1339,6 +1341,7 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 
 	for (const Feature::Shared& feature : features)
 	{
+        std::cout << feature->toString().toStdString() << std::endl;
 		//we have to 'finish' the process for scaled features
 		if (feature->scaled() && !feature->finish(corePoints, errorStr))
 		{

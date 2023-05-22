@@ -21,8 +21,11 @@
 #include <DgmOctreeReferenceCloud.h>
 #include <Neighbourhood.h>
 #include <Jacobi.h>
+#include <iostream>
 
 using namespace masc;
+
+bool NeighborhoodFeature::sf2ExistenceInitialTestAlreadyPerformed = false;
 
 bool NeighborhoodFeature::checkValidity(QString corePointRole, QString &error) const
 {
@@ -94,10 +97,12 @@ bool NeighborhoodFeature::prepare(	const CorePoints& corePoints,
 	{
 		if (useExistingScalarFields)
 		{
-			ccLog::Warning("use existing scalar field: " + resultSFName);
+			ccLog::Warning("[sf1] use existing scalar field: " + resultSFName);
 			sf1 = corePoints.cloud->getScalarField(sfIdx);
 			generatedScalarFields->push(corePoints.cloud, sf1, SFCollector::ALWAYS_KEEP);
 			this->value1AlreadyComputed = true;
+			source.name = sf1->getName();
+			return true;
 		}
 	}
 
@@ -116,24 +121,33 @@ bool NeighborhoodFeature::prepare(	const CorePoints& corePoints,
 	if (cloud2 && op != Feature::NO_OPERATION)
 	{
 		QString resultSFName2 = ToString(type) + "_" + cloud2Label + "@" + QString::number(scale);
-		keepSF2 = (corePoints.cloud->getScalarFieldIndexByName(qPrintable(resultSFName2)) >= 0); //we remember that the scalar field was already existing!
+//		keepSF2 = (corePoints.cloud->getScalarFieldIndexByName(qPrintable(resultSFName2)) >= 0); //we remember that the scalar field was already existing!
 
-		// check if there exists a scalar field with the same name, if so, use it
-		int sfIdx = corePoints.cloud->getScalarFieldIndexByName(qPrintable(resultSFName));
+		// check if there exists a scalar field with the same name, and use it if required
+		int sfIdx = corePoints.cloud->getScalarFieldIndexByName(qPrintable(resultSFName2));
 		if (sfIdx >= 0)
 		{
 			if (useExistingScalarFields)
 			{
-				ccLog::Warning("use existing scalar field: " + resultSFName);
+				ccLog::Warning("[sf2] use existing scalar field: " + resultSFName2);
 				sf2 = corePoints.cloud->getScalarField(sfIdx);
-				generatedScalarFields->push(corePoints.cloud, sf2, SFCollector::ALWAYS_KEEP);
 				this->value2AlreadyComputed = true;
+				if (!NeighborhoodFeature::sf2ExistenceInitialTestAlreadyPerformed)
+				{
+					keepSF2 = true;
+					generatedScalarFields->push(corePoints.cloud, sf2, SFCollector::ALWAYS_KEEP);
+				}
+				else
+				{
+					NeighborhoodFeature::sf2ExistenceInitialTestAlreadyPerformed = true;
+					generatedScalarFields->push(corePoints.cloud, sf2, SFCollector::ALWAYS_REMOVE);
+				}
 			}
 		}
 
 		if (!sf2) // prepare the scalar field if needed
 		{
-			sf2 = PrepareSF(corePoints.cloud, qPrintable(resultSFName), generatedScalarFields, SFCollector::ALWAYS_REMOVE);
+			sf2 = PrepareSF(corePoints.cloud, qPrintable(resultSFName2), generatedScalarFields, SFCollector::ALWAYS_REMOVE);
 		}
 
 		if (!sf2)
@@ -175,6 +189,8 @@ bool NeighborhoodFeature::finish(const CorePoints& corePoints, QString& error)
 	if (sf2)
 	{
 		//now perform the math operation
+		std::cout << sf2->getName() << std::endl;
+		std::cout << "operation " << OpToString(op).toStdString() << std::endl;
 		if (op != Feature::NO_OPERATION)
 		{
 			if (!PerformMathOp(sf1, sf2, op))

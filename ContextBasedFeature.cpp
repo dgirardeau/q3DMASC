@@ -128,6 +128,8 @@ bool ContextBasedFeature::prepare(	const CorePoints& corePoints,
 			sf = corePoints.cloud->getScalarField(sfIdx);
 			generatedScalarFields->push(corePoints.cloud, sf, SFCollector::ALWAYS_KEEP);
 			this->valueAlreadyComputed = true;
+			source.name = sf->getName();
+			return true;
 		}
 	}
 
