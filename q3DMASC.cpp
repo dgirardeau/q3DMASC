@@ -391,7 +391,6 @@ void q3DMASCPlugin::doTrainAction()
 	trainDlg.testDataRatioSpinBox->setValue(static_cast<int>(s_params.testDataRatio * 100));
 	trainDlg.testDataRatioSpinBox->setEnabled(testCloud == nullptr);
 	trainDlg.setInputFilePath(inputFilename);
-	static bool s_keepAttributes = trainDlg.checkBox_useExistingScalarFields->isChecked();
 
 	//display the loaded features and let the user select the ones to use
 	trainDlg.setResultText("Select features and press 'Run'");
@@ -416,6 +415,7 @@ void q3DMASCPlugin::doTrainAction()
 		}
 	}
 
+	static bool s_keepAttributes = trainDlg.keepAttributesCheckBox->isChecked();
 	if (!trainDlg.exec())
 	{
 		delete group;
