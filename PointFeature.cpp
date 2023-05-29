@@ -577,7 +577,11 @@ bool PointFeature::prepare(	const CorePoints& corePoints,
 		resultSFName += "@" + QString::number(scale);
 
 		//prepare the corresponding scalar field
-		statSF1 = PrepareSF(corePoints.cloud, qPrintable(resultSFName), generatedScalarFields, SFCollector::CAN_REMOVE);
+		statSF1WasAlreadyExisting = CheckSFExistence(corePoints.cloud, qPrintable(resultSFName));
+		if (statSF1WasAlreadyExisting)
+			statSF1 = PrepareSF(corePoints.cloud, qPrintable(resultSFName), generatedScalarFields, SFCollector::ALWAYS_KEEP);
+		else
+			statSF1 = PrepareSF(corePoints.cloud, qPrintable(resultSFName), generatedScalarFields, SFCollector::CAN_REMOVE);
 		if (!statSF1)
 		{
 			error = QString("Failed to prepare scalar field for field '%1' @ scale %2").arg(field1->getName()).arg(scale);
@@ -585,20 +589,24 @@ bool PointFeature::prepare(	const CorePoints& corePoints,
 		}
 		source.name = statSF1->getName();
 
-		if (field2 && op != Feature::NO_OPERATION)
+		if (field2 && op != Feature::NO_OPERATION && !statSF1WasAlreadyExisting) // nothing to do if statSF1 was already there
 		{
 			QString resultSFName2 = field2->getName() + QString("_") + Feature::StatToString(stat) + "_" + cloud2Label + "@" + QString::number(scale);
 			//keepStatSF2 = (corePoints.cloud->getScalarFieldIndexByName(qPrintable(resultSFName2)) >= 0); //we remember that the scalar field was already existing!
 
 			assert(!statSF2);
-			statSF2 = PrepareSF(corePoints.cloud, qPrintable(resultSFName2), generatedScalarFields, SFCollector::ALWAYS_REMOVE);
+			statSF2WasAlreadyExisting = CheckSFExistence(corePoints.cloud, qPrintable(resultSFName2));
+			if (statSF2WasAlreadyExisting)
+				statSF2 = PrepareSF(corePoints.cloud, qPrintable(resultSFName2), generatedScalarFields, SFCollector::ALWAYS_KEEP);
+			else
+				statSF2 = PrepareSF(corePoints.cloud, qPrintable(resultSFName2), generatedScalarFields, SFCollector::ALWAYS_REMOVE);
 			if (!statSF2)
 			{
 				error = QString("Failed to prepare scalar field for field '%1' @ scale %2").arg(field2->getName()).arg(scale);
 				return false;
 			}
 		}
-		
+
 		return true;
 	}
 	else //non scaled feature
@@ -843,7 +851,7 @@ bool PointFeature::finish(const CorePoints& corePoints, QString& error)
 		}
 	}
 
-	if (statSF2)
+	if (statSF2 && !statSF1WasAlreadyExisting)
 	{
 		//now perform the math operation
 		if (op != Feature::NO_OPERATION)
@@ -854,7 +862,7 @@ bool PointFeature::finish(const CorePoints& corePoints, QString& error)
 				success = false;
 			}
 		}
-		statSF2->computeMinAndMax();
+//		statSF2->computeMinAndMax();
 
 		//DGM: we don't delete it now! As it could be used by other features!
 		//if (!keepStatSF2)

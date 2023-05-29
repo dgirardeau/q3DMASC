@@ -89,7 +89,11 @@ bool NeighborhoodFeature::prepare(	const CorePoints& corePoints,
 
 	//and the scalar field
 	assert(!sf1);
-	sf1 = PrepareSF(corePoints.cloud, qPrintable(resultSFName), generatedScalarFields, SFCollector::CAN_REMOVE);
+	sf1WasAlreadyExisting = CheckSFExistence(corePoints.cloud, qPrintable(resultSFName));
+	if (sf1WasAlreadyExisting)
+		sf1 = PrepareSF(corePoints.cloud, qPrintable(resultSFName), generatedScalarFields, SFCollector::ALWAYS_KEEP);
+	else
+		sf1 = PrepareSF(corePoints.cloud, qPrintable(resultSFName), generatedScalarFields, SFCollector::CAN_REMOVE);
 	if (!sf1)
 	{
 		error = QString("Failed to prepare scalar %1 @ scale %2").arg(resultSFName).arg(scale);
@@ -97,13 +101,18 @@ bool NeighborhoodFeature::prepare(	const CorePoints& corePoints,
 	}
 	source.name = sf1->getName();
 
-	if (cloud2 && op != Feature::NO_OPERATION)
+	// sf2 is not needed if sf1 was already existing!
+	if (cloud2 && op != Feature::NO_OPERATION && !sf1WasAlreadyExisting)
 	{
 		QString resultSFName2 = ToString(type) + "_" + cloud2Label + "@" + QString::number(scale);
 		keepSF2 = (corePoints.cloud->getScalarFieldIndexByName(qPrintable(resultSFName2)) >= 0); //we remember that the scalar field was already existing!
 
 		assert(!sf2);
-		sf2 = PrepareSF(corePoints.cloud, qPrintable(resultSFName2), generatedScalarFields, SFCollector::ALWAYS_REMOVE);
+		sf2WasAlreadyExisting = CheckSFExistence(corePoints.cloud, qPrintable(resultSFName2));
+		if (sf2WasAlreadyExisting)
+			sf2 = PrepareSF(corePoints.cloud, qPrintable(resultSFName2), generatedScalarFields, SFCollector::ALWAYS_KEEP);
+		else
+			sf2 = PrepareSF(corePoints.cloud, qPrintable(resultSFName2), generatedScalarFields, SFCollector::ALWAYS_REMOVE);
 		if (!sf2)
 		{
 			error = QString("Failed to prepare scalar field for %1 @ scale %2").arg(cloud2Label).arg(scale);
@@ -140,7 +149,7 @@ bool NeighborhoodFeature::finish(const CorePoints& corePoints, QString& error)
 		}
 	}
 
-	if (sf2)
+	if (sf2 && !sf1WasAlreadyExisting)
 	{
 		//now perform the math operation
 		if (op != Feature::NO_OPERATION)
@@ -152,24 +161,24 @@ bool NeighborhoodFeature::finish(const CorePoints& corePoints, QString& error)
 			}
 		}
 
-		if (keepSF2)
-		{
-			sf2->computeMinAndMax();
-		}
-		else
-		{
-			int sfIndex2 = corePoints.cloud->getScalarFieldIndexByName(sf2->getName());
-			if (sfIndex2 >= 0)
-			{
-				corePoints.cloud->deleteScalarField(sfIndex2);
-			}
-			else
-			{
-				assert(false);
-				sf2->release();
-			}
-			sf2 = nullptr;
-		}
+//		if (keepSF2)
+//		{
+//			sf2->computeMinAndMax();
+//		}
+//		else
+//		{
+//			int sfIndex2 = corePoints.cloud->getScalarFieldIndexByName(sf2->getName());
+//			if (sfIndex2 >= 0)
+//			{
+//				corePoints.cloud->deleteScalarField(sfIndex2);
+//			}
+//			else
+//			{
+//				assert(false);
+//				sf2->release();
+//			}
+//			sf2 = nullptr;
+//		}
 	}
 
 	return success;

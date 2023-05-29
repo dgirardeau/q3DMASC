@@ -75,6 +75,7 @@ namespace masc
 			, kNN(p_kNN)
 			, ctxClassLabel(p_ctxClassLabel)
 			, sf(nullptr)
+			, sfWasAlreadyExisting(false)
 		{
 			scale = p_scale;
 		}
@@ -103,5 +104,7 @@ namespace masc
 		int ctxClassLabel;
 		//! The computed scalar
 		CCCoreLib::ScalarField* sf;
+
+		bool sfWasAlreadyExisting;
 	};
 }

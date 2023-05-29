@@ -119,6 +119,7 @@ bool ContextBasedFeature::prepare(	const CorePoints& corePoints,
 
 	//and the scalar field
 	assert(!sf);
+	sfWasAlreadyExisting = CheckSFExistence(corePoints.cloud, qPrintable(resultSFName));
 	sf = PrepareSF(corePoints.cloud, qPrintable(resultSFName), generatedScalarFields, SFCollector::CAN_REMOVE);
 	if (!sf)
 	{
@@ -127,7 +128,8 @@ bool ContextBasedFeature::prepare(	const CorePoints& corePoints,
 	}
 	source.name = sf->getName();
 
-	if (!scaled()) //with 'kNN' neighbors, we can compute the values right away
+	// NOT NECESSARY IF THE VALUE IS ALREADY COMPUTED
+	if (!scaled() && !sfWasAlreadyExisting) //with 'kNN' neighbors, we can compute the values right away
 	{
 		unsigned pointCount = corePoints.size();
 		QString logMessage = QString("Computing %1 on cloud %2 with context cloud %3\n(core points: %4)").arg(typeStr).arg(corePoints.cloud->getName()).arg(cloud2Label).arg(pointCount);

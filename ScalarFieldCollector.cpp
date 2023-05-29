@@ -50,6 +50,7 @@ void SFCollector::releaseSFs(bool keepByDefault)
 		int sfIdx = desc.cloud->getScalarFieldIndexByName(sf->getName());
 		if (sfIdx >= 0)
 		{
+			ccLog::Warning(QString("[SFCollector] Remove scalar field '%1'").arg(sf->getName()));
 			desc.cloud->deleteScalarField(sfIdx);
 		}
 		else

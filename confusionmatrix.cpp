@@ -9,6 +9,20 @@
 
 #include <QBrush>
 
+#include <ccLog.h>
+
+QColor getColor(double value, double r1, double g1, double b1)
+{
+	double r0 = 255;
+	double g0 = 255;
+	double b0 = 255;
+	int r = int((r1 - r0) * value + r0);
+	int g = int ((g1 - g0) * value + g0);
+	int b = int ((b1 - b0) * value + b0);
+	ccLog::Warning("value " + QString::number(value) + " (" + QString::number(r) + ", " + QString::number(g) + ", " + QString::number(b) + ")");
+	return QColor(r, g, b);
+}
+
 ConfusionMatrix::ConfusionMatrix(std::vector<ScalarType> &actual, std::vector<ScalarType> &predicted, QWidget *parent) :
 	QWidget(parent),
 	ui(new Ui::ConfusionMatrix)
@@ -17,7 +31,12 @@ ConfusionMatrix::ConfusionMatrix(std::vector<ScalarType> &actual, std::vector<Sc
 	this->setWindowFlag(Qt::WindowStaysOnTopHint);
 	compute(actual, predicted);
 	this->show();
-	this->setMinimumSize(this->ui->tableWidget->sizeHint());
+	this->ui->tableWidget->resizeColumnsToContents();
+	this->ui->tableWidget->setSizeAdjustPolicy(QAbstractScrollArea::AdjustToContents);
+	QSize tableSize = this->ui->tableWidget->sizeHint();
+	QSize labelSize = this->ui->label->sizeHint();
+	QSize widgetSize = QSize(tableSize.width(), tableSize.height() + labelSize.height());
+	this->setMinimumSize(widgetSize);
 }
 
 ConfusionMatrix::~ConfusionMatrix()
@@ -25,7 +44,7 @@ ConfusionMatrix::~ConfusionMatrix()
 	delete ui;
 }
 
-void ConfusionMatrix::computePrecisionRecallF1Score(cv::Mat& matrix, cv::Mat& precisionRecallF1Score)
+void ConfusionMatrix::computePrecisionRecallF1Score(cv::Mat& matrix, cv::Mat& precisionRecallF1Score, cv::Mat& vec_TP_FN)
 {
 	int nbClasses = matrix.rows;
 
@@ -65,6 +84,7 @@ void ConfusionMatrix::computePrecisionRecallF1Score(cv::Mat& matrix, cv::Mat& pr
 			precisionRecallF1Score.at<float>(realIdx, RECALL) = CCCoreLib::NAN_VALUE;
 		else
 			precisionRecallF1Score.at<float>(realIdx, RECALL) = TP / TP_FN;
+		vec_TP_FN.at<int>(realIdx, 0) = TP_FN;
 	}
 
 	// compute F1-score
@@ -122,6 +142,7 @@ void ConfusionMatrix::compute(std::vector<ScalarType>& actual, std::vector<Scala
 	int nbClasses = classes.size();
 	cv::Mat confusionMatrix(nbClasses, nbClasses, CV_32S, cv::Scalar(0));
 	cv::Mat precisionRecallF1Score(nbClasses, 3, CV_32F, cv::Scalar(0));
+	cv::Mat vec_TP_FN(nbClasses, 1, CV_32S, cv::Scalar(0));
 
 	// fill the confusion matrix
 	for (int i = 0; i < actual.size(); i++)
@@ -134,7 +155,7 @@ void ConfusionMatrix::compute(std::vector<ScalarType>& actual, std::vector<Scala
 	}
 
 	// compute precision recall F1-score
-	computePrecisionRecallF1Score(confusionMatrix, precisionRecallF1Score);
+	computePrecisionRecallF1Score(confusionMatrix, precisionRecallF1Score, vec_TP_FN);
 	float overallAccuracy = computeOverallAccuracy(confusionMatrix);
 
 	// display the overall accuracy
@@ -164,8 +185,8 @@ void ConfusionMatrix::compute(std::vector<ScalarType>& actual, std::vector<Scala
 	newItem->setBackground(Qt::lightGray);
 	newItem->setTextAlignment(Qt::AlignCenter);
 	this->ui->tableWidget->setItem(0, 2, newItem);
-	// Actual
-	newItem = new QTableWidgetItem("Actual");
+	// Real
+	newItem = new QTableWidgetItem("Real");
 	newItem->setFont(font);
 	newItem->setBackground(Qt::lightGray);
 	newItem->setTextAlignment(Qt::AlignCenter);
@@ -202,11 +223,12 @@ void ConfusionMatrix::compute(std::vector<ScalarType>& actual, std::vector<Scala
 	for (int row = 0; row < nbClasses; row++)
 		for (int column = 0; column < nbClasses; column++)
 		{
-			QTableWidgetItem *newItem = new QTableWidgetItem(QString::number(confusionMatrix.at<int>(row, column)));
+			double val = confusionMatrix.at<int>(row, column);
+			QTableWidgetItem *newItem = new QTableWidgetItem(QString::number(val));
 			if (row == column)
-				newItem->setBackground(greenBrush); // green QColor(37, 190, 147, 1)
+				newItem->setBackground(getColor(val / vec_TP_FN.at<int>(row, 0), 0, 128, 255));
 			else
-				newItem->setBackground(QColorConstants::Svg::orange); // QColor(255, 129, 129, 1)
+				newItem->setBackground(getColor(val / vec_TP_FN.at<int>(row, 0), 0, 128, 255));
 			this->ui->tableWidget->setItem(2 + row, + 2 + column, newItem);
 		}
 
