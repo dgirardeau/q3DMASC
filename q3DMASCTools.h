@@ -56,8 +56,8 @@ namespace masc
 
 		static bool SaveClassifier(QString filename, const Feature::Set& features, const QString corePointsRole, const masc::Classifier& classifier, QWidget* parent = nullptr);
 
-		static bool PrepareFeatures(const CorePoints& corePoints, Feature::Set& features, QString& error,
-									CCCoreLib::GenericProgressCallback* progressCb = nullptr, SFCollector* generatedScalarFields = nullptr, bool useExistingScalarFields = false);
+        static bool PrepareFeatures(const CorePoints& corePoints, Feature::Set& features, QString& error,
+                                    CCCoreLib::GenericProgressCallback* progressCb = nullptr, SFCollector* generatedScalarFields = nullptr);
 
 		static bool RandomSubset(ccPointCloud* cloud, float ratio, CCCoreLib::ReferenceCloud* inRatioSubset, CCCoreLib::ReferenceCloud* outRatioSubset);
 

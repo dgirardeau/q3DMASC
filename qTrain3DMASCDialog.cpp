@@ -74,8 +74,6 @@ void Train3DMASCDialog::readSettings()
 	settings.beginGroup("3DMASC");
 	bool keepAttributes = settings.value("keepAttributes", false).toBool();
 	this->keepAttributesCheckBox->setChecked(keepAttributes);
-	bool useExistingScalarFields = settings.value("useExistingScalarFields", false).toBool();
-	this->checkBox_useExistingScalarFields->setChecked(useExistingScalarFields);
 	bool saveTrace = settings.value("saveTrace", false).toBool();
 	setCheckBoxSaveTrace(saveTrace);
 }
@@ -85,7 +83,6 @@ void Train3DMASCDialog::writeSettings()
 	QSettings settings;
 	settings.beginGroup("3DMASC");
 	settings.setValue("keepAttributes", keepAttributesCheckBox->isChecked());
-	settings.setValue("useExistingScalarFields", checkBox_useExistingScalarFields->isChecked());
 	settings.setValue("saveTrace", checkBox_keepTraces->isChecked());
 }
 

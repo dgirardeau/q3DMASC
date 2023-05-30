@@ -24,7 +24,7 @@ QColor getColor(double value, double r1, double g1, double b1)
 	int r = int((r1 - r0) * value + r0);
 	int g = int ((g1 - g0) * value + g0);
 	int b = int ((b1 - b0) * value + b0);
-	ccLog::Warning("value " + QString::number(value) + " (" + QString::number(r) + ", " + QString::number(g) + ", " + QString::number(b) + ")");
+//	ccLog::Warning("value " + QString::number(value) + " (" + QString::number(r) + ", " + QString::number(g) + ", " + QString::number(b) + ")");
 	return QColor(r, g, b);
 }
 
@@ -42,7 +42,7 @@ ConfusionMatrix::ConfusionMatrix(std::vector<ScalarType> &actual, std::vector<Sc
 	this->ui->tableWidget->setSizeAdjustPolicy(QAbstractScrollArea::AdjustToContents);
 	QSize tableSize = this->ui->tableWidget->sizeHint();
 	QSize labelSize = this->ui->label->sizeHint();
-	QSize widgetSize = QSize(tableSize.width(), tableSize.height() + labelSize.height());
+	QSize widgetSize = QSize(tableSize.width(), tableSize.height() + 2 * labelSize.height());
 	this->setMinimumSize(widgetSize);
 }
 
@@ -226,13 +226,17 @@ void ConfusionMatrix::compute(std::vector<ScalarType>& actual, std::vector<Scala
 
 	// add the confusion matrix values
 	QBrush greenBrush(QColorConstants::Svg::palegreen);
+	QFont f( "Tahoma", 10, QFont::Bold );
 	for (int row = 0; row < nbClasses; row++)
 		for (int column = 0; column < nbClasses; column++)
 		{
 			double val = confusionMatrix.at<int>(row, column);
 			QTableWidgetItem *newItem = new QTableWidgetItem(QString::number(val));
 			if (row == column)
+			{
 				newItem->setBackground(getColor(val / vec_TP_FN.at<int>(row, 0), 0, 128, 255));
+				newItem->setFont(f);
+			}
 			else
 				newItem->setBackground(getColor(val / vec_TP_FN.at<int>(row, 0), 0, 128, 255));
 			this->ui->tableWidget->setItem(2 + row, + 2 + column, newItem);

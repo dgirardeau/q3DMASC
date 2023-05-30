@@ -148,7 +148,6 @@ void q3DMASCPlugin::doClassifyAction()
 		//process cancelled by the user
 		return;
 	}
-	bool useExistingScalarFields = classifDlg.checkBox_useExistingScalarFields->isChecked();
 	static bool s_keepAttributes = classifDlg.keepAttributesCheckBox->isChecked();
 
 	masc::Tools::NamedClouds clouds;
@@ -184,7 +183,7 @@ void q3DMASCPlugin::doClassifyAction()
 	progressDlg.setAutoClose(false); //we don't want the progress dialog to 'pop' for each feature
 	QString error;
 	SFCollector generatedScalarFields;
-	if (!masc::Tools::PrepareFeatures(corePoints, features, error, &progressDlg, &generatedScalarFields, useExistingScalarFields))
+    if (!masc::Tools::PrepareFeatures(corePoints, features, error, &progressDlg, &generatedScalarFields))
 	{
 		m_app->dispToConsole(error, ccMainAppInterface::ERR_CONSOLE_MESSAGE);
 		generatedScalarFields.releaseSFs(false);
@@ -476,7 +475,6 @@ void q3DMASCPlugin::doTrainAction()
 
 	//we will train + evaluate the classifier, then display the results
 	//then let the user change parameters and (potentially) start again
-	bool useExistingScalarFields = trainDlg.checkBox_useExistingScalarFields->isChecked();
 	for (int iteration = 0; ; ++iteration)
 	{
 		//look for selected features
@@ -510,7 +508,7 @@ void q3DMASCPlugin::doTrainAction()
 			{
 				progressDlg.setAutoClose(false); //we don't want the progress dialog to 'pop' for each feature
 				QString error;
-				if (!masc::Tools::PrepareFeatures(corePoints, toPrepare, error, &progressDlg, &generatedScalarFields, useExistingScalarFields))
+                if (!masc::Tools::PrepareFeatures(corePoints, toPrepare, error, &progressDlg, &generatedScalarFields))
 				{
 					m_app->dispToConsole(error, ccMainAppInterface::ERR_CONSOLE_MESSAGE);
 					generatedScalarFields.releaseSFs(false);
@@ -628,7 +626,7 @@ void q3DMASCPlugin::doTrainAction()
 							masc::CorePoints corePointsTest;
 							corePointsTest.cloud = corePointsTest.origin = testCloud;
 							corePointsTest.role = mainCloudLabel;
-							if (!masc::Tools::PrepareFeatures(corePointsTest, toPrepareTest, error, &progressDlg, &generatedScalarFieldsTest, useExistingScalarFields))
+                            if (!masc::Tools::PrepareFeatures(corePointsTest, toPrepareTest, error, &progressDlg, &generatedScalarFieldsTest))
 							{
 								m_app->dispToConsole(error, ccMainAppInterface::ERR_CONSOLE_MESSAGE);
 								generatedScalarFields.releaseSFs(false);
@@ -726,6 +724,8 @@ void q3DMASCPlugin::doTrainAction()
 				//the dialog can be closed
 				if (trainDlg.keepAttributesCheckBox->isChecked())
 					s_keepAttributes = true;
+				else
+					s_keepAttributes = false;
 				generatedScalarFields.releaseSFs(s_keepAttributes);
 				generatedScalarFieldsTest.releaseSFs(s_keepAttributes);
 				return;
@@ -767,9 +767,6 @@ void q3DMASCPlugin::doTrainAction()
 				break;
 			}
 		}
-
-		//we are going to restart the classification process
-		useExistingScalarFields = trainDlg.checkBox_useExistingScalarFields->isChecked();
 	}
 }
 

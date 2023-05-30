@@ -40,13 +40,15 @@ void SFCollector::releaseSFs(bool keepByDefault)
 	for (Map::iterator it = scalarFields.begin(); it != scalarFields.end(); ++it)
 	{
 		const SFDesc& desc = it.value();
+		CCCoreLib::ScalarField* sf = it.key();
+
 		if (desc.behavior == ALWAYS_KEEP || (keepByDefault && desc.behavior == CAN_REMOVE))
 		{
+			ccLog::Warning(QString("[SFCollector] Keep scalar field '%1'").arg(sf->getName()));
 			//keep this SF
 			continue;
 		}
 		
-		CCCoreLib::ScalarField* sf = it.key();
 		int sfIdx = desc.cloud->getScalarFieldIndexByName(sf->getName());
 		if (sfIdx >= 0)
 		{
@@ -55,7 +57,7 @@ void SFCollector::releaseSFs(bool keepByDefault)
 		}
 		else
 		{
-			ccLog::Warning(QString("[SFCollector] Scalar field '%1' can't be found anymore").arg(sf->getName()));
+			ccLog::Warning(QString("[SFCollector] Scalar field '%1' can't be found anymore, impossible to remove it").arg(sf->getName()));
 		}
 	}
 
