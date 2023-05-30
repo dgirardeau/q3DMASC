@@ -179,6 +179,19 @@ bool Tools::LoadClassifierCloudLabels(QString filename, QList<QString>& labels, 
 	return true;
 }
 
+bool CheckFeatureUnicity(std::vector<Feature::Shared>& rawFeatures, Feature::Shared feature)
+{
+	// check that the feature does not exists already!
+	for (const auto &feat : rawFeatures)
+	{
+		if (feat->toString() == feature->toString())
+		{
+			return false;
+		}
+	}
+	return true;
+}
+
 static bool CreateFeaturesFromCommand(const QString& command, QString corePointsRole, int lineNumber, const Tools::NamedClouds& clouds, std::vector<Feature::Shared>& rawFeatures, std::vector<double>& scales)
 {
 	QStringList tokens = command.split('_');
@@ -515,8 +528,16 @@ static bool CreateFeaturesFromCommand(const QString& command, QString corePoints
 		return false;
 	}
 
-	//save it
-	rawFeatures.push_back(feature);
+	if (!CheckFeatureUnicity(rawFeatures, feature)) // check that the feature does not exists already!
+	{
+		ccLog::Warning("[3DMASC] duplicated feature " + feature->toString() + ", check your parameter file");
+		return false;
+	}
+	else
+	{
+		//save the feature
+		rawFeatures.push_back(feature);
+	}
 
 	if (useAllScales)
 	{
@@ -529,7 +550,16 @@ static bool CreateFeaturesFromCommand(const QString& command, QString corePoints
 			//as we only change the scale value, all the duplicated features should be valid
 			assert(newFeature->checkValidity(corePointsRole, errorMessage));
 
-			rawFeatures.push_back(newFeature);
+			if (!CheckFeatureUnicity(rawFeatures, newFeature)) // check that the feature does not exists already!
+			{
+				ccLog::Warning("[3DMASC] duplicated feature " + newFeature->toString() + ", check your parameter file");
+				return false;
+			}
+			else
+			{
+				//save the feature
+				rawFeatures.push_back(newFeature);
+			}
 		}
 	}
 
@@ -1048,7 +1078,8 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 				case Feature::Type::PointFeature:
 				{
 					//build the scaled feature list attached to the first cloud
-					if (feature->cloud1)
+					if (feature->cloud1
+						&& !static_cast<PointFeature*>(feature.data())->statSF1WasAlreadyExisting) // nothing to compute if the scalar field was already there
 					{
 						FeaturesAndScales& fas = cloudsWithScaledFeatures[feature->cloud1];
 						fas.pointFeaturesPerScale[feature->scale].push_back(qSharedPointerCast<PointFeature>(feature));
@@ -1060,7 +1091,8 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 					}
 
 					//build the scaled feature list attached to the second cloud (if any)
-					if (feature->cloud2 && feature->cloud2 != feature->cloud1 && feature->op != Feature::NO_OPERATION)
+					if (feature->cloud2 && feature->cloud2 != feature->cloud1 && feature->op != Feature::NO_OPERATION
+						&& !static_cast<PointFeature*>(feature.data())->statSF1WasAlreadyExisting) // nothing to compute if the scalar field was already there
 					{
 						FeaturesAndScales& fas = cloudsWithScaledFeatures[feature->cloud2];
 						++fas.featureCount;
@@ -1077,7 +1109,8 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 				case Feature::Type::NeighborhoodFeature:
 				{
 					//build the scaled feature list attached to the first cloud
-					if (feature->cloud1)
+					if (feature->cloud1
+						&& !static_cast<NeighborhoodFeature*>(feature.data())->sf1WasAlreadyExisting) // nothing to compute if the scalar field was already there
 					{
 						FeaturesAndScales& fas = cloudsWithScaledFeatures[feature->cloud1];
 						fas.neighborhoodFeaturesPerScale[feature->scale].push_back(qSharedPointerCast<NeighborhoodFeature>(feature));
@@ -1089,7 +1122,8 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 					}
 
 					//build the scaled feature list attached to the second cloud (if any)
-					if (feature->cloud2 && feature->cloud2 != feature->cloud1 && feature->op != Feature::NO_OPERATION)
+					if (feature->cloud2 && feature->cloud2 != feature->cloud1 && feature->op != Feature::NO_OPERATION
+						&& !static_cast<NeighborhoodFeature*>(feature.data())->sf1WasAlreadyExisting) // nothing to compute if the scalar field was already there
 					{
 						FeaturesAndScales& fas = cloudsWithScaledFeatures[feature->cloud2];
 						fas.neighborhoodFeaturesPerScale[feature->scale].push_back(qSharedPointerCast<NeighborhoodFeature>(feature));
@@ -1106,7 +1140,8 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 				case Feature::Type::ContextBasedFeature:
 				{
 					//build the scaled feature list attached to the second cloud (the 'context' cloud)
-					if (feature->cloud2)
+					if (feature->cloud2
+						&& !static_cast<ContextBasedFeature*>(feature.data())->sfWasAlreadyExisting) // nothing to compute if the scalar field was already there
 					{
 						FeaturesAndScales& fas = cloudsWithScaledFeatures[feature->cloud2];
 						fas.contextBasedFeaturesPerScale[feature->scale].push_back(qSharedPointerCast<ContextBasedFeature>(feature));

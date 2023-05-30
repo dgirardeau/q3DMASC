@@ -491,8 +491,7 @@ static bool ComputeMathOpWithNearestNeighbor(	const CorePoints& corePoints,
 bool PointFeature::prepare(	const CorePoints& corePoints,
 							QString& error,
 							CCCoreLib::GenericProgressCallback* progressCb/*=nullptr*/,
-							SFCollector* generatedScalarFields/*=nullptr*/,
-							bool useExistingScalarFields /*=false*/)
+							SFCollector* generatedScalarFields/*=nullptr*/)
 {
 	if (!cloud1 || !corePoints.cloud)
 	{
@@ -577,23 +576,12 @@ bool PointFeature::prepare(	const CorePoints& corePoints,
 	{
 		resultSFName += "@" + QString::number(scale);
 
-		// check if there exists a scalar field with the same name
-		int sfIdx = corePoints.cloud->getScalarFieldIndexByName(qPrintable(resultSFName));
-		if (sfIdx >= 0)
-		{
-			if (useExistingScalarFields)
-			{
-				ccLog::Warning("use existing scalar field: " + resultSFName);
-				statSF1 = corePoints.cloud->getScalarField(sfIdx);
-				generatedScalarFields->push(corePoints.cloud, statSF1, SFCollector::ALWAYS_KEEP);
-				this->value1AlreadyComputed = true;
-			}
-		}
-		if (!statSF1) // prepare the scalar field if needed
-		{
+		//prepare the corresponding scalar field
+		statSF1WasAlreadyExisting = CheckSFExistence(corePoints.cloud, qPrintable(resultSFName));
+		if (statSF1WasAlreadyExisting)
+			statSF1 = PrepareSF(corePoints.cloud, qPrintable(resultSFName), generatedScalarFields, SFCollector::ALWAYS_KEEP);
+		else
 			statSF1 = PrepareSF(corePoints.cloud, qPrintable(resultSFName), generatedScalarFields, SFCollector::CAN_REMOVE);
-		}
-
 		if (!statSF1)
 		{
 			error = QString("Failed to prepare scalar field for field '%1' @ scale %2").arg(field1->getName()).arg(scale);
@@ -601,36 +589,24 @@ bool PointFeature::prepare(	const CorePoints& corePoints,
 		}
 		source.name = statSF1->getName();
 
-		if (field2 && op != Feature::NO_OPERATION)
+		if (field2 && op != Feature::NO_OPERATION && !statSF1WasAlreadyExisting) // nothing to do if statSF1 was already there
 		{
 			QString resultSFName2 = field2->getName() + QString("_") + Feature::StatToString(stat) + "_" + cloud2Label + "@" + QString::number(scale);
 			//keepStatSF2 = (corePoints.cloud->getScalarFieldIndexByName(qPrintable(resultSFName2)) >= 0); //we remember that the scalar field was already existing!
 
-			// check if there exists a scalar field with the same name, if so, use it
-			int sfIdx = corePoints.cloud->getScalarFieldIndexByName(qPrintable(resultSFName));
-			if (sfIdx >= 0)
-			{
-				if (useExistingScalarFields)
-				{
-					ccLog::Warning("use existing scalar field: " + resultSFName);
-					statSF2 = corePoints.cloud->getScalarField(sfIdx);
-					generatedScalarFields->push(corePoints.cloud, statSF2, SFCollector::ALWAYS_KEEP);
-					this->value2AlreadyComputed = true;
-				}
-			}
-
-			if (!statSF2) // prepare the scalar field if needed
-			{
-				statSF2 = PrepareSF(corePoints.cloud, qPrintable(resultSFName), generatedScalarFields, SFCollector::ALWAYS_REMOVE);
-			}
-
+			assert(!statSF2);
+			statSF2WasAlreadyExisting = CheckSFExistence(corePoints.cloud, qPrintable(resultSFName2));
+			if (statSF2WasAlreadyExisting)
+				statSF2 = PrepareSF(corePoints.cloud, qPrintable(resultSFName2), generatedScalarFields, SFCollector::ALWAYS_KEEP);
+			else
+				statSF2 = PrepareSF(corePoints.cloud, qPrintable(resultSFName2), generatedScalarFields, SFCollector::ALWAYS_REMOVE);
 			if (!statSF2)
 			{
 				error = QString("Failed to prepare scalar field for field '%1' @ scale %2").arg(field2->getName()).arg(scale);
 				return false;
 			}
 		}
-		
+
 		return true;
 	}
 	else //non scaled feature
@@ -875,7 +851,7 @@ bool PointFeature::finish(const CorePoints& corePoints, QString& error)
 		}
 	}
 
-	if (statSF2)
+	if (statSF2 && !statSF1WasAlreadyExisting)
 	{
 		//now perform the math operation
 		if (op != Feature::NO_OPERATION)
@@ -886,7 +862,7 @@ bool PointFeature::finish(const CorePoints& corePoints, QString& error)
 				success = false;
 			}
 		}
-		statSF2->computeMinAndMax();
+//		statSF2->computeMinAndMax();
 
 		//DGM: we don't delete it now! As it could be used by other features!
 		//if (!keepStatSF2)

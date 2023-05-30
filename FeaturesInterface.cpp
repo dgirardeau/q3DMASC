@@ -25,6 +25,19 @@
 
 using namespace masc;
 
+bool Feature::CheckSFExistence(ccPointCloud* cloud, const char* resultSFName)
+{
+	int sfIdx = cloud->getScalarFieldIndexByName(resultSFName);
+	if (sfIdx >= 0)
+	{
+		return true;
+	}
+	else
+	{
+		return false;
+	}
+}
+
 CCCoreLib::ScalarField* Feature::PrepareSF(ccPointCloud* cloud, const char* resultSFName, SFCollector* generatedScalarFields/*=nullptr*/, SFCollector::Behavior behavior/*=SFCollector::CAN_REMOVE*/)
 {
 	if (!cloud || !resultSFName)
@@ -38,10 +51,13 @@ CCCoreLib::ScalarField* Feature::PrepareSF(ccPointCloud* cloud, const char* resu
 	int sfIdx = cloud->getScalarFieldIndexByName(resultSFName);
 	if (sfIdx >= 0)
 	{
+		ccLog::Warning("Existing SF: " + QString(resultSFName) + ", SFCollector::Behavior " + QString::number(behavior));
 		resultSF = cloud->getScalarField(sfIdx);
 	}
 	else
 	{
+		ccLog::Warning("SF does not exist, create it: " + QString(resultSFName)  + ", SFCollector::Behavior " + QString::number(behavior));
+		resultSF = cloud->getScalarField(sfIdx);
 		ccScalarField* newSF = new ccScalarField(resultSFName);
 		if (!newSF->resizeSafe(cloud->size()))
 		{

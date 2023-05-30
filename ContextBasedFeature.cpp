@@ -72,8 +72,7 @@ bool ContextBasedFeature::checkValidity(QString corePointRole, QString &error) c
 bool ContextBasedFeature::prepare(	const CorePoints& corePoints,
 									QString& errorMessage,
 									CCCoreLib::GenericProgressCallback* progressCb/*=nullptr*/,
-									SFCollector* generatedScalarFields/*=nullptr*/,
-									bool useExistingScalarFields /*=false*/)
+									SFCollector* generatedScalarFields/*=nullptr*/)
 {
 	if (!corePoints.cloud)
 	{
@@ -118,26 +117,10 @@ bool ContextBasedFeature::prepare(	const CorePoints& corePoints,
 		resultSFName += "@kNN=" + QString::number(kNN);
 	}
 
-	// check if there exists a scalar field with the same name
-	int sfIdx = corePoints.cloud->getScalarFieldIndexByName(qPrintable(resultSFName));
-	if (sfIdx >= 0)
-	{
-		if (useExistingScalarFields)
-		{
-			ccLog::Warning("use existing scalar field: " + resultSFName);
-			sf = corePoints.cloud->getScalarField(sfIdx);
-			generatedScalarFields->push(corePoints.cloud, sf, SFCollector::ALWAYS_KEEP);
-			this->valueAlreadyComputed = true;
-			source.name = sf->getName();
-			return true;
-		}
-	}
-
-	if (!sf) // prepare the scalar field if needed
-	{
-		sf = PrepareSF(corePoints.cloud, qPrintable(resultSFName), generatedScalarFields, SFCollector::CAN_REMOVE);
-	}
-
+	//and the scalar field
+	assert(!sf);
+	sfWasAlreadyExisting = CheckSFExistence(corePoints.cloud, qPrintable(resultSFName));
+	sf = PrepareSF(corePoints.cloud, qPrintable(resultSFName), generatedScalarFields, SFCollector::CAN_REMOVE);
 	if (!sf)
 	{
 		errorMessage = QString("Failed to prepare scalar %1 @ scale %2").arg(resultSFName).arg(scale);
@@ -145,7 +128,8 @@ bool ContextBasedFeature::prepare(	const CorePoints& corePoints,
 	}
 	source.name = sf->getName();
 
-	if (!scaled() && !this->valueAlreadyComputed) //with 'kNN' neighbors, we can compute the values right away (skip if value is already computed)
+	// NOT NECESSARY IF THE VALUE IS ALREADY COMPUTED
+	if (!scaled() && !sfWasAlreadyExisting) //with 'kNN' neighbors, we can compute the values right away
 	{
 		unsigned pointCount = corePoints.size();
 		QString logMessage = QString("Computing %1 on cloud %2 with context cloud %3\n(core points: %4)").arg(typeStr).arg(corePoints.cloud->getName()).arg(cloud2Label).arg(pointCount);

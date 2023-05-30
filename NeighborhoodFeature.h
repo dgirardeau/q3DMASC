@@ -152,16 +152,15 @@ namespace masc
 			, sf1(nullptr)
 			, sf2(nullptr)
 			, keepSF2(false)
-			, value1AlreadyComputed(false)
-			, value2AlreadyComputed(false)
+			, sf1WasAlreadyExisting(false)
+			, sf2WasAlreadyExisting(false)
 		{
 		}
 
 		//inherited from Feature
 		virtual Type getType() const override { return Type::NeighborhoodFeature; }
 		virtual Feature::Shared clone() const override { return Feature::Shared(new NeighborhoodFeature(*this)); }
-		virtual bool prepare(const CorePoints& corePoints, QString& error,
-							 CCCoreLib::GenericProgressCallback* progressCb = nullptr, SFCollector* generatedScalarFields = nullptr, bool useExistingScalarFields = false) override;
+		virtual bool prepare(const CorePoints& corePoints, QString& error, CCCoreLib::GenericProgressCallback* progressCb = nullptr, SFCollector* generatedScalarFields = nullptr) override;
 		virtual bool finish(const CorePoints& corePoints, QString& error) override;
 		virtual bool checkValidity(QString corePointRole, QString &error) const override;
 		virtual QString toString() const override;
@@ -179,8 +178,7 @@ namespace masc
 		//! Feature values
 		CCCoreLib::ScalarField *sf1, *sf2;
 		bool keepSF2;
-		static bool sf2ExistenceInitialTestAlreadyPerformed;
-		bool value1AlreadyComputed;
-		bool value2AlreadyComputed;
+		bool sf1WasAlreadyExisting;
+		bool sf2WasAlreadyExisting;
 	};
 }
