@@ -43,6 +43,8 @@ class SFCollector
 
 		void releaseSFs(bool keepByDefault);
 
+		bool setBehavior(CCCoreLib::ScalarField *sf, Behavior behavior);
+
 		struct SFDesc
 		{
 			ccPointCloud* cloud = nullptr;

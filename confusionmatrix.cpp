@@ -21,6 +21,10 @@ QColor getColor(double value, double r1, double g1, double b1)
 	double r0 = 255;
 	double g0 = 255;
 	double b0 = 255;
+	if (value < 0.05)
+		value = 0.05;
+	if (value > 0.95)
+		value = 0.95;
 	int r = int((r1 - r0) * value + r0);
 	int g = int ((g1 - g0) * value + g0);
 	int b = int ((b1 - b0) * value + b0);
@@ -42,7 +46,7 @@ ConfusionMatrix::ConfusionMatrix(std::vector<ScalarType> &actual, std::vector<Sc
 	this->ui->tableWidget->setSizeAdjustPolicy(QAbstractScrollArea::AdjustToContents);
 	QSize tableSize = this->ui->tableWidget->sizeHint();
 	QSize labelSize = this->ui->label->sizeHint();
-	QSize widgetSize = QSize(tableSize.width(), tableSize.height() + 2 * labelSize.height());
+	QSize widgetSize = QSize(tableSize.width() + 10, tableSize.height() + 50);
 	this->setMinimumSize(widgetSize);
 }
 
@@ -238,7 +242,7 @@ void ConfusionMatrix::compute(std::vector<ScalarType>& actual, std::vector<Scala
 				newItem->setFont(f);
 			}
 			else
-				newItem->setBackground(getColor(val / vec_TP_FN.at<int>(row, 0), 0, 128, 255));
+				newItem->setBackground(getColor(val / vec_TP_FN.at<int>(row, 0), 200, 50, 50));
 			this->ui->tableWidget->setItem(2 + row, + 2 + column, newItem);
 		}
 

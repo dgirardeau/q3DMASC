@@ -91,7 +91,11 @@ bool NeighborhoodFeature::prepare(	const CorePoints& corePoints,
 	assert(!sf1);
 	sf1WasAlreadyExisting = CheckSFExistence(corePoints.cloud, qPrintable(resultSFName));
 	if (sf1WasAlreadyExisting)
+	{
 		sf1 = PrepareSF(corePoints.cloud, qPrintable(resultSFName), generatedScalarFields, SFCollector::ALWAYS_KEEP);
+		if (generatedScalarFields->scalarFields.contains(sf1)) // i.e. the SF is existing but was not present at the startup of the plugin
+			generatedScalarFields->setBehavior(sf1, SFCollector::CAN_REMOVE);
+	}
 	else
 		sf1 = PrepareSF(corePoints.cloud, qPrintable(resultSFName), generatedScalarFields, SFCollector::CAN_REMOVE);
 	if (!sf1)

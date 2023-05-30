@@ -579,7 +579,12 @@ bool PointFeature::prepare(	const CorePoints& corePoints,
 		//prepare the corresponding scalar field
 		statSF1WasAlreadyExisting = CheckSFExistence(corePoints.cloud, qPrintable(resultSFName));
 		if (statSF1WasAlreadyExisting)
+		{
+			// if the SF is not existing, it is not added to generatedScalarFields
 			statSF1 = PrepareSF(corePoints.cloud, qPrintable(resultSFName), generatedScalarFields, SFCollector::ALWAYS_KEEP);
+			if (generatedScalarFields->scalarFields.contains(statSF1)) // i.e. the SF is existing but was not present at the startup of the plugin
+				generatedScalarFields->setBehavior(statSF1, SFCollector::CAN_REMOVE);
+		}
 		else
 			statSF1 = PrepareSF(corePoints.cloud, qPrintable(resultSFName), generatedScalarFields, SFCollector::CAN_REMOVE);
 		if (!statSF1)
