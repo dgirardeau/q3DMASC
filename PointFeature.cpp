@@ -596,7 +596,7 @@ bool PointFeature::prepare(	const CorePoints& corePoints,
 
 		if (field2 && op != Feature::NO_OPERATION && !statSF1WasAlreadyExisting) // nothing to do if statSF1 was already there
 		{
-			QString resultSFName2 = field2->getName() + QString("_") + Feature::StatToString(stat) + "_" + cloud2Label + "@" + QString::number(scale);
+			QString resultSFName2 = field2->getName() + QString("_") + cloud2Label + "_" + Feature::StatToString(stat) + "@" + QString::number(scale);
 			//keepStatSF2 = (corePoints.cloud->getScalarFieldIndexByName(qPrintable(resultSFName2)) >= 0); //we remember that the scalar field was already existing!
 
 			assert(!statSF2);

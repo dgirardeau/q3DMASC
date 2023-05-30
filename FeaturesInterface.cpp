@@ -73,11 +73,10 @@ CCCoreLib::ScalarField* Feature::PrepareSF(ccPointCloud* cloud, const char* resu
 		}
 
 		resultSF = newSF;
-
+		resultSF->fill(CCCoreLib::NAN_VALUE);
 	}
 
 	assert(resultSF);
-	resultSF->fill(CCCoreLib::NAN_VALUE);
 
 	return resultSF;
 }

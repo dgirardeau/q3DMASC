@@ -129,8 +129,7 @@ bool Classifier::classify(	const Feature::Source::Set& featureSources,
 	int cvConfidenceIdx = cloud->getScalarFieldIndexByName("Classification_confidence");
 	if (cvConfidenceIdx > 0) // if the scalar field exists, delete it
 		cloud->deleteScalarField(cvConfidenceIdx);
-	else
-		cvConfidenceIdx = cloud->addScalarField("Classification_confidence");
+	cvConfidenceIdx = cloud->addScalarField("Classification_confidence");
 	CCCoreLib::ScalarField* cvConfidenceSF = cloud->getScalarField(cvConfidenceIdx);
 
 	ccScalarField* classifSFBackup = nullptr;
@@ -259,6 +258,7 @@ bool Classifier::classify(	const Feature::Source::Set& featureSources,
 			break;
 		}
 	}
+
 	classificationSF->computeMinAndMax();
 	cvConfidenceSF->computeMinAndMax();
 

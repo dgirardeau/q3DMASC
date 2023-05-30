@@ -32,7 +32,7 @@ QColor getColor(double value, double r1, double g1, double b1)
 	return QColor(r, g, b);
 }
 
-ConfusionMatrix::ConfusionMatrix(std::vector<ScalarType> &actual, std::vector<ScalarType> &predicted, QWidget *parent) :
+ConfusionMatrix::ConfusionMatrix(const std::vector<ScalarType> &actual, const std::vector<ScalarType> &predicted, QWidget *parent) :
 	QWidget(parent),
 	ui(new Ui::ConfusionMatrix)
 {
@@ -46,7 +46,7 @@ ConfusionMatrix::ConfusionMatrix(std::vector<ScalarType> &actual, std::vector<Sc
 	this->ui->tableWidget->setSizeAdjustPolicy(QAbstractScrollArea::AdjustToContents);
 	QSize tableSize = this->ui->tableWidget->sizeHint();
 	QSize labelSize = this->ui->label->sizeHint();
-	QSize widgetSize = QSize(tableSize.width() + 10, tableSize.height() + 50);
+	QSize widgetSize = QSize(tableSize.width() + 20, tableSize.height() + 50);
 	this->setMinimumSize(widgetSize);
 }
 
@@ -141,7 +141,7 @@ float ConfusionMatrix::computeOverallAccuracy(cv::Mat& matrix)
 	return m_overallAccuracy;
 }
 
-void ConfusionMatrix::compute(std::vector<ScalarType>& actual, std::vector<ScalarType>& predicted)
+void ConfusionMatrix::compute(const std::vector<ScalarType>& actual, const std::vector<ScalarType>& predicted)
 {
 	int idxActual;
 	int idxPredicted;

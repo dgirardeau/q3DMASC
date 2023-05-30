@@ -1038,7 +1038,7 @@ struct FeaturesAndScales
 };
 
 bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features, QString& errorStr,
-                            CCCoreLib::GenericProgressCallback* progressCb/*=nullptr*/, SFCollector* generatedScalarFields/*=nullptr*/)
+							CCCoreLib::GenericProgressCallback* progressCb/*=nullptr*/, SFCollector* generatedScalarFields/*=nullptr*/)
 {
 	if (features.empty() || !corePoints.origin)
 	{
@@ -1377,7 +1377,6 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 
 	for (const Feature::Shared& feature : features)
 	{
-        std::cout << feature->toString().toStdString() << std::endl;
 		//we have to 'finish' the process for scaled features
 		if (feature->scaled() && !feature->finish(corePoints, errorStr))
 		{

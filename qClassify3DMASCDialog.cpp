@@ -124,8 +124,6 @@ void Classify3DMASCDialog::readSettings()
 	settings.beginGroup("3DMASC");
 	bool keepAttributes = settings.value("keepAttributes", false).toBool();
 	this->keepAttributesCheckBox->setChecked(keepAttributes);
-	bool useExistingScalarFields = settings.value("useExistingScalarFields", false).toBool();
-	this->checkBox_useExistingScalarFields->setChecked(useExistingScalarFields);
 }
 
 void Classify3DMASCDialog::writeSettings()
@@ -133,7 +131,6 @@ void Classify3DMASCDialog::writeSettings()
 	QSettings settings;
 	settings.beginGroup("3DMASC");
 	settings.setValue("keepAttributes", keepAttributesCheckBox->isChecked());
-	settings.setValue("useExistingScalarFields", checkBox_useExistingScalarFields->isChecked());
 }
 
 void Classify3DMASCDialog::setCloudRoles(const QList<QString>& roles, QString corePointsLabel)

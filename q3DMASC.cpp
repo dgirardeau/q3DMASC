@@ -293,7 +293,6 @@ void q3DMASCPlugin::doTrainAction()
 		classifDlg.label_trainOrClassify->setText("The classifier will be trained on " + corePointsLabel);
 		classifDlg.classifierFileLineEdit->setText(inputFilename);
 		classifDlg.keepAttributesCheckBox->hide(); // this parameter is set in the trainDlg dialog
-		classifDlg.checkBox_useExistingScalarFields->hide(); // this parameter is set in the trainDlg dialog
 		if (!classifDlg.exec())
 		{
 			//process cancelled by the user
