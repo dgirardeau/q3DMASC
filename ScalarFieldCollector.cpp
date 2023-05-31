@@ -29,10 +29,10 @@
 void SFCollector::push(ccPointCloud* cloud, CCCoreLib::ScalarField* sf, Behavior behavior)
 {
 	assert(!scalarFields.contains(sf));
-	if (scalarFields.contains(sf))
-		ccLog::Warning(QString("[SFCollector] scalar field '%1' HAS ALREADY BEEN COLLECTED").arg(sf->getName()) + ", behaviour " + QString::number(behavior));
-	else
-		ccLog::Warning(QString("[SFCollector] collect scalar field '%1'").arg(sf->getName()) + ", behaviour " + QString::number(behavior));
+//	if (scalarFields.contains(sf))
+//		ccLog::Warning(QString("[SFCollector] scalar field '%1' HAS ALREADY BEEN COLLECTED").arg(sf->getName()) + ", behaviour " + QString::number(behavior));
+//	else
+//		ccLog::Warning(QString("[SFCollector] collect scalar field '%1'").arg(sf->getName()) + ", behaviour " + QString::number(behavior));
 	SFDesc desc;
 	desc.behavior = behavior;
 	desc.cloud = cloud;
@@ -48,7 +48,7 @@ void SFCollector::releaseSFs(bool keepByDefault)
 
 		if (desc.behavior == ALWAYS_KEEP || (keepByDefault && desc.behavior == CAN_REMOVE))
 		{
-			ccLog::Warning(QString("[SFCollector] Keep scalar field '%1'").arg(sf->getName()));
+//			ccLog::Warning(QString("[SFCollector] Keep scalar field '%1'").arg(sf->getName()));
 			//keep this SF
 			continue;
 		}
@@ -56,7 +56,7 @@ void SFCollector::releaseSFs(bool keepByDefault)
 		int sfIdx = desc.cloud->getScalarFieldIndexByName(sf->getName());
 		if (sfIdx >= 0)
 		{
-			ccLog::Warning(QString("[SFCollector] Remove scalar field '%1'").arg(sf->getName()));
+//			ccLog::Warning(QString("[SFCollector] Remove scalar field '%1'").arg(sf->getName()));
 			desc.cloud->deleteScalarField(sfIdx);
 		}
 		else
@@ -72,9 +72,9 @@ bool SFCollector::setBehavior(CCCoreLib::ScalarField *sf, Behavior behavior)
 {
 	if (scalarFields.contains(sf))
 	{
-		Behavior previousBehavior = scalarFields[sf].behavior;
+//		Behavior previousBehavior = scalarFields[sf].behavior;
 		scalarFields[sf].behavior = behavior;
-		ccLog::Warning("behavior of " + QString(sf->getName()) + " changed from " + QString::number(previousBehavior) + " to " + QString::number(behavior));
+//		ccLog::Warning("behavior of " + QString(sf->getName()) + " changed from " + QString::number(previousBehavior) + " to " + QString::number(behavior));
 	}
 
 	return true;

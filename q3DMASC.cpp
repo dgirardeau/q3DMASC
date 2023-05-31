@@ -507,7 +507,7 @@ void q3DMASCPlugin::doTrainAction()
 			{
 				progressDlg.setAutoClose(false); //we don't want the progress dialog to 'pop' for each feature
 				QString error;
-                if (!masc::Tools::PrepareFeatures(corePoints, toPrepare, error, &progressDlg, &generatedScalarFields))
+				if (!masc::Tools::PrepareFeatures(corePoints, toPrepare, error, &progressDlg, &generatedScalarFields))
 				{
 					m_app->dispToConsole(error, ccMainAppInterface::ERR_CONSOLE_MESSAGE);
 					generatedScalarFields.releaseSFs(false);
@@ -655,7 +655,7 @@ void q3DMASCPlugin::doTrainAction()
 											errorMessage,
 											trainDlg,
 											testCloud ? nullptr : testSubset.data(),
-											"Classification_pred",
+											testCloud ? "Classification_prediction" : "", // outputSFName, empty is the test cloud is not a separate cloud
 											m_app->getMainWindow()))
 				{
 					m_app->dispToConsole(errorMessage, ccMainAppInterface::ERR_CONSOLE_MESSAGE);

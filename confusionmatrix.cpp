@@ -229,8 +229,6 @@ void ConfusionMatrix::compute(const std::vector<ScalarType>& actual, const std::
 	// FILL THE QTABLEWIDGET
 
 	// add the confusion matrix values
-	QBrush greenBrush(QColorConstants::Svg::palegreen);
-	QFont f( "Tahoma", 10, QFont::Bold );
 	for (int row = 0; row < nbClasses; row++)
 		for (int column = 0; column < nbClasses; column++)
 		{
@@ -239,7 +237,6 @@ void ConfusionMatrix::compute(const std::vector<ScalarType>& actual, const std::
 			if (row == column)
 			{
 				newItem->setBackground(getColor(val / vec_TP_FN.at<int>(row, 0), 0, 128, 255));
-				newItem->setFont(f);
 			}
 			else
 				newItem->setBackground(getColor(val / vec_TP_FN.at<int>(row, 0), 200, 50, 50));

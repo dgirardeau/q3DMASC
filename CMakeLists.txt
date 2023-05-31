@@ -8,7 +8,7 @@ if (INSTALL_Q3DMASC_PLUGIN)
 	project( Q3DMASC_PLUGIN )
 
 	AddPlugin( NAME ${PROJECT_NAME} )
-	set(Q3DMASC_PLUGIN_VERSION "0.7+")
+	set(Q3DMASC_PLUGIN_VERSION "0.8")
 
 	include( CMakePolicies NO_POLICY_SCOPE )
 
