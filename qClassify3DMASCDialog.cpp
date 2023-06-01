@@ -116,6 +116,13 @@ Classify3DMASCDialog::Classify3DMASCDialog(ccMainAppInterface* app, bool trainMo
 	}
 
 	onCloudChanged(0);
+
+	readSettings();
+}
+
+Classify3DMASCDialog::~Classify3DMASCDialog()
+{
+	writeSettings();
 }
 
 void Classify3DMASCDialog::readSettings()

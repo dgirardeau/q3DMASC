@@ -328,7 +328,7 @@ bool Classifier::evaluate(const Feature::Source::Set& featureSources,
 		if (outIdx >= 0)
 			testCloud->deleteScalarField(outIdx);
 		else
-			ccLog::Warning("add " + outputSFName + " to the TEST cloud");
+			ccLog::Print("add " + outputSFName + " to the TEST cloud");
 		outIdx = testCloud->addScalarField(qPrintable(outputSFName));
 		outSF  = static_cast<ccScalarField*>(testCloud->getScalarField(outIdx));
 	}
@@ -339,7 +339,7 @@ bool Classifier::evaluate(const Feature::Source::Set& featureSources,
 		if (cvConfidenceIdx >= 0) // if the scalar field exists, delete it
 			testCloud->deleteScalarField(cvConfidenceIdx);
 		else
-			ccLog::Warning("add Classification_confidence to the TEST cloud");
+			ccLog::Print("add Classification_confidence to the TEST cloud");
 		cvConfidenceIdx = testCloud->addScalarField("Classification_confidence");
 		cvConfidenceSF = static_cast<ccScalarField*>(testCloud->getScalarField(cvConfidenceIdx));
 	}
