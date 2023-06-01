@@ -129,13 +129,13 @@ bool Classifier::classify(	const Feature::Source::Set& featureSources,
 	if (cvConfidenceIdx >= 0) // if the scalar field exists, delete it
 		cloud->deleteScalarField(cvConfidenceIdx);
 	cvConfidenceIdx = cloud->addScalarField("Classification_confidence");
-	CCCoreLib::ScalarField* cvConfidenceSF = cloud->getScalarField(cvConfidenceIdx);
+	ccScalarField* cvConfidenceSF = static_cast<ccScalarField*>(cloud->getScalarField(cvConfidenceIdx));
 
 	//look for the classification field
 	CCCoreLib::ScalarField* classificationSF = Tools::GetClassificationSF(cloud);
 	ccScalarField* classifSFBackup = nullptr;
 
-	if (classificationSF) //save classification field (if any)
+	if (classificationSF) //save classification field (if any) by renaming it "Classification_backup"
 	{
 		ccLog::Warning("Classification SF found: copy it in Classification_backup, a confusion matrix will be generated");
 		// delete Classification_backup field (if any)
@@ -143,31 +143,21 @@ bool Classifier::classify(	const Feature::Source::Set& featureSources,
 		if (sfIdx >= 0)
 			cloud->deleteScalarField(sfIdx);
 
-		// backup the classification field
-		try
-		{
-			classifSFBackup = new ccScalarField(*static_cast<ccScalarField*>(classificationSF)); // copy constructor
-			classifSFBackup->setName("Classification_backup");
-			cloud->addScalarField(classifSFBackup);
-		}
-		catch (const std::bad_alloc)
-		{
-			ccLog::Warning("Not enough memory to backup the previous classification SF!");
-		}
+		classificationSF->setName("Classification_backup"); // rename the classification field
+		classifSFBackup = static_cast<ccScalarField*>(classificationSF);
 	}
-	else
+
+	//create the classification SF
+	ccScalarField* _classificationSF = new ccScalarField(LAS_FIELD_NAMES[LAS_CLASSIFICATION]);
+	if (!_classificationSF->resizeSafe(cloud->size()))
 	{
-		//create the classification SF
-		ccScalarField* _classificationSF = new ccScalarField(LAS_FIELD_NAMES[LAS_CLASSIFICATION]);
-		if (!_classificationSF->resizeSafe(cloud->size()))
-		{
-			_classificationSF->release();
-			errorMessage = QObject::tr("Not enough memory");
-			return false;
-		}
-		cloud->addScalarField(_classificationSF);
-		classificationSF = _classificationSF;
+		_classificationSF->release();
+		errorMessage = QObject::tr("Not enough memory");
+		return false;
 	}
+	cloud->addScalarField(_classificationSF);
+	classificationSF = _classificationSF;
+
 	assert(classificationSF);
 	classificationSF->fill(0); //0 = no classification?
 
@@ -329,10 +319,8 @@ bool Classifier::evaluate(const Feature::Source::Set& featureSources,
 		return false;
 	}
 
-	CCCoreLib::ScalarField* outSF = nullptr;
-	CCCoreLib::ScalarField* cvConfidenceSF = nullptr;
-
-	ccLog::Warning("[evaluate] TEST cloud " + testCloud->getName());
+	ccScalarField* outSF = nullptr;
+	ccScalarField* cvConfidenceSF = nullptr;
 
 	if (!outputSFName.isEmpty())
 	{
@@ -342,7 +330,7 @@ bool Classifier::evaluate(const Feature::Source::Set& featureSources,
 		else
 			ccLog::Warning("add " + outputSFName + " to the TEST cloud");
 		outIdx = testCloud->addScalarField(qPrintable(outputSFName));
-		outSF = testCloud->getScalarField(outIdx);
+		outSF  = static_cast<ccScalarField*>(testCloud->getScalarField(outIdx));
 	}
 
 	if (outSF) // add a Classification_confidence value to the test cloud if needed
@@ -353,7 +341,7 @@ bool Classifier::evaluate(const Feature::Source::Set& featureSources,
 		else
 			ccLog::Warning("add Classification_confidence to the TEST cloud");
 		cvConfidenceIdx = testCloud->addScalarField("Classification_confidence");
-		cvConfidenceSF = testCloud->getScalarField(cvConfidenceIdx);
+		cvConfidenceSF = static_cast<ccScalarField*>(testCloud->getScalarField(cvConfidenceIdx));
 	}
 
 	unsigned testSampleCount = (testSubset ? testSubset->size() : testCloud->size());
@@ -472,6 +460,20 @@ bool Classifier::evaluate(const Feature::Source::Set& featureSources,
 	}
 
 	train3DMASCDialog.addConfusionMatrixAndSaveTraces(new ConfusionMatrix(actualClass, predictectedClass));
+
+	//show the Classification_prediction field by default
+	if (outSF)
+	{
+		int classifSFIdx = testCloud->getScalarFieldIndexByName(outSF->getName());
+		testCloud->setCurrentDisplayedScalarField(classifSFIdx);
+		testCloud->showSF(true);
+	}
+
+	if (parentWidget && testCloud->getDisplay())
+	{
+		testCloud->getDisplay()->redraw();
+		QCoreApplication::processEvents();
+	}
 
 	return true;
 }

@@ -1147,11 +1147,11 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 				//Context-based features
 				case Feature::Type::ContextBasedFeature:
 				{
-					//build the scaled feature list attached to the second cloud (the 'context' cloud)
+					//build the scaled feature list attached to the context cloud
 					if (feature->cloud1
 						&& !static_cast<ContextBasedFeature*>(feature.data())->sfWasAlreadyExisting) // nothing to compute if the scalar field was already there
 					{
-						FeaturesAndScales& fas = cloudsWithScaledFeatures[feature->cloud2];
+						FeaturesAndScales& fas = cloudsWithScaledFeatures[feature->cloud1];
 						fas.contextBasedFeaturesPerScale[feature->scale].push_back(qSharedPointerCast<ContextBasedFeature>(feature));
 						++fas.featureCount;
 						if (std::find(fas.scales.begin(), fas.scales.end(), feature->scale) == fas.scales.end())
@@ -1338,7 +1338,7 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 						//Context-based features
 						for (ContextBasedFeature::Shared& feature : fas.contextBasedFeaturesPerScale[currentScale])
 						{
-                            if (feature->cloud1 == sourceCloud && feature->sf)
+							if (feature->cloud1 == sourceCloud && feature->sf)
 							{
 								ScalarType outputValue = 0;
 								if (!feature->computeValue(nNSS.pointsInNeighbourhood, nNSS.queryPoint, outputValue))
