@@ -534,10 +534,10 @@ bool PointFeature::prepare(	const CorePoints& corePoints,
 	bool isScaled = scaled();
 
 	//build the final SF name
-	QString resultSFName = field1->getName();
+	QString resultSF1Name = field1->getName();
 	if (cloud2 || corePoints.role != cloud1Label)
 	{
-		resultSFName += "_" + cloud1Label;
+		resultSF1Name += "_" + cloud1Label;
 	}
 
 	if (isScaled)
@@ -549,7 +549,7 @@ bool PointFeature::prepare(	const CorePoints& corePoints,
 			error = "Scaled features (SCx) must have an associated STAT measure";
 			return false;
 		}
-		resultSFName += QString("_") + Feature::StatToString(stat);
+		resultSF1Name += QString("_") + Feature::StatToString(stat);
 	}
 	else //not scaled
 	{
@@ -564,29 +564,29 @@ bool PointFeature::prepare(	const CorePoints& corePoints,
 	if (field2 && op != Feature::NO_OPERATION)
 	{
 		//include the math operation as well if necessary!
-		resultSFName += "_" + Feature::OpToString(op) + "_" + field2->getName() + "_" + cloud2Label;
+		resultSF1Name += "_" + Feature::OpToString(op) + "_" + field2->getName() + "_" + cloud2Label;
 		if (isScaled)
 		{
 			assert(stat != Feature::NO_STAT);
-			resultSFName += QString("_") + Feature::StatToString(stat);
+			resultSF1Name += QString("_") + Feature::StatToString(stat);
 		}
 	}
 
 	if (isScaled)
 	{
-		resultSFName += "@" + QString::number(scale);
+		resultSF1Name += "@" + QString::number(scale);
 
 		//prepare the corresponding scalar field
-		statSF1WasAlreadyExisting = CheckSFExistence(corePoints.cloud, qPrintable(resultSFName));
+		statSF1WasAlreadyExisting = CheckSFExistence(corePoints.cloud, qPrintable(resultSF1Name));
 		if (statSF1WasAlreadyExisting)
 		{
-			// if the SF is not existing, it is not added to generatedScalarFields
-			statSF1 = PrepareSF(corePoints.cloud, qPrintable(resultSFName), generatedScalarFields, SFCollector::ALWAYS_KEEP);
+			// if the SF exists, it is not added to generatedScalarFields
+			statSF1 = PrepareSF(corePoints.cloud, qPrintable(resultSF1Name), generatedScalarFields, SFCollector::ALWAYS_KEEP);
 			if (generatedScalarFields->scalarFields.contains(statSF1)) // i.e. the SF is existing but was not present at the startup of the plugin
 				generatedScalarFields->setBehavior(statSF1, SFCollector::CAN_REMOVE);
 		}
 		else
-			statSF1 = PrepareSF(corePoints.cloud, qPrintable(resultSFName), generatedScalarFields, SFCollector::CAN_REMOVE);
+			statSF1 = PrepareSF(corePoints.cloud, qPrintable(resultSF1Name), generatedScalarFields, SFCollector::CAN_REMOVE);
 		if (!statSF1)
 		{
 			error = QString("Failed to prepare scalar field for field '%1' @ scale %2").arg(field1->getName()).arg(scale);
@@ -596,15 +596,15 @@ bool PointFeature::prepare(	const CorePoints& corePoints,
 
 		if (field2 && op != Feature::NO_OPERATION && !statSF1WasAlreadyExisting) // nothing to do if statSF1 was already there
 		{
-			QString resultSFName2 = field2->getName() + QString("_") + cloud2Label + "_" + Feature::StatToString(stat) + "@" + QString::number(scale);
+			QString resultSF2Name = field2->getName() + QString("_") + cloud2Label + "_" + Feature::StatToString(stat) + "@" + QString::number(scale);
 			//keepStatSF2 = (corePoints.cloud->getScalarFieldIndexByName(qPrintable(resultSFName2)) >= 0); //we remember that the scalar field was already existing!
 
 			assert(!statSF2);
-			statSF2WasAlreadyExisting = CheckSFExistence(corePoints.cloud, qPrintable(resultSFName2));
+			statSF2WasAlreadyExisting = CheckSFExistence(corePoints.cloud, qPrintable(resultSF2Name));
 			if (statSF2WasAlreadyExisting)
-				statSF2 = PrepareSF(corePoints.cloud, qPrintable(resultSFName2), generatedScalarFields, SFCollector::ALWAYS_KEEP);
+				statSF2 = PrepareSF(corePoints.cloud, qPrintable(resultSF2Name), generatedScalarFields, SFCollector::ALWAYS_KEEP);
 			else
-				statSF2 = PrepareSF(corePoints.cloud, qPrintable(resultSFName2), generatedScalarFields, SFCollector::ALWAYS_REMOVE);
+				statSF2 = PrepareSF(corePoints.cloud, qPrintable(resultSF2Name), generatedScalarFields, SFCollector::ALWAYS_REMOVE);
 			if (!statSF2)
 			{
 				error = QString("Failed to prepare scalar field for field '%1' @ scale %2").arg(field2->getName()).arg(scale);
@@ -619,7 +619,7 @@ bool PointFeature::prepare(	const CorePoints& corePoints,
 		assert(cloud1 == corePoints.cloud || cloud1 == corePoints.origin);
 
 		//retrieve/create a SF to host the result
-		int sfIdx = corePoints.cloud->getScalarFieldIndexByName(qPrintable(resultSFName));
+		int sfIdx = corePoints.cloud->getScalarFieldIndexByName(qPrintable(resultSF1Name));
 
 		CCCoreLib::ScalarField* resultSF = nullptr;
 		if (sfIdx >= 0)
@@ -630,7 +630,7 @@ bool PointFeature::prepare(	const CorePoints& corePoints,
 		else
 		{
 			//copy the SF1 field
-			resultSF = new ccScalarField(qPrintable(resultSFName));
+			resultSF = new ccScalarField(qPrintable(resultSF1Name));
 			if (!resultSF->resizeSafe(corePoints.cloud->size()))
 			{
 				error = "Not enough memory";

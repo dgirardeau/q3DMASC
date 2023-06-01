@@ -46,7 +46,7 @@ ConfusionMatrix::ConfusionMatrix(const std::vector<ScalarType> &actual, const st
 	this->ui->tableWidget->setSizeAdjustPolicy(QAbstractScrollArea::AdjustToContents);
 	QSize tableSize = this->ui->tableWidget->sizeHint();
 	QSize labelSize = this->ui->label->sizeHint();
-	QSize widgetSize = QSize(tableSize.width() + 20, tableSize.height() + 50);
+	QSize widgetSize = QSize(tableSize.width() + 30, tableSize.height() + 50);
 	this->setMinimumSize(widgetSize);
 }
 

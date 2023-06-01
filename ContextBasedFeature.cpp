@@ -268,7 +268,7 @@ bool ContextBasedFeature::prepare(	const CorePoints& corePoints,
 				return false;
 			}
 
-		}
+		} // classCount >= kNN
 		else // classCount < kNN
 		{
 			//specific case: not enough points of this class in the whole cloud!

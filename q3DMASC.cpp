@@ -604,7 +604,6 @@ void q3DMASCPlugin::doTrainAction()
 						for (size_t i = 0; i < originalFeaturesTest.size(); ++i)
 						{
 							originalFeaturesTest[i].selected = trainDlg.isFeatureSelected(originalFeatures[i].feature->toString());
-
 							//if the feature is selected
 							if (originalFeaturesTest[i].selected)
 							{
@@ -625,7 +624,7 @@ void q3DMASCPlugin::doTrainAction()
 							masc::CorePoints corePointsTest;
 							corePointsTest.cloud = corePointsTest.origin = testCloud;
 							corePointsTest.role = mainCloudLabel;
-                            if (!masc::Tools::PrepareFeatures(corePointsTest, toPrepareTest, error, &progressDlg, &generatedScalarFieldsTest))
+							if (!masc::Tools::PrepareFeatures(corePointsTest, toPrepareTest, error, &progressDlg, &generatedScalarFieldsTest))
 							{
 								m_app->dispToConsole(error, ccMainAppInterface::ERR_CONSOLE_MESSAGE);
 								generatedScalarFields.releaseSFs(false);
