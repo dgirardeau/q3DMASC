@@ -151,8 +151,8 @@ void ConfusionMatrix::compute(const std::vector<ScalarType>& actual, const std::
 	// get the set of classes with the contents of the actual classes
 	std::set<ScalarType> classes(actual.begin(), actual.end());
 	int nbClasses = classes.size();
-	cv::Mat confusionMatrix(nbClasses, nbClasses, CV_32S, cv::Scalar(0));
-	cv::Mat precisionRecallF1Score(nbClasses, 3, CV_32F, cv::Scalar(0));
+	confusionMatrix = cv::Mat(nbClasses, nbClasses, CV_32S, cv::Scalar(0));
+	precisionRecallF1Score = cv::Mat(nbClasses, 3, CV_32F, cv::Scalar(0));
 	cv::Mat vec_TP_FN(nbClasses, 1, CV_32S, cv::Scalar(0));
 
 	// fill the confusion matrix
