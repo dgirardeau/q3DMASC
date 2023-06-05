@@ -27,15 +27,14 @@ using namespace masc;
 
 bool Feature::CheckSFExistence(ccPointCloud* cloud, const char* resultSFName)
 {
-	int sfIdx = cloud->getScalarFieldIndexByName(resultSFName);
-	if (sfIdx >= 0)
+	if (!cloud || !resultSFName)
 	{
-		return true;
-	}
-	else
-	{
+		assert(false);
 		return false;
 	}
+
+	int sfIdx = cloud->getScalarFieldIndexByName(resultSFName);
+	return (sfIdx >= 0);
 }
 
 CCCoreLib::ScalarField* Feature::PrepareSF(ccPointCloud* cloud, const char* resultSFName, SFCollector* generatedScalarFields/*=nullptr*/, SFCollector::Behavior behavior/*=SFCollector::CAN_REMOVE*/)

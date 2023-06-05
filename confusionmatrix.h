@@ -1,5 +1,4 @@
-#ifndef CONFUSIONMATRIX_H
-#define CONFUSIONMATRIX_H
+#pragma once
 
 #include <QWidget>
 #include <set>
@@ -25,7 +24,7 @@ public:
 	};
 
 	explicit ConfusionMatrix(const std::vector<ScalarType>& actual, const std::vector<ScalarType>& predicted, QWidget *parent = nullptr);
-	~ConfusionMatrix();
+	~ConfusionMatrix() override;
 
 	void computePrecisionRecallF1Score(cv::Mat& matrix, cv::Mat& precisionRecallF1Score, cv::Mat &vec_TP_FN);
 	float computeOverallAccuracy(cv::Mat& matrix);
@@ -42,5 +41,3 @@ private:
 	cv::Mat precisionRecallF1Score;
 	std::vector<ScalarType> class_numbers;
 };
-
-#endif // CONFUSIONMATRIX_H

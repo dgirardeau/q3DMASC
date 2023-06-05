@@ -181,6 +181,9 @@ bool Tools::LoadClassifierCloudLabels(QString filename, QList<QString>& labels, 
 
 bool CheckFeatureUnicity(std::vector<Feature::Shared>& rawFeatures, Feature::Shared feature)
 {
+	if (!feature)
+		return false;
+
 	// check that the feature does not exists already!
 	for (const auto &feat : rawFeatures)
 	{

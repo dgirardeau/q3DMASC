@@ -266,39 +266,36 @@ void ConfusionMatrix::setSessionRun(QString session, int run)
 
 bool ConfusionMatrix::save(QString filePath)
 {
-	std::unique_ptr<QFile> file(new QFile(filePath));
-	QTextStream stream;
+	QFile file(filePath);
 
-	if(!file->open(QIODevice::WriteOnly | QIODevice::Text))
+	if(!file.open(QIODevice::WriteOnly | QIODevice::Text))
 	{
 		ccLog::Error("impossible to open file: " + filePath);
 		return false;
 	}
 
-	if (file && file->isOpen())
+	QTextStream stream(&file);
+	stream << "# columns: predicted classes\n# rows: actual classes\n";
+	stream << "# last three colums: precision / recall / F1-score\n";
+	for (auto class_number : class_numbers)
 	{
-		stream.setDevice(file.get());
-		stream << "# columns: predicted classes\n# rows: actual classes\n";
-		stream << "# last three colums: precision / recall / F1-score\n";
-		for (auto class_number : class_numbers)
-		{
-			stream << class_number << " ";
-		}
-		stream << Qt::endl;
-		for (int row = 0; row < confusionMatrix.rows; row++)
-		{
-			stream << class_numbers.at(row) << " ";
-			for (int col = 0; col < confusionMatrix.cols; col++)
-			{
-				stream << confusionMatrix.at<int>(row, col) << " ";
-			}
-			stream << precisionRecallF1Score.at<float>(row, PRECISION) << " ";
-			stream << precisionRecallF1Score.at<float>(row, RECALL) << " ";
-			stream << precisionRecallF1Score.at<float>(row, F1_SCORE) << Qt::endl;
-		}
-		file->close();
-		return true;
+		stream << class_number << " ";
 	}
-	else
-		return false;
+	stream << Qt::endl;
+	for (int row = 0; row < confusionMatrix.rows; row++)
+	{
+		stream << class_numbers.at(row) << " ";
+		for (int col = 0; col < confusionMatrix.cols; col++)
+		{
+			stream << confusionMatrix.at<int>(row, col) << " ";
+		}
+		stream << precisionRecallF1Score.at<float>(row, PRECISION) << " ";
+		stream << precisionRecallF1Score.at<float>(row, RECALL) << " ";
+		stream << precisionRecallF1Score.at<float>(row, F1_SCORE) << Qt::endl;
+	}
+
+	file.close();
+
+	return true;
+
 }
