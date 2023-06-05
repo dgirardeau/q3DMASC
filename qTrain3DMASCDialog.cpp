@@ -332,7 +332,7 @@ void Train3DMASCDialog::saveTraces(ConfusionMatrix *confusionMatrix)
 
 		// save the run number and the overall accuracy
 		if (m_traceStream.device())
-			m_traceStream << run << " " << confusionMatrix->m_overallAccuracy << Qt::endl;
+			m_traceStream << run << " " << confusionMatrix->getOverallAccuracy() << Qt::endl;
 		confusionMatrix->save(m_tracePath + "/" + "run_" + QString::number(run) + "_confusion_matrix.txt");
 
 	}

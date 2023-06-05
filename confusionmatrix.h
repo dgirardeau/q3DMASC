@@ -30,8 +30,8 @@ public:
 	float computeOverallAccuracy(cv::Mat& matrix);
 	void compute(const std::vector<ScalarType> &actual, const std::vector<ScalarType> &predicted);
 	void setSessionRun(QString session, int run);
-	float m_overallAccuracy;
 	bool save(QString filePath);
+	float getOverallAccuracy();
 
 private:
 	std::set<ScalarType> classes;
@@ -40,4 +40,5 @@ private:
 	cv::Mat confusionMatrix;
 	cv::Mat precisionRecallF1Score;
 	std::vector<ScalarType> class_numbers;
+	float m_overallAccuracy;
 };

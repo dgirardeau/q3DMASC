@@ -299,3 +299,8 @@ bool ConfusionMatrix::save(QString filePath)
 	return true;
 
 }
+
+float ConfusionMatrix::getOverallAccuracy()
+{
+	return m_overallAccuracy;
+}
