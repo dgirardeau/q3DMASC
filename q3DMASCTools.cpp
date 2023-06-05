@@ -31,7 +31,7 @@
 #include <ccPointCloud.h>
 
 //qPDALIO
-#include "../../core/IO/qPDALIO/include/LASFields.h"
+#include "../../../core/IO/qPDALIO/include/LASFields.h"
 
 //Qt
 #include <QTextStream>

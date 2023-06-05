@@ -22,9 +22,9 @@
 
 //qPDALIO
 #ifdef PLUGIN_IO_QPDAL
-#include "../../core/IO/qPDALIO/include/LASFields.h"
+#include "../../../core/IO/qPDALIO/include/LASFields.h"
 #else
-#include "../../core/IO/qLASIO/include/LasDetails.h"
+#include "../../../core/IO/qLASIO/include/LasDetails.h"
 enum LAS_FIELDS {
 	LAS_X = 0,
 	LAS_Y = 1,
