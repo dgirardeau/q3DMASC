@@ -42,21 +42,21 @@ bool ContextBasedFeature::checkValidity(QString corePointRole, QString &error) c
 		return false;
 	}
 
-	if (!cloud1 || !cloud2)
+	if (!cloud1)
 	{
-		error = "two clouds are required to compute context-based features";
+		error = "one cloud is required to compute context-based features";
 		return false;
 	}
 
-	CCLib::ScalarField* classifSF = Tools::GetClassificationSF(cloud2);
+	CCCoreLib::ScalarField* classifSF = Tools::GetClassificationSF(cloud1);
 	if (!classifSF)
 	{
-		error = QString("Context cloud (%1) has no classification field").arg(cloud2Label);
+		error = QString("Context cloud (%1) has no classification field").arg(cloud1Label);
 		return false;
 	}
-	if (classifSF->size() < cloud2->size())
+	if (classifSF->size() < cloud1->size())
 	{
-		error = QString("Context cloud (%1) has an invalid classification field").arg(cloud2Label);
+		error = QString("Context cloud (%1) has an invalid classification field").arg(cloud1Label);
 		return false;
 	}
 
@@ -71,10 +71,10 @@ bool ContextBasedFeature::checkValidity(QString corePointRole, QString &error) c
 
 bool ContextBasedFeature::prepare(	const CorePoints& corePoints,
 									QString& errorMessage,
-									CCLib::GenericProgressCallback* progressCb/*=nullptr*/,
+									CCCoreLib::GenericProgressCallback* progressCb/*=nullptr*/,
 									SFCollector* generatedScalarFields/*=nullptr*/)
 {
-	if (!cloud1 || !corePoints.cloud)
+	if (!corePoints.cloud)
 	{
 		//invalid input
 		assert(false);
@@ -82,7 +82,7 @@ bool ContextBasedFeature::prepare(	const CorePoints& corePoints,
 		return false;
 	}
 
-	if (!cloud2)
+	if (!cloud1)
 	{
 		//invalid input
 		assert(false);
@@ -96,18 +96,18 @@ bool ContextBasedFeature::prepare(	const CorePoints& corePoints,
 		return false;
 	}
 
-	CCLib::ScalarField* classifSF = Tools::GetClassificationSF(cloud2);
-	if (!classifSF || classifSF->size() < cloud2->size())
+	CCCoreLib::ScalarField* classifSF = Tools::GetClassificationSF(cloud1);
+	if (!classifSF || classifSF->size() < cloud1->size())
 	{
 		assert(false);
 		//already checked by 'checkValidity'
 		return false;
 	}
-	cloud2->setCurrentOutScalarField(cloud2->getScalarFieldIndexByName(classifSF->getName()));
+	cloud1->setCurrentOutScalarField(cloud1->getScalarFieldIndexByName(classifSF->getName()));
 
 	//build the final SF name
 	QString typeStr = ToString(type);
-	QString resultSFName = typeStr + "_" + cloud1Label + "_" + cloud2Label + "_" + QString::number(ctxClassLabel);
+	QString resultSFName = typeStr + "_" + cloud1Label + "_" + QString::number(ctxClassLabel);
 	if (scaled())
 	{
 		resultSFName += "@" + QString::number(scale);
@@ -119,6 +119,7 @@ bool ContextBasedFeature::prepare(	const CorePoints& corePoints,
 
 	//and the scalar field
 	assert(!sf);
+	sfWasAlreadyExisting = CheckSFExistence(corePoints.cloud, qPrintable(resultSFName));
 	sf = PrepareSF(corePoints.cloud, qPrintable(resultSFName), generatedScalarFields, SFCollector::CAN_REMOVE);
 	if (!sf)
 	{
@@ -127,12 +128,13 @@ bool ContextBasedFeature::prepare(	const CorePoints& corePoints,
 	}
 	source.name = sf->getName();
 
-	if (!scaled()) //with 'kNN' neighbors, we can compute the values right away
+	// NOT NECESSARY IF THE VALUE IS ALREADY COMPUTED
+	if (!scaled() && !sfWasAlreadyExisting) //with 'kNN' neighbors, we can compute the values right away
 	{
 		unsigned pointCount = corePoints.size();
-		QString logMessage = QString("Computing %1 on cloud %2 with context cloud %3\n(core points: %4)").arg(typeStr).arg(corePoints.cloud->getName()).arg(cloud2Label).arg(pointCount);
+		QString logMessage = QString("Computing %1 on cloud %2 with context cloud %3\n(core points: %4)").arg(typeStr).arg(corePoints.cloud->getName()).arg(cloud1Label).arg(pointCount);
 
-		//first: look for the number of points that 
+		//first: look for the number of points in the relevent class
 		const ScalarType fClass = static_cast<ScalarType>(ctxClassLabel);
 		unsigned classCount = 0;
 		for (unsigned i = 0; i < classifSF->size(); ++i)
@@ -154,7 +156,7 @@ bool ContextBasedFeature::prepare(	const CorePoints& corePoints,
 			{
 				if (classifSF->getValue(i) == fClass)
 				{
-					classCloud.addPoint(*cloud2->getPoint(i));
+					classCloud.addPoint(*cloud1->getPoint(i));
 				}
 			}
 
@@ -177,7 +179,7 @@ bool ContextBasedFeature::prepare(	const CorePoints& corePoints,
 				progressCb->setInfo(qPrintable(logMessage));
 			}
 			ccLog::Print(logMessage);
-			CCLib::NormalizedProgress nProgress(progressCb, pointCount);
+			CCCoreLib::NormalizedProgress nProgress(progressCb, pointCount);
 
 			QMutex mutex;
 			double meanNeighborhoodSize = 0;
@@ -191,10 +193,10 @@ bool ContextBasedFeature::prepare(	const CorePoints& corePoints,
 			for (int i = 0; i < static_cast<int>(pointCount); ++i)
 			{
 				const CCVector3* P = corePoints.cloud->getPoint(i);
-				CCLib::ReferenceCloud Yk(&classCloud);
+				CCCoreLib::ReferenceCloud Yk(&classCloud);
 				double maxSquareDist = 0;
 
-				ScalarType s = NAN_VALUE;
+				ScalarType s = CCCoreLib::NAN_VALUE;
 
 				int neighborhoodSize = 0;
 				if (classOctree->findPointNeighbourhood(P, &Yk, static_cast<unsigned>(kNN), octreeLevel, maxSquareDist, 0, &neighborhoodSize) >= static_cast<unsigned>(kNN))
@@ -221,7 +223,7 @@ bool ContextBasedFeature::prepare(	const CorePoints& corePoints,
 					double density = meanNeighborhoodSize / tenth;
 					if (density < 1.1)
 					{
-						if (octreeLevel + 1 < CCLib::DgmOctree::MAX_OCTREE_LEVEL)
+						if (octreeLevel + 1 < CCCoreLib::DgmOctree::MAX_OCTREE_LEVEL)
 							++octreeLevel;
 					}
 					else while (density > 2.9)
@@ -266,12 +268,12 @@ bool ContextBasedFeature::prepare(	const CorePoints& corePoints,
 				return false;
 			}
 
-		}
+		} // classCount >= kNN
 		else // classCount < kNN
 		{
 			//specific case: not enough points of this class in the whole cloud!
 			//sf->fill(NAN_VALUE); //already the case
-			ccLog::Warning(QString("Cloud %1 has less than %2 points of class %3").arg(cloud2Label).arg(classCount).arg(ctxClassLabel));
+			ccLog::Warning(QString("Cloud %1 has less than %2 points of class %3").arg(cloud1Label).arg(classCount).arg(ctxClassLabel));
 		}
 
 		sf->computeMinAndMax();
@@ -280,16 +282,16 @@ bool ContextBasedFeature::prepare(	const CorePoints& corePoints,
 	return true;
 }
 
-bool ContextBasedFeature::computeValue(CCLib::DgmOctree::NeighboursSet& pointsInNeighbourhood, const CCVector3& queryPoint, ScalarType& outputValue) const
+bool ContextBasedFeature::computeValue(CCCoreLib::DgmOctree::NeighboursSet& pointsInNeighbourhood, const CCVector3& queryPoint, ScalarType& outputValue) const
 {
 	const ScalarType fClass = static_cast<ScalarType>(ctxClassLabel);
 
 	CCVector3d sumQ(0, 0, 0);
 	unsigned validCount = 0;
-	for (CCLib::DgmOctree::PointDescriptor& Pd : pointsInNeighbourhood)
+	for (CCCoreLib::DgmOctree::PointDescriptor& Pd : pointsInNeighbourhood)
 	{
 		//we only consider points with the right class!!!
-		if (cloud2->getPointScalarValue(Pd.pointIndex) != fClass)
+		if (cloud1->getPointScalarValue(Pd.pointIndex) != fClass)
 			continue;
 		sumQ += CCVector3d::fromArray(Pd.point->u);
 		++validCount;
@@ -297,7 +299,7 @@ bool ContextBasedFeature::computeValue(CCLib::DgmOctree::NeighboursSet& pointsIn
 
 	if (validCount == 0)
 	{
-		outputValue = NAN_VALUE;
+		outputValue = CCCoreLib::NAN_VALUE;
 		return true;
 	}
 
@@ -311,7 +313,7 @@ bool ContextBasedFeature::computeValue(CCLib::DgmOctree::NeighboursSet& pointsIn
 		break;
 	default:
 		assert(false);
-		outputValue = NAN_VALUE;
+		outputValue = CCCoreLib::NAN_VALUE;
 		return false;
 	}
 
@@ -363,7 +365,7 @@ QString ContextBasedFeature::toString() const
 		str += "_SC" + QString::number(scale);
 	}
 
-	str += "_" + cloud1Label + "_" + cloud2Label + "_" + QString::number(ctxClassLabel);
+	str += "_" + cloud1Label + "_" + QString::number(ctxClassLabel);
 
 	return str;
 }

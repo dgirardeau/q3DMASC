@@ -32,6 +32,8 @@
 
 class QWidget;
 class ccMainAppInterface;
+class ConfusionMatrix;
+class Train3DMASCDialog;
 
 //! 3DMASC classifier
 namespace masc
@@ -48,7 +50,7 @@ namespace masc
 					const RandomTreesParams& params,
 					const Feature::Source::Set& featureSources,
 					QString& errorMessage,
-					CCLib::ReferenceCloud* trainSubset = nullptr,
+					CCCoreLib::ReferenceCloud* trainSubset = nullptr,
 					ccMainAppInterface* app = nullptr,
 					QWidget* parentWidget = nullptr);
 
@@ -65,7 +67,8 @@ namespace masc
 						ccPointCloud* testCloud,
 						AccuracyMetrics& metrics,
 						QString& errorMessage,
-						CCLib::ReferenceCloud* testSubset = nullptr,
+						Train3DMASCDialog& train3DMASCDialog,
+						CCCoreLib::ReferenceCloud* testSubset = nullptr,
 						QString outputSFName = QString(),
 						QWidget* parentWidget = nullptr);
 

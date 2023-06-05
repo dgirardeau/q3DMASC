@@ -19,6 +19,7 @@
 
 //CCLib
 #include <DgmOctreeReferenceCloud.h>
+#include <Neighbourhood.h>
 #include <Jacobi.h>
 
 using namespace masc;
@@ -60,7 +61,7 @@ bool NeighborhoodFeature::checkValidity(QString corePointRole, QString &error) c
 
 bool NeighborhoodFeature::prepare(	const CorePoints& corePoints,
 									QString& error,
-									CCLib::GenericProgressCallback* progressCb/*=nullptr*/,
+									CCCoreLib::GenericProgressCallback* progressCb/*=nullptr*/,
 									SFCollector* generatedScalarFields/*=nullptr*/)
 {
 	if (!cloud1 || !corePoints.cloud)
@@ -88,7 +89,17 @@ bool NeighborhoodFeature::prepare(	const CorePoints& corePoints,
 
 	//and the scalar field
 	assert(!sf1);
-	sf1 = PrepareSF(corePoints.cloud, qPrintable(resultSFName), generatedScalarFields, SFCollector::CAN_REMOVE);
+	sf1WasAlreadyExisting = CheckSFExistence(corePoints.cloud, qPrintable(resultSFName));
+	if (sf1WasAlreadyExisting)
+	{
+		sf1 = PrepareSF(corePoints.cloud, qPrintable(resultSFName), generatedScalarFields, SFCollector::ALWAYS_KEEP);
+		if (generatedScalarFields->scalarFields.contains(sf1)) // i.e. the SF is existing but was not present at the startup of the plugin
+			generatedScalarFields->setBehavior(sf1, SFCollector::CAN_REMOVE);
+	}
+	else
+	{
+		sf1 = PrepareSF(corePoints.cloud, qPrintable(resultSFName), generatedScalarFields, SFCollector::CAN_REMOVE);
+	}
 	if (!sf1)
 	{
 		error = QString("Failed to prepare scalar %1 @ scale %2").arg(resultSFName).arg(scale);
@@ -96,13 +107,17 @@ bool NeighborhoodFeature::prepare(	const CorePoints& corePoints,
 	}
 	source.name = sf1->getName();
 
-	if (cloud2 && op != Feature::NO_OPERATION)
+	// sf2 is not needed if sf1 was already existing!
+	if (cloud2 && op != Feature::NO_OPERATION && !sf1WasAlreadyExisting)
 	{
 		QString resultSFName2 = ToString(type) + "_" + cloud2Label + "@" + QString::number(scale);
 		keepSF2 = (corePoints.cloud->getScalarFieldIndexByName(qPrintable(resultSFName2)) >= 0); //we remember that the scalar field was already existing!
 
 		assert(!sf2);
-		sf2 = PrepareSF(corePoints.cloud, qPrintable(resultSFName2), generatedScalarFields, SFCollector::ALWAYS_REMOVE);
+
+		sf2WasAlreadyExisting = CheckSFExistence(corePoints.cloud, qPrintable(resultSFName2));		
+		sf2 = PrepareSF(corePoints.cloud, qPrintable(resultSFName2), generatedScalarFields, sf2WasAlreadyExisting ? SFCollector::ALWAYS_KEEP : SFCollector::ALWAYS_REMOVE);
+
 		if (!sf2)
 		{
 			error = QString("Failed to prepare scalar field for %1 @ scale %2").arg(cloud2Label).arg(scale);
@@ -139,7 +154,7 @@ bool NeighborhoodFeature::finish(const CorePoints& corePoints, QString& error)
 		}
 	}
 
-	if (sf2)
+	if (sf2 && !sf1WasAlreadyExisting)
 	{
 		//now perform the math operation
 		if (op != Feature::NO_OPERATION)
@@ -151,24 +166,24 @@ bool NeighborhoodFeature::finish(const CorePoints& corePoints, QString& error)
 			}
 		}
 
-		if (keepSF2)
-		{
-			sf2->computeMinAndMax();
-		}
-		else
-		{
-			int sfIndex2 = corePoints.cloud->getScalarFieldIndexByName(sf2->getName());
-			if (sfIndex2 >= 0)
-			{
-				corePoints.cloud->deleteScalarField(sfIndex2);
-			}
-			else
-			{
-				assert(false);
-				sf2->release();
-			}
-			sf2 = nullptr;
-		}
+//		if (keepSF2)
+//		{
+//			sf2->computeMinAndMax();
+//		}
+//		else
+//		{
+//			int sfIndex2 = corePoints.cloud->getScalarFieldIndexByName(sf2->getName());
+//			if (sfIndex2 >= 0)
+//			{
+//				corePoints.cloud->deleteScalarField(sfIndex2);
+//			}
+//			else
+//			{
+//				assert(false);
+//				sf2->release();
+//			}
+//			sf2 = nullptr;
+//		}
 	}
 
 	return success;
@@ -194,7 +209,7 @@ QString NeighborhoodFeature::toString() const
 	return description;
 }
 
-bool NeighborhoodFeature::computeValue(CCLib::DgmOctree::NeighboursSet& pointsInNeighbourhood, const CCVector3& queryPoint, double& outputValue) const
+bool NeighborhoodFeature::computeValue(CCCoreLib::DgmOctree::NeighboursSet& pointsInNeighbourhood, const CCVector3& queryPoint, double& outputValue) const
 {
 	outputValue = std::numeric_limits<double>::quiet_NaN();
 
@@ -215,26 +230,26 @@ bool NeighborhoodFeature::computeValue(CCLib::DgmOctree::NeighboursSet& pointsIn
 	case LINEA:
 	case PLANA:
 	{
-		CCLib::Neighbourhood::GeomFeature f;
+		CCCoreLib::Neighbourhood::GeomFeature f;
 		switch (type)
 		{
 		case PCA1:
-			f = CCLib::Neighbourhood::PCA1;
+			f = CCCoreLib::Neighbourhood::PCA1;
 			break;
 		case PCA2:
-			f = CCLib::Neighbourhood::PCA2;
+			f = CCCoreLib::Neighbourhood::PCA2;
 			break;
 		case PCA3:
-			f = CCLib::Neighbourhood::SurfaceVariation;
+			f = CCCoreLib::Neighbourhood::SurfaceVariation;
 			break;
 		case SPHER:
-			f = CCLib::Neighbourhood::Sphericity;
+			f = CCCoreLib::Neighbourhood::Sphericity;
 			break;
 		case LINEA:
-			f = CCLib::Neighbourhood::Linearity;
+			f = CCCoreLib::Neighbourhood::Linearity;
 			break;
 		case PLANA:
-			f = CCLib::Neighbourhood::Planarity;
+			f = CCCoreLib::Neighbourhood::Planarity;
 			break;
 		default:
 			//impossible
@@ -242,16 +257,16 @@ bool NeighborhoodFeature::computeValue(CCLib::DgmOctree::NeighboursSet& pointsIn
 			return false;
 		}
 
-		CCLib::DgmOctreeReferenceCloud neighboursCloud(&pointsInNeighbourhood, static_cast<unsigned>(kNN));
-		CCLib::Neighbourhood Z(&neighboursCloud);
+		CCCoreLib::DgmOctreeReferenceCloud neighboursCloud(&pointsInNeighbourhood, static_cast<unsigned>(kNN));
+		CCCoreLib::Neighbourhood Z(&neighboursCloud);
 		outputValue = Z.computeFeature(f);
 	}
 	break;
 
 	case FOM:
 	{
-		CCLib::DgmOctreeReferenceCloud neighboursCloud(&pointsInNeighbourhood, static_cast<unsigned>(kNN));
-		CCLib::Neighbourhood Z(&neighboursCloud);
+		CCCoreLib::DgmOctreeReferenceCloud neighboursCloud(&pointsInNeighbourhood, static_cast<unsigned>(kNN));
+		CCCoreLib::Neighbourhood Z(&neighboursCloud);
 		outputValue = Z.computeMomentOrder1(queryPoint);
 	}
 	break;
@@ -260,13 +275,13 @@ bool NeighborhoodFeature::computeValue(CCLib::DgmOctree::NeighboursSet& pointsIn
 	case DipDir:
 	if (kNN >= 3)
 	{
-		CCLib::DgmOctreeReferenceCloud neighboursCloud(&pointsInNeighbourhood, static_cast<unsigned>(kNN));
-		CCLib::Neighbourhood Z(&neighboursCloud);
+		CCCoreLib::DgmOctreeReferenceCloud neighboursCloud(&pointsInNeighbourhood, static_cast<unsigned>(kNN));
+		CCCoreLib::Neighbourhood Z(&neighboursCloud);
 		const CCVector3* N = Z.getLSPlaneNormal();
 		if (N)
 		{
 			//force +Z
-			CCVector3 Np = (N->z < 0 ? -PC_ONE * *N : *N);
+			CCVector3 Np = (N->z < 0 ? -CCCoreLib::PC_ONE * *N : *N);
 			PointCoordinateType dip_deg, dipDir_deg;
 			ccNormalVectors::ConvertNormalToDipAndDipDir(Np, dip_deg, dipDir_deg);
 			outputValue = (type == Dip ? dip_deg : dipDir_deg);
@@ -280,17 +295,17 @@ bool NeighborhoodFeature::computeValue(CCLib::DgmOctree::NeighboursSet& pointsIn
 
 	case ROUGH:
 	{
-		CCLib::DgmOctreeReferenceCloud neighboursCloud(&pointsInNeighbourhood, static_cast<unsigned>(kNN));
-		CCLib::Neighbourhood Z(&neighboursCloud);
+		CCCoreLib::DgmOctreeReferenceCloud neighboursCloud(&pointsInNeighbourhood, static_cast<unsigned>(kNN));
+		CCCoreLib::Neighbourhood Z(&neighboursCloud);
 		outputValue = Z.computeRoughness(queryPoint);
 	}
 	break;
 
 	case CURV:
 	{
-		CCLib::DgmOctreeReferenceCloud neighboursCloud(&pointsInNeighbourhood, static_cast<unsigned>(kNN));
-		CCLib::Neighbourhood Z(&neighboursCloud);
-		outputValue = Z.computeCurvature(queryPoint, CCLib::Neighbourhood::MEAN_CURV); //TODO: is it really the default one?
+		CCCoreLib::DgmOctreeReferenceCloud neighboursCloud(&pointsInNeighbourhood, static_cast<unsigned>(kNN));
+		CCCoreLib::Neighbourhood Z(&neighboursCloud);
+		outputValue = Z.computeCurvature(queryPoint, CCCoreLib::Neighbourhood::MEAN_CURV); //TODO: is it really the default one?
 	}
 	break;
 
@@ -303,9 +318,9 @@ bool NeighborhoodFeature::computeValue(CCLib::DgmOctree::NeighboursSet& pointsIn
 		minZ = maxZ = pointsInNeighbourhood[0].point->z;
 		for (size_t i = 1; i < kNN; ++i)
 		{
-			if (minZ < pointsInNeighbourhood[i].point->z)
+			if (minZ > pointsInNeighbourhood[i].point->z)
 				minZ = pointsInNeighbourhood[i].point->z;
-			else if (maxZ > pointsInNeighbourhood[i].point->z)
+			else if (maxZ < pointsInNeighbourhood[i].point->z)
 				maxZ = pointsInNeighbourhood[i].point->z;
 		}
 
@@ -331,8 +346,8 @@ bool NeighborhoodFeature::computeValue(CCLib::DgmOctree::NeighboursSet& pointsIn
 	case ANISO:
 	if (kNN >= 3)
 	{
-		CCLib::DgmOctreeReferenceCloud neighboursCloud(&pointsInNeighbourhood, static_cast<unsigned>(kNN));
-		CCLib::Neighbourhood Z(&neighboursCloud);
+		CCCoreLib::DgmOctreeReferenceCloud neighboursCloud(&pointsInNeighbourhood, static_cast<unsigned>(kNN));
+		CCCoreLib::Neighbourhood Z(&neighboursCloud);
 		const CCVector3* G = Z.getGravityCenter();
 		if (G)
 		{

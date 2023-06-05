@@ -35,6 +35,7 @@
 #include <QApplication>
 #include <QFileDialog>
 #include <QMessageBox>
+#include <QSettings>
 
 q3DMASCPlugin::q3DMASCPlugin(QObject* parent/*=0*/)
 	: QObject(parent)
@@ -138,9 +139,8 @@ void q3DMASCPlugin::doClassifyAction()
 	//now show a dialog where the user will be able to set the cloud roles
 	Classify3DMASCDialog classifDlg(m_app);
 	classifDlg.setCloudRoles(cloudLabels, corePointsLabel);
+	classifDlg.label_trainOrClassify->setText(corePointsLabel + " will be classified");
 	classifDlg.classifierFileLineEdit->setText(inputFilename);
-	static bool s_keepAttributes = false;
-	classifDlg.keepAttributesCheckBox->setChecked(s_keepAttributes);
 	classifDlg.testCloudComboBox->hide();
 	classifDlg.testLabel->hide();
 	if (!classifDlg.exec())
@@ -148,12 +148,11 @@ void q3DMASCPlugin::doClassifyAction()
 		//process cancelled by the user
 		return;
 	}
-
-	s_keepAttributes = classifDlg.keepAttributesCheckBox->isChecked();
+	static bool s_keepAttributes = classifDlg.keepAttributesCheckBox->isChecked();
 
 	masc::Tools::NamedClouds clouds;
-	QString mainCloudLabel;
-	classifDlg.getClouds(clouds, mainCloudLabel);
+	QString mainCloudLabel = corePointsLabel;
+	classifDlg.getClouds(clouds);
 
 	masc::Feature::Set features;
 	masc::Classifier classifier;
@@ -180,10 +179,11 @@ void q3DMASCPlugin::doClassifyAction()
 
 	//prepare the main cloud
 	ccProgressDialog progressDlg(true, m_app->getMainWindow());
+	progressDlg.show();
 	progressDlg.setAutoClose(false); //we don't want the progress dialog to 'pop' for each feature
 	QString error;
 	SFCollector generatedScalarFields;
-	if (!masc::Tools::PrepareFeatures(corePoints, features, error, &progressDlg, &generatedScalarFields))
+    if (!masc::Tools::PrepareFeatures(corePoints, features, error, &progressDlg, &generatedScalarFields))
 	{
 		m_app->dispToConsole(error, ccMainAppInterface::ERR_CONSOLE_MESSAGE);
 		generatedScalarFields.releaseSFs(false);
@@ -217,6 +217,24 @@ struct FeatureSelection
 	bool prepared = false;
 	float importance = std::numeric_limits<float>::quiet_NaN();
 };
+
+void q3DMASCPlugin::saveTrainParameters(const masc::TrainParameters& params)
+{
+	QSettings settings("OSUR", "q3DMASC");
+	settings.setValue("TrainParameters/maxDepth", params.rt.maxDepth);
+	settings.setValue("TrainParameters/minSampleCount", params.rt.minSampleCount);
+	settings.setValue("TrainParameters/activeVarCount", params.rt.activeVarCount);
+	settings.setValue("TrainParameters/maxTreeCount", params.rt.maxTreeCount);
+}
+
+void q3DMASCPlugin::loadTrainParameters(masc::TrainParameters& params)
+{
+	QSettings settings("OSUR", "q3DMASC");
+	params.rt.maxDepth = settings.value("TrainParameters/maxDepth", 25).toInt();
+	params.rt.minSampleCount = settings.value("TrainParameters/minSampleCount", 10).toInt();
+	params.rt.activeVarCount = settings.value("TrainParameters/activeVarCount", 0).toInt();
+	params.rt.maxTreeCount = settings.value("TrainParameters/maxTreeCount", 100).toInt();
+}
 
 void q3DMASCPlugin::doTrainAction()
 {
@@ -254,7 +272,6 @@ void q3DMASCPlugin::doTrainAction()
 		return;
 	}
 
-	static bool s_keepAttributes = false;
 	masc::Tools::NamedClouds loadedClouds;
 	masc::CorePoints corePoints;
 
@@ -273,24 +290,26 @@ void q3DMASCPlugin::doTrainAction()
 		Classify3DMASCDialog classifDlg(m_app, true);
 		classifDlg.setWindowTitle("3DMASC Train");
 		classifDlg.setCloudRoles(cloudLabels, corePointsLabel);
+		classifDlg.label_trainOrClassify->setText("The classifier will be trained on " + corePointsLabel);
 		classifDlg.classifierFileLineEdit->setText(inputFilename);
-		classifDlg.keepAttributesCheckBox->setChecked(s_keepAttributes);
+		classifDlg.keepAttributesCheckBox->hide(); // this parameter is set in the trainDlg dialog
 		if (!classifDlg.exec())
 		{
 			//process cancelled by the user
 			return;
 		}
-		s_keepAttributes = classifDlg.keepAttributesCheckBox->isChecked();
 
-		classifDlg.getClouds(loadedClouds, mainCloudLabel);
+		classifDlg.getClouds(loadedClouds);
 		m_app->dispToConsole("Training cloud: " + mainCloudLabel, ccMainAppInterface::STD_CONSOLE_MESSAGE);
 		corePoints.origin = loadedClouds[mainCloudLabel];
 		corePoints.role = mainCloudLabel;
 	}
 
 	static masc::TrainParameters s_params;
+	loadTrainParameters(s_params); // load the saved parameters or the default values
 	masc::Feature::Set features;
-	if (!masc::Tools::LoadTrainingFile(inputFilename, features, loadedClouds, s_params, &corePoints, m_app->getMainWindow()))
+	std::vector<double> scales;
+	if (!masc::Tools:: LoadTrainingFile(inputFilename, features, scales, loadedClouds, s_params, &corePoints, m_app->getMainWindow()))
 	{
 		m_app->dispToConsole("Failed to load the training file", ccMainAppInterface::ERR_CONSOLE_MESSAGE);
 		return;
@@ -323,15 +342,19 @@ void q3DMASCPlugin::doTrainAction()
 		}
 	}
 
-	for (masc::Tools::NamedClouds::const_iterator it = loadedClouds.begin(); it != loadedClouds.end(); ++it)
+	for (masc::Tools::NamedClouds::iterator it = loadedClouds.begin(); it != loadedClouds.end(); ++it)
 	{
-		m_app->dispToConsole(it.key() + " = " + it.value()->getName(), ccMainAppInterface::STD_CONSOLE_MESSAGE);
+		if (it.value())
+			m_app->dispToConsole(it.key() + " = " + it.value()->getName(), ccMainAppInterface::STD_CONSOLE_MESSAGE);
+		else
+			ccLog::Warning(it.key() + " is not associated to a point cloud");
 	}
 
 	//test role
 	ccPointCloud* testCloud = nullptr;
 	bool needTestSuite = false;
 	masc::Feature::Set featuresTest;
+	std::vector<double> scalesTest;
 	if (loadedClouds.contains("TEST"))
 	{
 		testCloud = loadedClouds["TEST"];
@@ -348,7 +371,7 @@ void q3DMASCPlugin::doTrainAction()
 
 			//simply reload the classification file to create duplicated features
 			masc::TrainParameters tempParams;
-			if (!masc::Tools::LoadTrainingFile(inputFilename, featuresTest, loadedCloudsTest, tempParams))
+			if (!masc::Tools::LoadTrainingFile(inputFilename, featuresTest, scalesTest, loadedCloudsTest, tempParams))
 			{
 				m_app->dispToConsole("Failed to load the training file (for test)", ccMainAppInterface::ERR_CONSOLE_MESSAGE);
 				return;
@@ -358,12 +381,14 @@ void q3DMASCPlugin::doTrainAction()
 
 	//show the training dialog for the first time
 	Train3DMASCDialog trainDlg(m_app->getMainWindow());
+	trainDlg.setWindowModality(Qt::WindowModal); // to be able to move the confusion matrix window
 	trainDlg.maxDepthSpinBox->setValue(s_params.rt.maxDepth);
 	trainDlg.maxTreeCountSpinBox->setValue(s_params.rt.maxTreeCount);
 	trainDlg.activeVarCountSpinBox->setValue(s_params.rt.activeVarCount);
 	trainDlg.minSampleCountSpinBox->setValue(s_params.rt.minSampleCount);
 	trainDlg.testDataRatioSpinBox->setValue(static_cast<int>(s_params.testDataRatio * 100));
 	trainDlg.testDataRatioSpinBox->setEnabled(testCloud == nullptr);
+	trainDlg.setInputFilePath(inputFilename);
 
 	//display the loaded features and let the user select the ones to use
 	trainDlg.setResultText("Select features and press 'Run'");
@@ -374,6 +399,9 @@ void q3DMASCPlugin::doTrainAction()
 		originalFeatures.push_back(FeatureSelection(f));
 		trainDlg.addFeature(f->toString(), originalFeatures.back().importance, originalFeatures.back().selected);
 	}
+	for(double scale : scales)
+		trainDlg.addScale(scale, true);
+	trainDlg.connectScaleSelectionToFeatureSelection();
 
 	std::vector<FeatureSelection> originalFeaturesTest;
 	if (testCloud && needTestSuite)
@@ -385,6 +413,7 @@ void q3DMASCPlugin::doTrainAction()
 		}
 	}
 
+	static bool s_keepAttributes = trainDlg.keepAttributesCheckBox->isChecked();
 	if (!trainDlg.exec())
 	{
 		delete group;
@@ -439,11 +468,11 @@ void q3DMASCPlugin::doTrainAction()
 	}
 
 	//train / test subsets
-	QSharedPointer<CCLib::ReferenceCloud> trainSubset, testSubset;
+	QSharedPointer<CCCoreLib::ReferenceCloud> trainSubset, testSubset;
 	float previousTestSubsetRatio = -1.0f;
 	SFCollector generatedScalarFields, generatedScalarFieldsTest;
 
-	//we will train + evaluate the classifier, then display the reuslts
+	//we will train + evaluate the classifier, then display the results
 	//then let the user change parameters and (potentially) start again
 	for (int iteration = 0; ; ++iteration)
 	{
@@ -519,11 +548,11 @@ void q3DMASCPlugin::doTrainAction()
 				else if (previousTestSubsetRatio != testDataRatio)
 				{
 					if (!trainSubset)
-						trainSubset.reset(new CCLib::ReferenceCloud(corePoints.cloud));
+						trainSubset.reset(new CCCoreLib::ReferenceCloud(corePoints.cloud));
 					trainSubset->clear();
 
 					if (!testSubset)
-						testSubset.reset(new CCLib::ReferenceCloud(corePoints.cloud));
+						testSubset.reset(new CCCoreLib::ReferenceCloud(corePoints.cloud));
 					testSubset->clear();
 
 					//randomly select the training points
@@ -560,7 +589,7 @@ void q3DMASCPlugin::doTrainAction()
 					return;
 				}
 				trainDlg.setFirstRunDone();
-				trainDlg.shouldSaveClassifier();
+//				trainDlg.shouldSaveClassifier(); // useless?
 			}
 
 			//test the trained classifier
@@ -575,7 +604,6 @@ void q3DMASCPlugin::doTrainAction()
 						for (size_t i = 0; i < originalFeaturesTest.size(); ++i)
 						{
 							originalFeaturesTest[i].selected = trainDlg.isFeatureSelected(originalFeatures[i].feature->toString());
-
 							//if the feature is selected
 							if (originalFeaturesTest[i].selected)
 							{
@@ -624,8 +652,9 @@ void q3DMASCPlugin::doTrainAction()
 											testCloud ? testCloud : corePoints.cloud,
 											metrics,
 											errorMessage,
+											trainDlg,
 											testCloud ? nullptr : testSubset.data(),
-											"Classification_pred",
+											testCloud ? "Classification_prediction" : "", // outputSFName, empty is the test cloud is not a separate cloud
 											m_app->getMainWindow()))
 				{
 					m_app->dispToConsole(errorMessage, ccMainAppInterface::ERR_CONSOLE_MESSAGE);
@@ -659,15 +688,42 @@ void q3DMASCPlugin::doTrainAction()
 				}
 
 				trainDlg.sortByFeatureImportance();
+
+				// if the checkbox "Save traces" is checked
+				if (trainDlg.getSaveTrace())
+				{
+					//save the classifier in the trace directory with a generic name depending on the run
+					QString tracePath = trainDlg.getTracePath();
+					if (!tracePath.isEmpty())
+					{
+						QString outputFilePath = tracePath + "/run_" + QString::number(trainDlg.getRun()) + ".txt";
+						if (masc::Tools::SaveClassifier(outputFilePath, features, mainCloudLabel, classifier, m_app->getMainWindow()))
+						{
+							m_app->dispToConsole("Classifier succesfully saved to " + outputFilePath, ccMainAppInterface::STD_CONSOLE_MESSAGE);
+							trainDlg.setClassifierSaved();
+						}
+						else
+						{
+							m_app->dispToConsole("Failed to save classifier file");
+						}
+						QString exportFilePath = tracePath + "/run_" + QString::number(trainDlg.getRun()) + ".csv";
+
+					}
+				}
 			}
 		}
 
 		//now wait for the user input
-		while (true)
+		while (true) // ew!
 		{
 			if (!trainDlg.exec())
 			{
+				saveTrainParameters(s_params);
 				//the dialog can be closed
+				if (trainDlg.keepAttributesCheckBox->isChecked())
+					s_keepAttributes = true;
+				else
+					s_keepAttributes = false;
 				generatedScalarFields.releaseSFs(s_keepAttributes);
 				generatedScalarFieldsTest.releaseSFs(s_keepAttributes);
 				return;
@@ -709,8 +765,6 @@ void q3DMASCPlugin::doTrainAction()
 				break;
 			}
 		}
-
-		//we are going to restart the classification process
 	}
 }
 

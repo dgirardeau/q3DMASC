@@ -18,7 +18,7 @@
 #include "qClassify3DMASCDialog.h"
 
 //qCC_plugins
-#include "../../ccMainAppInterface.h"
+#include <ccMainAppInterface.h>
 
 //qCC_db
 #include <ccPointCloud.h>
@@ -27,6 +27,7 @@
 #include <QMainWindow>
 #include <QPushButton>
 #include <QComboBox>
+#include <QSettings>
 //#include <QApplication>
 
 //system
@@ -111,9 +112,32 @@ Classify3DMASCDialog::Classify3DMASCDialog(ccMainAppInterface* app, bool trainMo
 	{
 		label->setText(tr("Trainer file"));
 		warningLabel->setVisible(false);
+		warningLabel->setText("Assign each role to the right cloud, and select the cloud on which to train the classifier");
 	}
 
 	onCloudChanged(0);
+
+	readSettings();
+}
+
+Classify3DMASCDialog::~Classify3DMASCDialog()
+{
+	writeSettings();
+}
+
+void Classify3DMASCDialog::readSettings()
+{
+	QSettings settings;
+	settings.beginGroup("3DMASC");
+	bool keepAttributes = settings.value("keepAttributes", false).toBool();
+	this->keepAttributesCheckBox->setChecked(keepAttributes);
+}
+
+void Classify3DMASCDialog::writeSettings()
+{
+	QSettings settings;
+	settings.beginGroup("3DMASC");
+	settings.setValue("keepAttributes", keepAttributesCheckBox->isChecked());
 }
 
 void Classify3DMASCDialog::setCloudRoles(const QList<QString>& roles, QString corePointsLabel)
@@ -124,24 +148,25 @@ void Classify3DMASCDialog::setCloudRoles(const QList<QString>& roles, QString co
 		switch (index)
 		{
 		case 0:
-			cloud1RadioButton->setText(role);
-			if (corePointsLabel.isEmpty() || corePointsLabel == role)
-				cloud1RadioButton->setChecked(true);
+			cloud1Label->setText(role);
+			if (corePointsLabel.isEmpty()) // if "core_points:" is not in the parameter file, the corePointsLabel is the first encountered role
+				corePointsLabel = role;
+//				cloud1RadioButton->setChecked(true);
 			break;
 		case 1:
-			cloud2RadioButton->setText(role);
+			cloud2Label->setText(role);
 			if (corePointsLabel == role)
-				cloud2RadioButton->setChecked(true);
+//				cloud2RadioButton->setChecked(true);
 			break;
 		case 2:
-			cloud3RadioButton->setText(role);
+			cloud3Label->setText(role);
 			if (corePointsLabel == role)
-				cloud3RadioButton->setChecked(true);
+//				cloud3RadioButton->setChecked(true);
 			break;
 		case 3:
-			cloud4RadioButton->setText(role);
+			cloud4Label->setText(role);
 			if (corePointsLabel == role)
-				cloud4RadioButton->setChecked(true);
+//				cloud4RadioButton->setChecked(true);
 			break;
 		default:
 			//this dialog can't handle more than 3 roles!
@@ -152,30 +177,36 @@ void Classify3DMASCDialog::setCloudRoles(const QList<QString>& roles, QString co
 
 	if (index < 1)
 	{
-		cloud1RadioButton->setEnabled(false);
+//		cloud1RadioButton->setEnabled(false);
 		cloud1ComboBox->setEnabled(false);
 	}
 	if (index < 2)
 	{
-		cloud2RadioButton->setEnabled(false);
-		cloud2RadioButton->setVisible(false);
+//		cloud2RadioButton->setEnabled(false);
+//		cloud2RadioButton->setVisible(false);
+		cloud2ComboBox->setEnabled(false);
 		cloud2ComboBox->setVisible(false);
+		cloud2Label->setVisible(false);
 	}
 	if (index < 3)
 	{
-		cloud3RadioButton->setEnabled(false);
-		cloud3RadioButton->setVisible(false);
+//		cloud3RadioButton->setEnabled(false);
+//		cloud3RadioButton->setVisible(false);
+		cloud3ComboBox->setEnabled(false);
 		cloud3ComboBox->setVisible(false);
+		cloud3Label->setVisible(false);
 	}
 	if (index < 4)
 	{
-		cloud4RadioButton->setEnabled(false);
-		cloud4RadioButton->setVisible(false);
+//		cloud4RadioButton->setEnabled(false);
+//		cloud4RadioButton->setVisible(false);
+		cloud4ComboBox->setEnabled(false);
 		cloud4ComboBox->setVisible(false);
+		cloud4Label->setVisible(false);
 	}
 }
 
-void Classify3DMASCDialog::getClouds(QMap<QString, ccPointCloud*>& clouds, QString& mainCloud) const
+void Classify3DMASCDialog::getClouds(QMap<QString, ccPointCloud*>& clouds) const
 {
 	if (!m_app)
 	{
@@ -183,37 +214,41 @@ void Classify3DMASCDialog::getClouds(QMap<QString, ccPointCloud*>& clouds, QStri
 		return;
 	}
 	
-	if (cloud1RadioButton->isEnabled())
+//	if (cloud1RadioButton->isEnabled())
+	if (cloud1ComboBox->isEnabled())
 	{
-		clouds.insert(cloud1RadioButton->text(), GetCloudFromCombo(cloud1ComboBox, m_app->dbRootObject()));
-		if (cloud1RadioButton->isChecked())
-		{
-			mainCloud = cloud1RadioButton->text();
-		}
+		clouds.insert(cloud1Label->text(), GetCloudFromCombo(cloud1ComboBox, m_app->dbRootObject()));
+//		if (cloud1RadioButton->isChecked())
+//		{
+//			mainCloud = cloud1Label->text();
+//		}
 	}
-	if (cloud2RadioButton->isEnabled())
+//	if (cloud2RadioButton->isEnabled())
+	if (cloud2ComboBox->isEnabled())
 	{
-		clouds.insert(cloud2RadioButton->text(), GetCloudFromCombo(cloud2ComboBox, m_app->dbRootObject()));
-		if (cloud2RadioButton->isChecked())
-		{
-			mainCloud = cloud2RadioButton->text();
-		}
+		clouds.insert(cloud2Label->text(), GetCloudFromCombo(cloud2ComboBox, m_app->dbRootObject()));
+//		if (cloud2RadioButton->isChecked())
+//		{
+//			mainCloud = cloud2Label->text();
+//		}
 	}
-	if (cloud3RadioButton->isEnabled())
+//	if (cloud3RadioButton->isEnabled())
+	if (cloud3ComboBox->isEnabled())
 	{
-		clouds.insert(cloud3RadioButton->text(), GetCloudFromCombo(cloud3ComboBox, m_app->dbRootObject()));
-		if (cloud3RadioButton->isChecked())
-		{
-			mainCloud = cloud3RadioButton->text();
-		}
+		clouds.insert(cloud3Label->text(), GetCloudFromCombo(cloud3ComboBox, m_app->dbRootObject()));
+//		if (cloud3RadioButton->isChecked())
+//		{
+//			mainCloud = cloud3Label->text();
+//		}
 	}
-	if (cloud4RadioButton->isEnabled())
+//	if (cloud4RadioButton->isEnabled())
+	if (cloud4ComboBox->isEnabled())
 	{
-		clouds.insert(cloud4RadioButton->text(), GetCloudFromCombo(cloud4ComboBox, m_app->dbRootObject()));
-		if (cloud4RadioButton->isChecked())
-		{
-			mainCloud = cloud4RadioButton->text();
-		}
+		clouds.insert(cloud4Label->text(), GetCloudFromCombo(cloud4ComboBox, m_app->dbRootObject()));
+//		if (cloud4RadioButton->isChecked())
+//		{
+//			mainCloud = cloud4Label->text();
+//		}
 	}
 	if (testCloudComboBox->currentIndex() >= 0)
 	{
@@ -223,7 +258,7 @@ void Classify3DMASCDialog::getClouds(QMap<QString, ccPointCloud*>& clouds, QStri
 
 void Classify3DMASCDialog::onCloudChanged(int dummy)
 {
-	if (!cloud1RadioButton->isEnabled())
+	if (!cloud1ComboBox->isEnabled())
 	{
 		//this means that no role has been defined yet
 		buttonBox->button(QDialogButtonBox::Ok)->setEnabled(false);

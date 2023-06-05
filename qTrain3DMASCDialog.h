@@ -19,8 +19,12 @@
 
 //Qt
 #include <QDialog>
+#include <QFile>
+#include <QTextStream>
 
 #include <ui_Train3DMASCDialog.h>
+
+#include "confusionmatrix.h"
 
 //! 3DMASC plugin 'train' dialog
 class Train3DMASCDialog : public QDialog, public Ui::Train3DMASCDialog
@@ -31,6 +35,10 @@ public:
 
 	//! Default constructor
 	Train3DMASCDialog(QWidget* parent = nullptr);
+	~Train3DMASCDialog();
+
+	void readSettings();
+	void writeSettings();
 
 	void clearResults();
 
@@ -38,7 +46,9 @@ public:
 	/** \return the row index
 	**/
 	int addFeature(QString name, float importance, bool isChecked = true);
-
+	int addScale(double scale, bool isChecked = true);
+	void scaleStateChanged(QTableWidgetItem* item);
+	void connectScaleSelectionToFeatureSelection();
 	void setResultText(QString text);
 	void setFirstRunDone();
 	inline void setClassifierSaved() { classifierSaved = true; saveRequested = false; }
@@ -49,14 +59,32 @@ public:
 	
 	inline bool shouldSaveClassifier() const { return saveRequested; }
 
+	void addConfusionMatrixAndSaveTraces(ConfusionMatrix* ptr);
+	void setInputFilePath(QString filename);
+	void setCheckBoxSaveTrace(bool state);
+	bool openTraceFile();
+	bool closeTraceFile();
+	void saveTraces(ConfusionMatrix *confusionMatrix);
+	bool getSaveTrace();
+	QString getTracePath();
+	int getRun();
+
 protected slots:
 
 	void onClose();
 	void onSave();
-	void onExportResults();
+	void onExportResults(QString filePath = "");
 
 protected: //members
 
 	bool classifierSaved;
 	bool saveRequested;
+	std::vector<ConfusionMatrix*> toDeleteLater;
+	bool traceFileConfigured;
+	QFile *m_traceFile;
+	QString m_tracePath;
+	QTextStream m_traceStream;
+	QString m_parameterFilePath;
+	QString m_baseName;
+	uint run;
 };

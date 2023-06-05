@@ -21,8 +21,8 @@ using namespace masc;
 
 bool DualCloudFeature::prepare(	const CorePoints& corePoints,
 								QString& error,
-								CCLib::GenericProgressCallback* progressCb/*=nullptr*/,
-								SFCollector* generatedScalarFields/*=nullptr*/)
+								CCCoreLib::GenericProgressCallback* progressCb/*=nullptr*/,
+                                SFCollector* generatedScalarFields/*=nullptr*/)
 {
 	//TODO
 	return false;

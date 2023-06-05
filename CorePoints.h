@@ -47,13 +47,13 @@ namespace masc
 		inline unsigned originIndex(unsigned i) const { return selection ? selection->getPointGlobalIndex(i) : i; }
 
 		//selection (if any)
-		QSharedPointer<CCLib::ReferenceCloud> selection;
+		QSharedPointer<CCCoreLib::ReferenceCloud> selection;
 		enum SubSamplingMethod { NONE, RANDOM, SPATIAL };
 		SubSamplingMethod selectionMethod = NONE;
 		double selectionParam = std::numeric_limits<double>::quiet_NaN();
 
 		//! Prepares the selection (must be called once)
-		bool prepare(CCLib::GenericProgressCallback* progressCb = nullptr);
+		bool prepare(CCCoreLib::GenericProgressCallback* progressCb = nullptr);
 	};
 
 }; //namespace masc

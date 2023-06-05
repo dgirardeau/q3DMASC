@@ -6,14 +6,14 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>400</width>
-    <height>550</height>
+    <width>834</width>
+    <height>795</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>Dialog</string>
   </property>
-  <layout class="QVBoxLayout" name="verticalLayout">
+  <layout class="QVBoxLayout" name="verticalLayout" stretch="0,0,0,1">
    <item>
     <widget class="QGroupBox" name="rtGroupBox">
      <property name="title">
@@ -22,6 +22,9 @@
      <layout class="QFormLayout" name="formLayout">
       <item row="0" column="0">
        <widget class="QLabel" name="label">
+        <property name="toolTip">
+         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;OpenCV parameter&lt;/p&gt;&lt;p&gt;The maximum possible depth of the tree. That is the training algorithms attempts to split a node while its depth is less than maxDepth. The root node has zero depth. The actual depth may be smaller if the other termination criteria are met, and/or if the tree is pruned.&lt;/p&gt;&lt;p&gt;[default 25]&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        </property>
         <property name="text">
          <string>max depth</string>
         </property>
@@ -42,6 +45,9 @@
       </item>
       <item row="1" column="0">
        <widget class="QLabel" name="label_5">
+        <property name="toolTip">
+         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;OpenCV parameter&lt;/p&gt;&lt;p&gt;The number of trees in the forest!&lt;/p&gt;&lt;p&gt;[default 100]&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        </property>
         <property name="text">
          <string>max tree count</string>
         </property>
@@ -68,6 +74,9 @@
       </item>
       <item row="2" column="0">
        <widget class="QLabel" name="label_4">
+        <property name="toolTip">
+         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;OpenCV parameter&lt;/p&gt;&lt;p&gt;The size of the randomly selected subset of features at each tree node and that are used to find the best split(s). If you set it to 0 then the size will be set to the square root of the total number of features.&lt;/p&gt;&lt;p&gt;[default 0]&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        </property>
         <property name="text">
          <string>active var count</string>
         </property>
@@ -82,6 +91,9 @@
       </item>
       <item row="3" column="0">
        <widget class="QLabel" name="label_2">
+        <property name="toolTip">
+         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;OpenCV parameter&lt;/p&gt;&lt;p&gt;If the number of samples in a node is less than this parameter then the node will not be split.&lt;/p&gt;&lt;p&gt;[default 10]&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        </property>
         <property name="text">
          <string>min sample count</string>
         </property>
@@ -94,6 +106,9 @@
         </property>
         <property name="minimum">
          <number>1</number>
+        </property>
+        <property name="value">
+         <number>10</number>
         </property>
        </widget>
       </item>
@@ -132,6 +147,23 @@
         </property>
        </widget>
       </item>
+      <item row="2" column="0">
+       <widget class="QCheckBox" name="keepAttributesCheckBox">
+        <property name="text">
+         <string>Keep attributes on completion</string>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="0">
+       <widget class="QCheckBox" name="checkBox_keepTraces">
+        <property name="toolTip">
+         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;If checked : &lt;/p&gt;&lt;p&gt;* A directory is created near the parameter file, with name 3dmasc_yyyymmdd_HHhMM.&lt;/p&gt;&lt;p&gt;* A file 3dmasc_yyyymmdd_HHhMM.txt is created in this directory. &lt;/p&gt;&lt;p&gt;* Each time you train the classifier, the feature list and the classifier are stored and an entry is created in the trace file to save the overall accuracy.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        </property>
+        <property name="text">
+         <string>Keep traces</string>
+        </property>
+       </widget>
+      </item>
      </layout>
     </widget>
    </item>
@@ -157,7 +189,7 @@
          <bool>false</bool>
         </property>
         <property name="text">
-         <string>Save</string>
+         <string>Save classifier</string>
         </property>
        </widget>
       </item>
@@ -185,15 +217,15 @@
      <property name="title">
       <string>Results</string>
      </property>
-     <layout class="QVBoxLayout" name="verticalLayout_2">
-      <item>
+     <layout class="QGridLayout" name="gridLayout" columnstretch="1,0">
+      <item row="0" column="0" colspan="2">
        <widget class="QLabel" name="resultLabel">
         <property name="text">
          <string>correct = 0/0 - accuracy = 0.0</string>
         </property>
        </widget>
       </item>
-      <item>
+      <item row="1" column="0" rowspan="2">
        <widget class="QTableWidget" name="tableWidget">
         <property name="verticalScrollBarPolicy">
          <enum>Qt::ScrollBarAlwaysOn</enum>
@@ -228,11 +260,20 @@
         </column>
        </widget>
       </item>
-      <item>
+      <item row="3" column="0">
        <widget class="QToolButton" name="exportToolButton">
         <property name="text">
-         <string>export</string>
+         <string>Export feature list</string>
         </property>
+       </widget>
+      </item>
+      <item row="1" column="1">
+       <widget class="QTableWidget" name="tableWidgetScales">
+        <column>
+         <property name="text">
+          <string>Scales</string>
+         </property>
+        </column>
        </widget>
       </item>
      </layout>

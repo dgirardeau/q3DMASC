@@ -1,3 +1,5 @@
+#pragma once
+
 //##########################################################################
 //#                                                                        #
 //#                     CLOUDCOMPARE PLUGIN: q3DMASC                       #
@@ -15,14 +17,10 @@
 //#                                                                        #
 //##########################################################################
 
-#ifndef Q_3DMASC_PLUGIN_HEADER
-#define Q_3DMASC_PLUGIN_HEADER
-
 //qCC
 #include <ccStdPluginInterface.h>
 
-//qCC_db
-#include <ccHObject.h>
+#include "Parameters.h"
 
 //! 3DMASC plugin
 /** 3D Multi-cloud, multi-Attribute, multi-Scale, multi-Class classification
@@ -30,27 +28,30 @@
 class q3DMASCPlugin : public QObject, public ccStdPluginInterface
 {
 	Q_OBJECT
-	Q_INTERFACES(ccStdPluginInterface)
+	Q_INTERFACES(ccPluginInterface ccStdPluginInterface)
+	
 	Q_PLUGIN_METADATA(IID "cccorp.cloudcompare.plugin.q3DMASC" FILE "info.json")
 
 public:
 
 	//! Default constructor
-	q3DMASCPlugin(QObject* parent = nullptr);
+	explicit q3DMASCPlugin(QObject* parent = nullptr);
 
 	//inherited from ccStdPluginInterface
 	void onNewSelection(const ccHObject::Container& selectedEntities) override;
-	virtual QList<QAction*> getActions() override;
-	virtual void registerCommands(ccCommandLineInterface* cmd) override;
+	QList<QAction*> getActions() override;
+	void registerCommands(ccCommandLineInterface* cmd) override;
 
 protected slots:
 
 	void doClassifyAction();
+	void saveTrainParameters(const masc::TrainParameters& params);
+	void loadTrainParameters(masc::TrainParameters& params);
 	void doTrainAction();
 
 protected:
 
-	//! Calssift action
+	//! Calssify action
 	QAction* m_classifyAction;
 	//! Train action
 	QAction* m_trainAction;
@@ -58,5 +59,3 @@ protected:
 	//! Currently selected entities
 	ccHObject::Container m_selectedEntities;
 };
-
-#endif //Q_3DMASC_PLUGIN_HEADER

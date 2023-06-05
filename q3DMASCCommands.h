@@ -18,7 +18,7 @@
 //##########################################################################
 
 //CloudCompare
-#include "../../ccCommandLineInterface.h"
+#include <ccCommandLineInterface.h>
 
 //Local
 #include "q3DMASCTools.h"
@@ -28,6 +28,7 @@
 
 //Qt
 #include <QDialog>
+#include <QFileInfo>
 
 static const char COMMAND_3DMASC_CLASSIFY[] = "3DMASC_CLASSIFY";
 static const char COMMAND_3DMASC_KEEP_ATTRIBS[] = "KEEP_ATTRIBUTES";
@@ -173,7 +174,7 @@ struct Command3DMASCClassif : public ccCommandLineInterface::Command
 			{
 				//we use the core points source as 'main role' by default
 				mainCloudRole = corePointsLabel;
-				cmd.print("Core points source: " + corePointsLabel + "(will be used as the classified cloud)");
+				cmd.print("Core points source: " + corePointsLabel + " (will be used as the classified cloud)");
 			}
 			cmd.print("The classified cloud role will be " + mainCloudRole);
 
@@ -192,7 +193,8 @@ struct Command3DMASCClassif : public ccCommandLineInterface::Command
 
 			//load features
 			masc::Feature::Set features;
-			if (!masc::Tools::LoadFile(classifierFilename, &cloudPerRole, true, &features, nullptr, nullptr, nullptr, cmd.widgetParent()))
+			std::vector<double> scales;
+			if (!masc::Tools::LoadFile(classifierFilename, &cloudPerRole, true, &features, &scales, nullptr, nullptr, nullptr, cmd.widgetParent()))
 			{
 				return cmd.error("Failed to load the classifier");
 			}
@@ -271,7 +273,7 @@ struct Command3DMASCClassif : public ccCommandLineInterface::Command
 		if (!onlyFeatures)
 		{
 			masc::Classifier classifier;
-			if (!masc::Tools::LoadFile(classifierFilename, nullptr, false, nullptr, nullptr, &classifier, nullptr, cmd.widgetParent()))
+			if (!masc::Tools::LoadFile(classifierFilename, nullptr, false, nullptr, nullptr, nullptr, &classifier, nullptr, cmd.widgetParent()))
 			{
 				return cmd.error("Failed to load the classifier");
 			}

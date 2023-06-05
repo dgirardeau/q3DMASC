@@ -22,6 +22,7 @@
 #include "NeighborhoodFeature.h"
 #include "DualCloudFeature.h"
 #include "ContextBasedFeature.h"
+#include "ccMainAppInterface.h"
 
 //qCC_io
 #include <FileIOFilter.h>
@@ -30,7 +31,7 @@
 #include <ccPointCloud.h>
 
 //qPDALIO
-#include "../../core/IO/qPDALIO/src/LASFields.h"
+#include "../../core/IO/qPDALIO/include/LASFields.h"
 
 //Qt
 #include <QTextStream>
@@ -38,6 +39,7 @@
 #include <QFileInfo>
 #include <QDir>
 #include <QMutex>
+#include <iostream>
 
 //system
 #include <assert.h>
@@ -50,7 +52,7 @@ bool Tools::SaveClassifier(	QString filename,
 							const masc::Classifier& classifier,
 							QWidget* parent/*=nullptr*/)
 {
-	//first save the classifier data (same base filename but with the ymal extension)
+	//first save the classifier data (same base filename but with the yaml extension)
 	QFileInfo fi(filename);
 	QString yamlFilename = fi.baseName() + ".yaml";
 	QString yamlAbsoluteFilename = fi.absoluteDir().absoluteFilePath(yamlFilename);
@@ -177,6 +179,22 @@ bool Tools::LoadClassifierCloudLabels(QString filename, QList<QString>& labels, 
 	return true;
 }
 
+bool CheckFeatureUnicity(std::vector<Feature::Shared>& rawFeatures, Feature::Shared feature)
+{
+	if (!feature)
+		return false;
+
+	// check that the feature does not exists already!
+	for (const auto &feat : rawFeatures)
+	{
+		if (feat->toString() == feature->toString())
+		{
+			return false;
+		}
+	}
+	return true;
+}
+
 static bool CreateFeaturesFromCommand(const QString& command, QString corePointsRole, int lineNumber, const Tools::NamedClouds& clouds, std::vector<Feature::Shared>& rawFeatures, std::vector<double>& scales)
 {
 	QStringList tokens = command.split('_');
@@ -284,7 +302,7 @@ static bool CreateFeaturesFromCommand(const QString& command, QString corePoints
 		}
 		else
 		{
-			//read the specific scale index
+			//read the specific scale value
 			bool ok = true;
 			feature->scale = scaleStr.mid(2).toDouble(&ok);
 			if (!ok)
@@ -299,6 +317,7 @@ static bool CreateFeaturesFromCommand(const QString& command, QString corePoints
 	int cloudCount = 0;
 	bool statDefined = false;
 	bool mathDefined = false;
+	bool contextBasedFeatureDeprecatedSyntax = false;
 	for (int i = 2; i < tokens.size(); ++i)
 	{
 		QString token = tokens[i].trimmed().toUpper();
@@ -356,27 +375,70 @@ static bool CreateFeaturesFromCommand(const QString& command, QString corePoints
 					{
 						feature->cloud1 = it.value();
 						feature->cloud1Label = key;
-					}
-					else if (cloudCount == 1)
-					{
-						feature->cloud2 = it.value();
-						feature->cloud2Label = key;
 
 						if (feature && feature->getType() == Feature::Type::ContextBasedFeature)
 						{
-							//context cloud is always the second one for context based features
-							//and the class is just after the cloud name
+							// only one cloud is necessary for context based features
+							// the class should be just after the cloud name in the regular syntax
 							if (i + 1 < tokens.size())
 							{
 								bool ok = false;
 								int classLabel = tokens[i + 1].toInt(&ok);
 								if (!ok)
 								{
-									ccLog::Warning(QString("Malformed file: expecting a class number after the context cloud '%1' on line #%2").arg(token).arg(lineNumber));
+									contextBasedFeatureDeprecatedSyntax = true; // let's try the deprecated syntax
+								}
+								else
+								{
+									qSharedPointerCast<ContextBasedFeature>(feature)->ctxClassLabel = classLabel;
+									++i;
+								}
+							}
+							else
+							{
+								ccLog::Warning(QString("Malformed context based features at line %1").arg(lineNumber));
+								return false;
+							}
+						}
+
+					}
+					else if (cloudCount == 1)
+					{
+						if (contextBasedFeatureDeprecatedSyntax)
+						{
+							feature->cloud1 = it.value();
+							feature->cloud1Label = key;
+						}
+						else
+						{
+							feature->cloud2 = it.value();
+							feature->cloud2Label = key;
+						}
+
+						if (feature && feature->getType() == Feature::Type::ContextBasedFeature)
+						{
+							// this is the DEPRECATED syntax for the context based feature
+							// the class is just after the cloud name
+							if (i + 1 < tokens.size())
+							{
+								bool ok = false;
+								int classLabel = tokens[i + 1].toInt(&ok);
+								if (!ok)
+								{
+									ccLog::Warning(QString("ContextBasedFeature: expecting a class number after the context cloud '%1' on line #%2").arg(token).arg(lineNumber));
 									return false;
 								}
-								qSharedPointerCast<ContextBasedFeature>(feature)->ctxClassLabel = classLabel;
-								++i;
+								else
+								{
+									ccLog::Warning(QString("ContextBasedFeature: you are using the DEPRECATED syntax, the feature should contain only one cloud, as in DZ1_SC0_CTX_10)").arg(token).arg(lineNumber));
+									qSharedPointerCast<ContextBasedFeature>(feature)->ctxClassLabel = classLabel;
+									++i;
+								}
+							}
+							else
+							{
+								ccLog::Warning(QString("Malformed context based features at line %1").arg(lineNumber));
+								return false;
 							}
 						}
 					}
@@ -469,8 +531,16 @@ static bool CreateFeaturesFromCommand(const QString& command, QString corePoints
 		return false;
 	}
 
-	//save it
-	rawFeatures.push_back(feature);
+	if (!CheckFeatureUnicity(rawFeatures, feature)) // check that the feature does not exists already!
+	{
+		ccLog::Warning("[3DMASC] duplicated feature " + feature->toString() + ", check your parameter file");
+		return false;
+	}
+	else
+	{
+		//save the feature
+		rawFeatures.push_back(feature);
+	}
 
 	if (useAllScales)
 	{
@@ -483,7 +553,16 @@ static bool CreateFeaturesFromCommand(const QString& command, QString corePoints
 			//as we only change the scale value, all the duplicated features should be valid
 			assert(newFeature->checkValidity(corePointsRole, errorMessage));
 
-			rawFeatures.push_back(newFeature);
+			if (!CheckFeatureUnicity(rawFeatures, newFeature)) // check that the feature does not exists already!
+			{
+				ccLog::Warning("[3DMASC] duplicated feature " + newFeature->toString() + ", check your parameter file");
+				return false;
+			}
+			else
+			{
+				//save the feature
+				rawFeatures.push_back(newFeature);
+			}
 		}
 	}
 
@@ -606,7 +685,7 @@ static bool ReadCorePoints(const QString& command, const Tools::NamedClouds& clo
 	return true;
 }
 
-static bool ReadCloud(const QString& command, Tools::NamedClouds& clouds, QDir& defaultDir, int lineNumber, FileIOFilter::LoadParameters& loadParameters)
+static bool ReadCloud(const QString& command, Tools::NamedClouds& clouds, const QDir& defaultDir, int lineNumber, FileIOFilter::LoadParameters& loadParameters)
 {
 	QStringList tokens = command.split('=');
 	if (tokens.size() != 2)
@@ -658,6 +737,7 @@ bool Tools::LoadFile(	const QString& filename,
 						Tools::NamedClouds* clouds,
 						bool cloudsAreProvided,
 						std::vector<Feature::Shared>* rawFeatures/*=nullptr*/,	//requires 'clouds'
+						std::vector<double>* rawScales/*=nullptr*/,
 						masc::CorePoints* corePoints/*=nullptr*/,				//requires 'clouds'
 						masc::Classifier* classifier/*=nullptr*/,
 						TrainParameters* parameters/*=nullptr*/,
@@ -685,8 +765,8 @@ bool Tools::LoadFile(	const QString& filename,
 	{
 		loadParameters.alwaysDisplayLoadDialog = true;
 		loadParameters.shiftHandlingMode = ccGlobalShiftManager::DIALOG_IF_NECESSARY;
-		loadParameters.coordinatesShift = &loadCoordinatesShift;
-		loadParameters.coordinatesShiftEnabled = &loadCoordinatesTransEnabled;
+		loadParameters._coordinatesShift = &loadCoordinatesShift;
+		loadParameters._coordinatesShiftEnabled = &loadCoordinatesTransEnabled;
 		loadParameters.parentWidget = parent;
 		FileIOFilter::ResetSesionCounter();
 	}
@@ -700,11 +780,12 @@ bool Tools::LoadFile(	const QString& filename,
 		bool badFeatures = false;
 		for (int lineNumber = 1; ; ++lineNumber)
 		{
-			QString line = stream.readLine();
-			if (line.isNull())
-			{
-				//eof
+			if (stream.atEnd())
 				break;
+			QString line = stream.readLine();
+			if (line.isEmpty())
+			{
+				continue;
 			}
 
 			if (line.startsWith("#"))
@@ -799,6 +880,12 @@ bool Tools::LoadFile(	const QString& filename,
 				{
 					return false;
 				}
+				else
+				{
+					if (rawScales)
+						for (auto scale : scales)
+							rawScales->push_back(scale);
+				}
 			}
 			else if (upperLine.startsWith("FEATURE:")) //feature
 			{
@@ -881,18 +968,19 @@ bool Tools::LoadFile(	const QString& filename,
 
 bool Tools::LoadClassifier(QString filename, NamedClouds& clouds, Feature::Set& rawFeatures, masc::Classifier& classifier, QWidget* parent/*=nullptr*/)
 {
-	return LoadFile(filename, &clouds, true, &rawFeatures, nullptr, &classifier, nullptr, parent);
+	return LoadFile(filename, &clouds, true, &rawFeatures, nullptr, nullptr, &classifier, nullptr, parent);
 }
 
 bool Tools::LoadTrainingFile(	QString filename,
 								Feature::Set& rawFeatures,
+								std::vector<double>& rawScales,
 								NamedClouds& loadedClouds,
 								TrainParameters& parameters,
 								CorePoints* corePoints/*=nullptr*/,
 								QWidget* parentWidget/*=nullptr*/)
 {
 	bool cloudsWereProvided = !loadedClouds.empty();
-	if (LoadFile(filename, &loadedClouds, cloudsWereProvided, &rawFeatures, corePoints, nullptr, &parameters, parentWidget))
+	if (LoadFile(filename, &loadedClouds, cloudsWereProvided, &rawFeatures, &rawScales, corePoints, nullptr, &parameters, parentWidget))
 	{
 		return true;
 	}
@@ -901,14 +989,14 @@ bool Tools::LoadTrainingFile(	QString filename,
 		if (!cloudsWereProvided)
 		{
 			//delete the already loaded clouds (if any)
-			for (NamedClouds::const_iterator it = loadedClouds.begin(); it != loadedClouds.end(); ++it)
+			for (NamedClouds::iterator it = loadedClouds.begin(); it != loadedClouds.end(); ++it)
 				delete it.value();
 		}
 		return false;
 	}
 }
 
-CCLib::ScalarField* Tools::RetrieveSF(const ccPointCloud* cloud, const QString& sfName, bool caseSensitive/*=true*/)
+CCCoreLib::ScalarField* Tools::RetrieveSF(const ccPointCloud* cloud, const QString& sfName, bool caseSensitive/*=true*/)
 {
 	if (!cloud)
 	{
@@ -952,7 +1040,8 @@ struct FeaturesAndScales
 	QMap<double, std::vector<ContextBasedFeature::Shared> > contextBasedFeaturesPerScale;
 };
 
-bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features, QString& errorStr, CCLib::GenericProgressCallback* progressCb/*=nullptr*/, SFCollector* generatedScalarFields/*=nullptr*/)
+bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features, QString& errorStr,
+							CCCoreLib::GenericProgressCallback* progressCb/*=nullptr*/, SFCollector* generatedScalarFields/*=nullptr*/)
 {
 	if (features.empty() || !corePoints.origin)
 	{
@@ -991,7 +1080,8 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 				case Feature::Type::PointFeature:
 				{
 					//build the scaled feature list attached to the first cloud
-					if (feature->cloud1)
+					if (feature->cloud1
+						&& !static_cast<PointFeature*>(feature.data())->statSF1WasAlreadyExisting) // nothing to compute if the scalar field was already there
 					{
 						FeaturesAndScales& fas = cloudsWithScaledFeatures[feature->cloud1];
 						fas.pointFeaturesPerScale[feature->scale].push_back(qSharedPointerCast<PointFeature>(feature));
@@ -1001,16 +1091,23 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 							fas.scales.push_back(feature->scale);
 						}
 					}
-
 					//build the scaled feature list attached to the second cloud (if any)
-					if (feature->cloud2 && feature->cloud2 != feature->cloud1 && feature->op != Feature::NO_OPERATION)
+					if (feature->cloud2
+						&& feature->cloud2 != feature->cloud1
+						&& feature->op != Feature::NO_OPERATION)
 					{
-						FeaturesAndScales& fas = cloudsWithScaledFeatures[feature->cloud2];
-						++fas.featureCount;
-						fas.pointFeaturesPerScale[feature->scale].push_back(qSharedPointerCast<PointFeature>(feature));
-						if (std::find(fas.scales.begin(), fas.scales.end(), feature->scale) == fas.scales.end())
+						if(!static_cast<PointFeature*>(feature.data())->statSF1WasAlreadyExisting) // nothing to compute if the scalar field was already there
 						{
-							fas.scales.push_back(feature->scale);
+							if (!static_cast<PointFeature*>(feature.data())->statSF2WasAlreadyExisting)
+							{
+								FeaturesAndScales& fas = cloudsWithScaledFeatures[feature->cloud2];
+								++fas.featureCount;
+								fas.pointFeaturesPerScale[feature->scale].push_back(qSharedPointerCast<PointFeature>(feature));
+								if (std::find(fas.scales.begin(), fas.scales.end(), feature->scale) == fas.scales.end())
+								{
+									fas.scales.push_back(feature->scale);
+								}
+							}
 						}
 					}
 				}
@@ -1020,7 +1117,8 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 				case Feature::Type::NeighborhoodFeature:
 				{
 					//build the scaled feature list attached to the first cloud
-					if (feature->cloud1)
+					if (feature->cloud1
+						&& !static_cast<NeighborhoodFeature*>(feature.data())->sf1WasAlreadyExisting) // nothing to compute if the scalar field was already there
 					{
 						FeaturesAndScales& fas = cloudsWithScaledFeatures[feature->cloud1];
 						fas.neighborhoodFeaturesPerScale[feature->scale].push_back(qSharedPointerCast<NeighborhoodFeature>(feature));
@@ -1032,14 +1130,22 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 					}
 
 					//build the scaled feature list attached to the second cloud (if any)
-					if (feature->cloud2 && feature->cloud2 != feature->cloud1 && feature->op != Feature::NO_OPERATION)
+					if (feature->cloud2
+						&& feature->cloud2 != feature->cloud1
+						&& feature->op != Feature::NO_OPERATION)
 					{
-						FeaturesAndScales& fas = cloudsWithScaledFeatures[feature->cloud2];
-						fas.neighborhoodFeaturesPerScale[feature->scale].push_back(qSharedPointerCast<NeighborhoodFeature>(feature));
-						++fas.featureCount;
-						if (std::find(fas.scales.begin(), fas.scales.end(), feature->scale) == fas.scales.end())
+						if (!static_cast<NeighborhoodFeature*>(feature.data())->sf1WasAlreadyExisting) // nothing to compute if the scalar field was already there
 						{
-							fas.scales.push_back(feature->scale);
+							if (!static_cast<NeighborhoodFeature*>(feature.data())->sf2WasAlreadyExisting)
+							{
+								FeaturesAndScales& fas = cloudsWithScaledFeatures[feature->cloud2];
+								fas.neighborhoodFeaturesPerScale[feature->scale].push_back(qSharedPointerCast<NeighborhoodFeature>(feature));
+								++fas.featureCount;
+								if (std::find(fas.scales.begin(), fas.scales.end(), feature->scale) == fas.scales.end())
+								{
+									fas.scales.push_back(feature->scale);
+								}
+							}
 						}
 					}
 				}
@@ -1048,10 +1154,11 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 				//Context-based features
 				case Feature::Type::ContextBasedFeature:
 				{
-					//build the scaled feature list attached to the second cloud (the 'context' cloud)
-					if (feature->cloud2)
+					//build the scaled feature list attached to the context cloud
+					if (feature->cloud1
+						&& !static_cast<ContextBasedFeature*>(feature.data())->sfWasAlreadyExisting) // nothing to compute if the scalar field was already there
 					{
-						FeaturesAndScales& fas = cloudsWithScaledFeatures[feature->cloud2];
+						FeaturesAndScales& fas = cloudsWithScaledFeatures[feature->cloud1];
 						fas.contextBasedFeaturesPerScale[feature->scale].push_back(qSharedPointerCast<ContextBasedFeature>(feature));
 						++fas.featureCount;
 						if (std::find(fas.scales.begin(), fas.scales.end(), feature->scale) == fas.scales.end())
@@ -1116,7 +1223,7 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 				progressCb->setInfo(qPrintable(logMessage));
 			}
 			ccLog::Print(logMessage);
-			CCLib::NormalizedProgress nProgress(progressCb, pointCount);
+			CCCoreLib::NormalizedProgress nProgress(progressCb, pointCount);
 
 			QMutex mutex;
 #ifndef _DEBUG
@@ -1127,11 +1234,10 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 			for (int i = 0; i < static_cast<int>(pointCount); ++i)
 			{
 				//spherical neighborhood extraction structure
-				CCLib::DgmOctree::NearestNeighboursSphericalSearchStruct nNSS;
+				CCCoreLib::DgmOctree::NearestNeighboursSearchStruct nNSS;
 				{
 					nNSS.level = octreeLevel;
 					nNSS.queryPoint = *corePoints.cloud->getPoint(i);
-					nNSS.prepare(largestRadius, octree->getCellSize(nNSS.level));
 					octree->getTheCellPosWhichIncludesThePoint(&nNSS.queryPoint, nNSS.cellPos, nNSS.level);
 					octree->computeCellCenter(nNSS.cellPos, nNSS.level, nNSS.cellCenter);
 				}
@@ -1239,13 +1345,13 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 						//Context-based features
 						for (ContextBasedFeature::Shared& feature : fas.contextBasedFeaturesPerScale[currentScale])
 						{
-							if (feature->cloud2 == sourceCloud && feature->sf)
+							if (feature->cloud1 == sourceCloud && feature->sf)
 							{
 								ScalarType outputValue = 0;
 								if (!feature->computeValue(nNSS.pointsInNeighbourhood, nNSS.queryPoint, outputValue))
 								{
 									//an error occurred
-									errorStr = "An error occurred during the computation of feature " + feature->toString() + "on cloud " + feature->cloud2->getName();
+									errorStr = "An error occurred during the computation of feature " + feature->toString() + "on cloud " + feature->cloud1->getName();
 									success = false;
 									break;
 								}
@@ -1258,9 +1364,9 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 						{
 							break;
 						}
-					}
+					} //for each scale
 
-				} //for each scale
+				}
 			
 				if (progressCb)
 				{
@@ -1294,7 +1400,7 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 	return success;
 }
 
-bool Tools::RandomSubset(ccPointCloud* cloud, float ratio, CCLib::ReferenceCloud* inRatioSubset, CCLib::ReferenceCloud* outRatioSubset)
+bool Tools::RandomSubset(ccPointCloud* cloud, float ratio, CCCoreLib::ReferenceCloud* inRatioSubset, CCCoreLib::ReferenceCloud* outRatioSubset)
 {
 	if (!cloud)
 	{
@@ -1379,7 +1485,7 @@ bool Tools::RandomSubset(ccPointCloud* cloud, float ratio, CCLib::ReferenceCloud
 	return true;
 }
 
-CCLib::ScalarField* Tools::GetClassificationSF(const ccPointCloud* cloud)
+CCCoreLib::ScalarField* Tools::GetClassificationSF(const ccPointCloud* cloud)
 {
 	if (!cloud)
 	{

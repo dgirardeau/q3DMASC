@@ -75,6 +75,7 @@ namespace masc
 			, kNN(p_kNN)
 			, ctxClassLabel(p_ctxClassLabel)
 			, sf(nullptr)
+			, sfWasAlreadyExisting(false)
 		{
 			scale = p_scale;
 		}
@@ -82,13 +83,13 @@ namespace masc
 		//inherited from Feature
 		virtual Type getType() const override { return Type::ContextBasedFeature; }
 		virtual Feature::Shared clone() const override { return Feature::Shared(new ContextBasedFeature(*this)); }
-		virtual bool prepare(const CorePoints& corePoints, QString& error, CCLib::GenericProgressCallback* progressCb = nullptr, SFCollector* generatedScalarFields = nullptr) override;
+		virtual bool prepare(const CorePoints& corePoints, QString& error, CCCoreLib::GenericProgressCallback* progressCb = nullptr, SFCollector* generatedScalarFields = nullptr) override;
 		virtual bool finish(const CorePoints& corePoints, QString& error) override;
 		virtual bool checkValidity(QString corePointRole, QString &error) const override;
 		virtual QString toString() const override;
 
 		//! Compute the feature value on a set of points
-		bool computeValue(CCLib::DgmOctree::NeighboursSet& pointsInNeighbourhood, const CCVector3& queryPoint, ScalarType& outputValue) const;
+		bool computeValue(CCCoreLib::DgmOctree::NeighboursSet& pointsInNeighbourhood, const CCVector3& queryPoint, ScalarType& outputValue) const;
 
 	public: //members
 
@@ -102,6 +103,8 @@ namespace masc
 		//! Context class (label)
 		int ctxClassLabel;
 		//! The computed scalar
-		CCLib::ScalarField* sf;
+		CCCoreLib::ScalarField* sf;
+		//! Whether the SF pre-exists
+		bool sfWasAlreadyExisting;
 	};
 }

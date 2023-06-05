@@ -34,12 +34,18 @@ public:
 
 	//! Default constructor
 	Classify3DMASCDialog(ccMainAppInterface* app, bool trainMode = false);
+	~Classify3DMASCDialog();
+
+	//! read settings
+	void readSettings();
+	//! write settings
+	void writeSettings();
 
 	//! Sets the clouds roles
 	void setCloudRoles(const QList<QString>& roles, QString corePointsLabel);
 
 	//! Returns the selected point clouds
-	void getClouds(QMap<QString, ccPointCloud*>& clouds, QString& mainCloud) const;
+	void getClouds(QMap<QString, ccPointCloud*>& clouds) const;
 
 protected slots:
 

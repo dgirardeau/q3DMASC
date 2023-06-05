@@ -28,7 +28,7 @@
 #include <ccLog.h>
 
 //qPDALIO
-#include "../../core/IO/qPDALIO/src/LASFields.h"
+#include "../../core/IO/qPDALIO/include/LASFields.h"
 
 //qCC_plugins
 #include <ccMainAppInterface.h>
@@ -37,6 +37,10 @@
 #include <QCoreApplication>
 #include <QProgressDialog>
 #include <QtConcurrent>
+#include <QMessageBox>
+
+#include "qTrain3DMASCDialog.h"
+#include "confusionmatrix.h"
 
 using namespace masc;
 
@@ -65,7 +69,7 @@ static IScalarFieldWrapper::Shared GetSource(const Feature::Source& fs, const cc
 		}
 		else
 		{
-			ccLog::Warning(QObject::tr("Internal error: unknwon scalar field '%1'").arg(fs.name));
+			ccLog::Warning(QObject::tr("Internal error: unknown scalar field '%1'").arg(fs.name));
 			return IScalarFieldWrapper::Shared(nullptr);
 		}
 	}
@@ -120,40 +124,40 @@ bool Classifier::classify(	const Feature::Source::Set& featureSources,
 		return false;
 	}
 
-	//look for the classification field
-	CCLib::ScalarField* classificationSF = Tools::GetClassificationSF(cloud);
+	// add a ccConfidence value if needed
+	int cvConfidenceIdx = cloud->getScalarFieldIndexByName("Classification_confidence");
+	if (cvConfidenceIdx >= 0) // if the scalar field exists, delete it
+		cloud->deleteScalarField(cvConfidenceIdx);
+	cvConfidenceIdx = cloud->addScalarField("Classification_confidence");
+	ccScalarField* cvConfidenceSF = static_cast<ccScalarField*>(cloud->getScalarField(cvConfidenceIdx));
 
-	if (classificationSF)
+	//look for the classification field
+	CCCoreLib::ScalarField* classificationSF = Tools::GetClassificationSF(cloud);
+	ccScalarField* classifSFBackup = nullptr;
+
+	if (classificationSF) //save classification field (if any) by renaming it "Classification_backup"
 	{
-		//save previous classification field (if any)
-		int sfIdx = cloud->getScalarFieldIndexByName("Classification_prev");
-		if (sfIdx < 0)
+		ccLog::Warning("Classification SF found: copy it in Classification_backup, a confusion matrix will be generated");
+		// delete Classification_backup field (if any)
+		int sfIdx = cloud->getScalarFieldIndexByName("Classification_backup");
+		if (sfIdx >= 0)
 			cloud->deleteScalarField(sfIdx);
 
-		try
-		{
-			ccScalarField* classifSFBackup = new ccScalarField(*static_cast<ccScalarField*>(classificationSF));
-			classifSFBackup->setName("Classification_prev");
-			cloud->addScalarField(classifSFBackup);
-		}
-		catch (const std::bad_alloc)
-		{
-			ccLog::Warning("Not enough memory to backup the previous classification SF!");
-		}
+		classificationSF->setName("Classification_backup"); // rename the classification field
+		classifSFBackup = static_cast<ccScalarField*>(classificationSF);
 	}
-	else
+
+	//create the classification SF
+	ccScalarField* _classificationSF = new ccScalarField(LAS_FIELD_NAMES[LAS_CLASSIFICATION]);
+	if (!_classificationSF->resizeSafe(cloud->size()))
 	{
-		//create the classification SF
-		ccScalarField* _classificationSF = new ccScalarField(LAS_FIELD_NAMES[LAS_CLASSIFICATION]);
-		if (!_classificationSF->resizeSafe(cloud->size()))
-		{
-			_classificationSF->release();
-			errorMessage = QObject::tr("Not enough memory");
-			return false;
-		}
-		cloud->addScalarField(_classificationSF);
-		classificationSF = _classificationSF;
+		_classificationSF->release();
+		errorMessage = QObject::tr("Not enough memory");
+		return false;
 	}
+	cloud->addScalarField(_classificationSF);
+	classificationSF = _classificationSF;
+
 	assert(classificationSF);
 	classificationSF->fill(0); //0 = no classification?
 
@@ -190,9 +194,10 @@ bool Classifier::classify(	const Feature::Source::Set& featureSources,
 		pDlg->show();
 		QCoreApplication::processEvents();
 	}
-	CCLib::NormalizedProgress nProgress(pDlg.data(), cloud->size());
+	CCCoreLib::NormalizedProgress nProgress(pDlg.data(), cloud->size());
 
 	bool success = true;
+	int numberOfTrees = m_rtrees->getRoots().size();
 #ifndef _DEBUG
 #if defined(_OPENMP)
 #pragma omp parallel for
@@ -219,22 +224,26 @@ bool Classifier::classify(	const Feature::Source::Set& featureSources,
 			test_data.at<float>(0, fIndex) = static_cast<float>(value);
 		}
 
-#if 0
-		cv::Mat result;
-		try
-		{
-			m_rtrees->getVotes(test_data, result, cv::ml::DTrees::PREDICT_AUTO);
-		}
-		catch (const cv::Exception& cvex)
-		{
-			errorMessage = cvex.msg.c_str();
-			success = false;
-			break;
-		}
-#else
 		float predictedClass = m_rtrees->predict(test_data.row(0), cv::noArray(), cv::ml::DTrees::PREDICT_MAX_VOTE);
 		classificationSF->setValue(i, static_cast<int>(predictedClass));
-#endif
+		// compute the confidence
+		cv::Mat result;
+		m_rtrees->getVotes(test_data, result, cv::ml::DTrees::PREDICT_MAX_VOTE);
+		int classIndex = -1;
+		for (int col = 0; col < result.cols; col++) // look for the index of the predicted class
+			if (predictedClass == result.at<int>(0, col))
+			{
+				classIndex = col;
+				break;
+			}
+		if (classIndex != -1)
+		{
+			float nbVotes = result.at<int>(1, classIndex); // get the number of votes
+			cvConfidenceSF->setValue(i, static_cast<ScalarType>(nbVotes / numberOfTrees)); // compute the confidence
+		}
+		else
+			cvConfidenceSF->setValue(i, CCCoreLib::NAN_VALUE);
+
 		if (pDlg && !nProgress.oneStep())
 		{
 			//process cancelled by the user
@@ -242,7 +251,9 @@ bool Classifier::classify(	const Feature::Source::Set& featureSources,
 			break;
 		}
 	}
+
 	classificationSF->computeMinAndMax();
+	cvConfidenceSF->computeMinAndMax();
 
 	//show the classification field by default
 	{
@@ -257,6 +268,9 @@ bool Classifier::classify(	const Feature::Source::Set& featureSources,
 		QCoreApplication::processEvents();
 	}
 
+	if (classifSFBackup != nullptr)
+		ConfusionMatrix *confusionMatrix = new ConfusionMatrix(*classifSFBackup, *classificationSF);
+
 	return success;
 }
 
@@ -264,7 +278,8 @@ bool Classifier::evaluate(const Feature::Source::Set& featureSources,
 							ccPointCloud* testCloud,
 							AccuracyMetrics& metrics,
 							QString& errorMessage,
-							CCLib::ReferenceCloud* testSubset/*=nullptr=*/,
+							Train3DMASCDialog& train3DMASCDialog,
+							CCCoreLib::ReferenceCloud* testSubset/*=nullptr=*/,
 							QString outputSFName/*=QString()*/,
 							QWidget* parentWidget/*=nullptr*/)
 {
@@ -296,7 +311,7 @@ bool Classifier::evaluate(const Feature::Source::Set& featureSources,
 	}
 
 	//look for the classification field
-	CCLib::ScalarField* classifSF = Tools::GetClassificationSF(testCloud);
+	CCCoreLib::ScalarField* classifSF = Tools::GetClassificationSF(testCloud);
 	if (!classifSF || classifSF->size() < testCloud->size())
 	{
 		assert(false);
@@ -304,28 +319,29 @@ bool Classifier::evaluate(const Feature::Source::Set& featureSources,
 		return false;
 	}
 
-	CCLib::ScalarField* outputSF = nullptr;
+	ccScalarField* outSF = nullptr;
+	ccScalarField* cvConfidenceSF = nullptr;
+
 	if (!outputSFName.isEmpty())
 	{
-		int outSFIndex = testCloud->getScalarFieldIndexByName(qPrintable(outputSFName));
-		if (outSFIndex < 0)
-		{
-			ccScalarField* _outputSF = new ccScalarField(qPrintable(outputSFName));
-			if (!_outputSF->resizeSafe(testCloud->size()))
-			{
-				errorMessage = QObject::tr("Not enough memory to create output scalar field");
-				_outputSF->release();
-				return false;
-			}
-			testCloud->addScalarField(_outputSF);
-			outputSF = _outputSF;
-		}
+		int outIdx = testCloud->getScalarFieldIndexByName(qPrintable(outputSFName));
+		if (outIdx >= 0)
+			testCloud->deleteScalarField(outIdx);
 		else
-		{
-			outputSF = testCloud->getScalarField(outSFIndex);
-		}
-		outputSF->fill(NAN_VALUE);
-		outputSF->computeMinAndMax();
+			ccLog::Print("add " + outputSFName + " to the TEST cloud");
+		outIdx = testCloud->addScalarField(qPrintable(outputSFName));
+		outSF  = static_cast<ccScalarField*>(testCloud->getScalarField(outIdx));
+	}
+
+	if (outSF) // add a Classification_confidence value to the test cloud if needed
+	{
+		int cvConfidenceIdx = testCloud->getScalarFieldIndexByName("Classification_confidence");
+		if (cvConfidenceIdx >= 0) // if the scalar field exists, delete it
+			testCloud->deleteScalarField(cvConfidenceIdx);
+		else
+			ccLog::Print("add Classification_confidence to the TEST cloud");
+		cvConfidenceIdx = testCloud->addScalarField("Classification_confidence");
+		cvConfidenceSF = static_cast<ccScalarField*>(testCloud->getScalarField(cvConfidenceIdx));
 	}
 
 	unsigned testSampleCount = (testSubset ? testSubset->size() : testCloud->size());
@@ -353,7 +369,7 @@ bool Classifier::evaluate(const Feature::Source::Set& featureSources,
 		pDlg->show();
 		QCoreApplication::processEvents();
 	}
-	CCLib::NormalizedProgress nProgress(pDlg.data(), testSampleCount);
+	CCCoreLib::NormalizedProgress nProgress(pDlg.data(), testSampleCount);
 
 	//fill the data matrix
 	for (int fIndex = 0; fIndex < attributesPerSample; ++fIndex)
@@ -375,7 +391,11 @@ bool Classifier::evaluate(const Feature::Source::Set& featureSources,
 		}
 	}
 
+	int numberOfTrees = m_rtrees->getRoots().size();
+
 	//estimate the efficiency of the classifier
+	std::vector<ScalarType> actualClass(testSampleCount);
+	std::vector<ScalarType> predictectedClass(testSampleCount);
 	{
 		metrics.sampleCount = testSampleCount;
 		metrics.goodGuess = 0;
@@ -393,13 +413,35 @@ bool Classifier::evaluate(const Feature::Source::Set& featureSources,
 
 			float fPredictedClass = m_rtrees->predict(test_data.row(i), cv::noArray(), cv::ml::DTrees::PREDICT_MAX_VOTE);
 			int iPredictedClass = static_cast<int>(fPredictedClass);
+			actualClass.at(i) = iClass;
+			predictectedClass.at(i) = iPredictedClass;
 			if (iPredictedClass == iClass)
 			{
 				++metrics.goodGuess;
 			}
-			if (outputSF)
+			if (outSF)
 			{
-				outputSF->setValue(pointIndex, static_cast<ScalarType>(iPredictedClass));
+				outSF->setValue(pointIndex, static_cast<ScalarType>(iPredictedClass));
+				if (cvConfidenceSF)
+				{
+					// compute the confidence
+					cv::Mat result;
+					m_rtrees->getVotes(test_data.row(i), result, cv::ml::DTrees::PREDICT_MAX_VOTE);
+					int classIndex = -1;
+					for (int col = 0; col < result.cols; col++) // look for the index of the predicted class
+						if (iPredictedClass == result.at<int>(0, col))
+						{
+							classIndex = col;
+							break;
+						}
+					if (classIndex != -1)
+					{
+						float nbVotes = result.at<int>(1, classIndex); // get the number of votes
+						cvConfidenceSF->setValue(i, static_cast<ScalarType>(nbVotes / numberOfTrees)); // compute the confidence
+					}
+					else
+						cvConfidenceSF->setValue(i, CCCoreLib::NAN_VALUE);
+				}
 			}
 
 			if (pDlg && !nProgress.oneStep())
@@ -409,10 +451,28 @@ bool Classifier::evaluate(const Feature::Source::Set& featureSources,
 			}
 		}
 
-		if (outputSF)
-			outputSF->computeMinAndMax();
+		if (outSF)
+			outSF->computeMinAndMax();
+		if (cvConfidenceSF)
+			cvConfidenceSF->computeMinAndMax();
 
 		metrics.ratio = static_cast<float>(metrics.goodGuess) / metrics.sampleCount;
+	}
+
+	train3DMASCDialog.addConfusionMatrixAndSaveTraces(new ConfusionMatrix(actualClass, predictectedClass));
+
+	//show the Classification_prediction field by default
+	if (outSF)
+	{
+		int classifSFIdx = testCloud->getScalarFieldIndexByName(outSF->getName());
+		testCloud->setCurrentDisplayedScalarField(classifSFIdx);
+		testCloud->showSF(true);
+	}
+
+	if (parentWidget && testCloud->getDisplay())
+	{
+		testCloud->getDisplay()->redraw();
+		QCoreApplication::processEvents();
 	}
 
 	return true;
@@ -422,7 +482,7 @@ bool Classifier::train(	const ccPointCloud* cloud,
 						const RandomTreesParams& params,
 						const Feature::Source::Set& featureSources,
 						QString& errorMessage,
-						CCLib::ReferenceCloud* trainSubset/*=nullptr*/,
+						CCCoreLib::ReferenceCloud* trainSubset/*=nullptr*/,
 						ccMainAppInterface* app/*=nullptr*/,
 						QWidget* parentWidget/*=nullptr*/)
 {
@@ -444,7 +504,7 @@ bool Classifier::train(	const ccPointCloud* cloud,
 	}
 
 	//look for the classification field
-	CCLib::ScalarField* classifSF = Tools::GetClassificationSF(cloud);
+	CCCoreLib::ScalarField* classifSF = Tools::GetClassificationSF(cloud);
 	if (!classifSF || classifSF->size() < cloud->size())
 	{
 		assert(false);
@@ -524,6 +584,7 @@ bool Classifier::train(	const ccPointCloud* cloud,
 	m_rtrees->setMaxDepth(params.maxDepth);
 	m_rtrees->setMinSampleCount(params.minSampleCount);
 	m_rtrees->setRegressionAccuracy(0);
+    // If true then surrogate splits will be built. These splits allow to work with missing data and compute variable importance correctly. Default value is false.
 	m_rtrees->setUseSurrogates(false);
 	m_rtrees->setPriors(cv::Mat());
 	//m_rtrees->setMaxCategories(params.maxCategories); //not important?
@@ -538,14 +599,16 @@ bool Classifier::train(	const ccPointCloud* cloud,
 		try
 		{
 			cv::Mat sampleIndexes = cv::Mat::zeros(1, training_data.rows, CV_8U);
-			cv::Mat trainSamples = sampleIndexes.colRange(0, sampleCount);
-			trainSamples.setTo(cv::Scalar::all(1));
+//			cv::Mat trainSamples = sampleIndexes.colRange(0, sampleCount);
+//			trainSamples.setTo(cv::Scalar::all(1));
 			
 			cv::Mat varTypes(training_data.cols + 1, 1, CV_8U);
 			varTypes.setTo(cv::Scalar::all(cv::ml::VAR_ORDERED));
 			varTypes.at<uchar>(training_data.cols) = cv::ml::VAR_CATEGORICAL;
 			
-			cv::Ptr<cv::ml::TrainData> trainData = cv::ml::TrainData::create(training_data, cv::ml::ROW_SAMPLE, train_labels, cv::noArray(), sampleIndexes, cv::noArray(), varTypes);
+			cv::Ptr<cv::ml::TrainData> trainData = cv::ml::TrainData::create(training_data, cv::ml::ROW_SAMPLE, train_labels,  /* samples layout responses */
+																			 cv::noArray(), sampleIndexes, /* varIdx sampleIdx */
+																			 cv::noArray(), varTypes); // sampleWeights varType
 
 			bool success = m_rtrees->train(trainData);
 			if (!success || !m_rtrees->isClassifier())
@@ -553,7 +616,6 @@ bool Classifier::train(	const ccPointCloud* cloud,
 				errorMessage = "Training failed";
 				return false;
 			}
-			//m_rtrees->train(training_data, cv::ml::ROW_SAMPLE, train_labels);
 		}
 		catch (const cv::Exception& cvex)
 		{
@@ -571,6 +633,7 @@ bool Classifier::train(	const ccPointCloud* cloud,
 			errorMessage = QObject::tr("Unknown error");
 			return false;
 		}
+
 		return true;
 	});
 
@@ -585,8 +648,13 @@ bool Classifier::train(	const ccPointCloud* cloud,
 		{
 			if (pDlg->wasCanceled())
 			{
-				future.cancel();
-				break;
+//				future.cancel();
+				QMessageBox msgBox;
+				msgBox.setText("The training is still in progress, not possible to cancel.");
+				msgBox.exec();
+//				break;
+				pDlg->reset();
+				pDlg->show();
 			}
 			pDlg->setValue(pDlg->value() + 1);
 		}
