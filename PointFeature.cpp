@@ -20,6 +20,10 @@
 //Local
 #include "q3DMASCTools.h"
 
+#if defined(_OPENMP)
+#include <omp.h>
+#endif
+
 //qPDALIO
 #ifdef PLUGIN_IO_QPDAL
 #include "../../../core/IO/qPDALIO/include/LASFields.h"
@@ -420,6 +424,7 @@ static bool ComputeMathOpWithNearestNeighbor(	const CorePoints& corePoints,
 	error.clear();
 #ifndef _DEBUG
 #if defined(_OPENMP)
+	omp_set_num_threads(std::max(1, omp_get_max_threads() - 2));
 #pragma omp parallel for
 #endif
 #endif

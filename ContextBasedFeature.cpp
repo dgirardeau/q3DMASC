@@ -26,6 +26,10 @@
 //Qt
 #include <QMutex>
 
+#if defined(_OPENMP)
+#include <omp.h>
+#endif
+
 using namespace masc;
 
 bool ContextBasedFeature::checkValidity(QString corePointRole, QString &error) const
@@ -187,6 +191,7 @@ bool ContextBasedFeature::prepare(	const CorePoints& corePoints,
 			bool cancelled = false;
 #ifndef _DEBUG
 #if defined(_OPENMP)
+			omp_set_num_threads(std::max(1, omp_get_max_threads() - 2));
 #pragma omp parallel for
 #endif
 #endif

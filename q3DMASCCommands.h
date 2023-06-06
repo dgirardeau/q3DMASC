@@ -235,7 +235,7 @@ struct Command3DMASCClassif : public ccCommandLineInterface::Command
 			if (pDlg)
 			{
 				pDlg->setAutoClose(true); //restore the default behavior of the progress dialog
-				pDlg->hide();
+				pDlg->close();
 				QCoreApplication::processEvents();
 			}
 

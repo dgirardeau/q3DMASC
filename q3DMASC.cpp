@@ -191,7 +191,6 @@ void q3DMASCPlugin::doClassifyAction()
 	}
 	progressDlg.close();
 	QCoreApplication::processEvents();
-	progressDlg.setAutoClose(true); //restore the default behavior of the progress dialog
 
 	//apply classifier
 	{
@@ -423,6 +422,7 @@ void q3DMASCPlugin::doTrainAction()
 
 	//compute the core points (if necessary)
 	ccProgressDialog progressDlg(true, m_app->getMainWindow());
+	progressDlg.setAutoClose(false);
 	if (!corePoints.prepare(&progressDlg))
 	{
 		m_app->dispToConsole("Failed to compute/prepare the core points!", ccMainAppInterface::ERR_CONSOLE_MESSAGE);
@@ -505,7 +505,7 @@ void q3DMASCPlugin::doTrainAction()
 			//prepare the features (should be done once)
 			if (!toPrepare.empty())
 			{
-				progressDlg.setAutoClose(false); //we don't want the progress dialog to 'pop' for each feature
+				progressDlg.show();
 				QString error;
 				if (!masc::Tools::PrepareFeatures(corePoints, toPrepare, error, &progressDlg, &generatedScalarFields))
 				{
@@ -514,8 +514,7 @@ void q3DMASCPlugin::doTrainAction()
 					generatedScalarFieldsTest.releaseSFs(false);
 					return;
 				}
-				progressDlg.setAutoClose(true); //restore the default behavior of the progress dialog
-				progressDlg.hide();
+				progressDlg.close();
 				QCoreApplication::processEvents();
 				m_app->redrawAll();
 
@@ -619,7 +618,7 @@ void q3DMASCPlugin::doTrainAction()
 						//prepare the features and the test cloud
 						if (!toPrepareTest.empty())
 						{
-							progressDlg.setAutoClose(false); //we don't want the progress dialog to 'pop' for each feature
+							progressDlg.show();
 							QString error;
 							masc::CorePoints corePointsTest;
 							corePointsTest.cloud = corePointsTest.origin = testCloud;
@@ -631,8 +630,7 @@ void q3DMASCPlugin::doTrainAction()
 								generatedScalarFieldsTest.releaseSFs(false);
 								return;
 							}
-							progressDlg.setAutoClose(true); //restore the default behavior of the progress dialog
-							progressDlg.hide();
+							progressDlg.close();
 							QCoreApplication::processEvents();
 							m_app->redrawAll();
 

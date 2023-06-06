@@ -42,6 +42,10 @@
 #include "qTrain3DMASCDialog.h"
 #include "confusionmatrix.h"
 
+#if defined(_OPENMP)
+#include <omp.h>
+#endif
+
 using namespace masc;
 
 Classifier::Classifier()
@@ -197,9 +201,10 @@ bool Classifier::classify(	const Feature::Source::Set& featureSources,
 	CCCoreLib::NormalizedProgress nProgress(pDlg.data(), cloud->size());
 
 	bool success = true;
-	int numberOfTrees = m_rtrees->getRoots().size();
+	int numberOfTrees = static_cast<int>(m_rtrees->getRoots().size());
 #ifndef _DEBUG
 #if defined(_OPENMP)
+	omp_set_num_threads(std::max(1, omp_get_max_threads() - 2));
 #pragma omp parallel for
 #endif
 #endif
@@ -391,7 +396,7 @@ bool Classifier::evaluate(const Feature::Source::Set& featureSources,
 		}
 	}
 
-	int numberOfTrees = m_rtrees->getRoots().size();
+	int numberOfTrees = static_cast<int>(m_rtrees->getRoots().size());
 
 	//estimate the efficiency of the classifier
 	std::vector<ScalarType> actualClass(testSampleCount);

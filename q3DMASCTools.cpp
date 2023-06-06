@@ -39,11 +39,15 @@
 #include <QFileInfo>
 #include <QDir>
 #include <QMutex>
-#include <iostream>
+#include <QCoreApplication>
 
 //system
 #include <assert.h>
+#include <iostream>
 
+#if defined(_OPENMP)
+#include <omp.h>
+#endif
 using namespace masc;
 
 bool Tools::SaveClassifier(	QString filename,
@@ -430,7 +434,7 @@ static bool CreateFeaturesFromCommand(const QString& command, QString corePoints
 								}
 								else
 								{
-									ccLog::Warning(QString("ContextBasedFeature: you are using the DEPRECATED syntax, the feature should contain only one cloud, as in DZ1_SC0_CTX_10)").arg(token).arg(lineNumber));
+									ccLog::Warning("ContextBasedFeature: you are using the DEPRECATED syntax, the feature should contain only one cloud, as in DZ1_SC0_CTX_10)");
 									qSharedPointerCast<ContextBasedFeature>(feature)->ctxClassLabel = classLabel;
 									++i;
 								}
@@ -1202,6 +1206,9 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 			if (!octree)
 			{
 				ccLog::Print(QString("Computing octree of cloud %1 (%2 points)").arg(sourceCloud->getName()).arg(sourceCloud->size()));
+				if (progressCb)
+					progressCb->start();
+				QCoreApplication::processEvents();
 				octree = sourceCloud->computeOctree(progressCb);
 				if (!octree)
 				{
@@ -1228,6 +1235,7 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 			QMutex mutex;
 #ifndef _DEBUG
 #if defined(_OPENMP)
+			omp_set_num_threads(std::max(1, omp_get_max_threads() - 2));
 #pragma omp parallel for
 #endif
 #endif
