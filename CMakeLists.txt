@@ -1,8 +1,8 @@
 cmake_minimum_required(VERSION 2.8)
 
-option( INSTALL_Q3DMASC_PLUGIN "Check to install q3DMASC plugin" OFF )
+option( PLUGIN_STANDARD_3DMASC "Check to install q3DMASC plugin" OFF )
 
-if (INSTALL_Q3DMASC_PLUGIN)
+if (PLUGIN_STANDARD_3DMASC)
 
 	#New classification plugin (Dimitri Lague/OSUR)
 	project( Q3DMASC_PLUGIN )
@@ -22,11 +22,11 @@ if (INSTALL_Q3DMASC_PLUGIN)
 	#include the whole CC directory (easier)
 	include_directories( ${CloudCompare_SOURCE_DIR} )
 	#include_directories( ${OpenCV_INCLUDE_DIR} )
-	
+
 	file( GLOB PLUGIN_HDR_LIST ${CMAKE_CURRENT_SOURCE_DIR}/*.h )
 	file( GLOB PLUGIN_SRC_LIST ${CMAKE_CURRENT_SOURCE_DIR}/*.cpp )
 	file( GLOB PLUGIN_UI_LIST ${CMAKE_CURRENT_SOURCE_DIR}/*.ui )
-	
+
 	#we need the "order choice" dialog
 	file( GLOB CC_HDR_LIST ${CloudCompare_SOURCE_DIR}/ccOrderChoiceDlg*.h )
 	file( GLOB CC_SRC_LIST ${CloudCompare_SOURCE_DIR}/ccOrderChoiceDlg*.cpp )
@@ -40,27 +40,24 @@ if (INSTALL_Q3DMASC_PLUGIN)
 			${PLUGIN_UI_LIST}
 			${CC_HDR_LIST}
 			${CC_SRC_LIST}
-			${CC_UI_LIST}
-	)
+			${CC_UI_LIST})
 
-    #include( CMakePluginTemplate )
+	#include( CMakePluginTemplate )
 	#include( ../../CMakePluginTpl.cmake )
 	
-    set_target_properties( ${PROJECT_NAME} PROPERTIES
-        # FIXME Remove after everything has moved to targets
-        AUTOUIC_SEARCH_PATHS "${CloudCompare_SOURCE_DIR}/ui_templates;${CMAKE_CURRENT_SOURCE_DIR}/ui"
-    )
+	set_target_properties( ${PROJECT_NAME} PROPERTIES
+		# FIXME Remove after everything has moved to targets
+		AUTOUIC_SEARCH_PATHS "${CloudCompare_SOURCE_DIR}/ui_templates;${CMAKE_CURRENT_SOURCE_DIR}/ui")
 
-    # FIXME These are required because we have dependencies outside of the api
-    target_include_directories( ${PROJECT_NAME}
-        PRIVATE
-            ${CloudCompare_SOURCE_DIR}
-            ${CloudCompare_SOURCE_DIR}/../common
-    )
+	# FIXME These are required because we have dependencies outside of the api
+	target_include_directories( ${PROJECT_NAME}
+		PRIVATE
+			${CloudCompare_SOURCE_DIR}
+			${CloudCompare_SOURCE_DIR}/../common)
 
-        target_link_libraries( ${PROJECT_NAME} ${OpenCV_LIBS} )
-		set( OPENCV_DEP_DLL_FILES ${OpenCV_DIR}/x64/vc15/bin/opencv_world340.dll )
-        copy_files("${OPENCV_DEP_DLL_FILES}" "${CLOUDCOMPARE_DEST_FOLDER}") #mind the quotes!
+	target_link_libraries( ${PROJECT_NAME} ${OpenCV_LIBS} )
+	set( OPENCV_DEP_DLL_FILES ${OpenCV_DIR}/x64/vc15/bin/opencv_world340.dll )
+	copy_files("${OPENCV_DEP_DLL_FILES}" "${CLOUDCOMPARE_DEST_FOLDER}") #mind the quotes!
 
 	#================
 	# git commit hash
@@ -114,6 +111,5 @@ if (INSTALL_Q3DMASC_PLUGIN)
 		GIT_TAG_3DMASC="${GIT_TAG_3DMASC}"
 		Q3DMASC_VERSION="${Q3DMASC_PLUGIN_VERSION}"
 		)
-
 
 endif()
