@@ -308,7 +308,7 @@ void q3DMASCPlugin::doTrainAction()
 	loadTrainParameters(s_params); // load the saved parameters or the default values
 	masc::Feature::Set features;
 	std::vector<double> scales;
-	if (!masc::Tools:: LoadTrainingFile(inputFilename, features, scales, loadedClouds, s_params, &corePoints, m_app->getMainWindow()))
+	if (!masc::Tools::LoadTrainingFile(inputFilename, features, scales, loadedClouds, s_params, &corePoints, m_app->getMainWindow()))
 	{
 		m_app->dispToConsole("Failed to load the training file", ccMainAppInterface::ERR_CONSOLE_MESSAGE);
 		return;
@@ -704,8 +704,23 @@ void q3DMASCPlugin::doTrainAction()
 						{
 							m_app->dispToConsole("Failed to save classifier file");
 						}
-						QString exportFilePath = tracePath + "/run_" + QString::number(trainDlg.getRun()) + ".csv";
 
+						// save feature importance
+						QString filename = tracePath + "/run_" + QString::number(trainDlg.getRun()) + "_feature_importance.txt";
+						QFile file(filename);
+						if (!file.open(QFile::Text | QFile::WriteOnly))
+						{
+							ccLog::Warning(QString("Can't open file '%1' for writing").arg(filename));
+						}
+						QTextStream stream(&file);
+						stream << "# feature importance" << endl;
+						for (size_t i = 0; i < originalFeatures.size(); ++i)
+						{
+							if (originalFeatures[i].selected)
+							{
+								stream << originalFeatures[i].feature->toString() << " " << originalFeatures[i].importance << endl;
+							}
+						}
 					}
 				}
 			}
