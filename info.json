@@ -1,7 +1,7 @@
 {
   "type": "Standard",
   "name": "3DMASC",
-  "icon": ":/CC/plugin/q3DMASCPlugin/iconCreate.png",
+  "icon": ":/CC/plugin/q3DMASCPlugin/3DMASC.png",
   "description": "Create or apply a classifier on a point cloud.",
   "authors": [
     {
