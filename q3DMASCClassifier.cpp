@@ -46,6 +46,10 @@
 #include <omp.h>
 #endif
 
+#if defined(__APPLE__)
+#include <unistd.h>
+#endif
+
 using namespace masc;
 
 Classifier::Classifier()
