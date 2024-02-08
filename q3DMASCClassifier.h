@@ -76,7 +76,8 @@ namespace masc
 		bool classify(	const Feature::Source::Set& featureSources,
 						ccPointCloud* cloud,
 						QString& errorMessage,
-						QWidget* parentWidget = nullptr);
+						QWidget* parentWidget = nullptr,
+						ccMainAppInterface* app = nullptr);
 
 		//! Returns whether the classifier is valid or not
 		bool isValid() const;

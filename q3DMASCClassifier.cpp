@@ -110,7 +110,8 @@ static IScalarFieldWrapper::Shared GetSource(const Feature::Source& fs, const cc
 bool Classifier::classify(	const Feature::Source::Set& featureSources,
 							ccPointCloud* cloud,
 							QString& errorMessage,
-							QWidget* parentWidget/*=nullptr*/
+							QWidget* parentWidget/*=nullptr*/,
+							ccMainAppInterface* app/*nullptr*/
 						)
 {
 	if (!cloud)
@@ -278,7 +279,12 @@ bool Classifier::classify(	const Feature::Source::Set& featureSources,
 	}
 
 	if (classifSFBackup != nullptr)
-		ConfusionMatrix *confusionMatrix = new ConfusionMatrix(*classifSFBackup, *classificationSF);
+	{
+		if (app)
+		{
+			ConfusionMatrix *confusionMatrix = new ConfusionMatrix(*classifSFBackup, *classificationSF);
+		}
+	}
 
 	return success;
 }
