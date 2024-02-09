@@ -70,7 +70,8 @@ namespace masc
 						Train3DMASCDialog& train3DMASCDialog,
 						CCCoreLib::ReferenceCloud* testSubset = nullptr,
 						QString outputSFName = QString(),
-						QWidget* parentWidget = nullptr);
+						QWidget* parentWidget = nullptr,
+						ccMainAppInterface* app = nullptr);
 
 		//! Applies the classifier
 		bool classify(	const Feature::Source::Set& featureSources,
