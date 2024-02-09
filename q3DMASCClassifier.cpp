@@ -110,7 +110,8 @@ static IScalarFieldWrapper::Shared GetSource(const Feature::Source& fs, const cc
 bool Classifier::classify(	const Feature::Source::Set& featureSources,
 							ccPointCloud* cloud,
 							QString& errorMessage,
-							QWidget* parentWidget/*=nullptr*/
+							QWidget* parentWidget/*=nullptr*/,
+							ccMainAppInterface* app/*nullptr*/
 						)
 {
 	if (!cloud)
@@ -278,7 +279,12 @@ bool Classifier::classify(	const Feature::Source::Set& featureSources,
 	}
 
 	if (classifSFBackup != nullptr)
-		ConfusionMatrix *confusionMatrix = new ConfusionMatrix(*classifSFBackup, *classificationSF);
+	{
+		if (app)
+		{
+			ConfusionMatrix *confusionMatrix = new ConfusionMatrix(*classifSFBackup, *classificationSF);
+		}
+	}
 
 	return success;
 }
@@ -290,7 +296,8 @@ bool Classifier::evaluate(const Feature::Source::Set& featureSources,
 							Train3DMASCDialog& train3DMASCDialog,
 							CCCoreLib::ReferenceCloud* testSubset/*=nullptr=*/,
 							QString outputSFName/*=QString()*/,
-							QWidget* parentWidget/*=nullptr*/)
+							QWidget* parentWidget/*=nullptr*/,
+							ccMainAppInterface *app/*=nullptr*/)
 {
 	if (!testCloud)
 	{
@@ -468,7 +475,7 @@ bool Classifier::evaluate(const Feature::Source::Set& featureSources,
 		metrics.ratio = static_cast<float>(metrics.goodGuess) / metrics.sampleCount;
 	}
 
-	train3DMASCDialog.addConfusionMatrixAndSaveTraces(new ConfusionMatrix(actualClass, predictectedClass));
+	train3DMASCDialog.addConfusionMatrixAndSaveTraces(new ConfusionMatrix(actualClass, predictectedClass, nullptr, app));
 
 	//show the Classification_prediction field by default
 	if (outSF)

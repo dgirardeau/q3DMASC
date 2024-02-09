@@ -653,7 +653,8 @@ void q3DMASCPlugin::doTrainAction()
 											trainDlg,
 											testCloud ? nullptr : testSubset.data(),
 											testCloud ? "Classification_prediction" : "", // outputSFName, empty is the test cloud is not a separate cloud
-											m_app->getMainWindow()))
+											m_app->getMainWindow(),
+											m_app))
 				{
 					m_app->dispToConsole(errorMessage, ccMainAppInterface::ERR_CONSOLE_MESSAGE);
 					generatedScalarFields.releaseSFs(false);
