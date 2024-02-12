@@ -204,8 +204,7 @@ bool Classifier::classify(	const Feature::Source::Set& featureSources,
 	int numberOfTrees = static_cast<int>(m_rtrees->getRoots().size());
 #ifndef _DEBUG
 #if defined(_OPENMP)
-	omp_set_num_threads(std::max(1, omp_get_max_threads() - 2));
-#pragma omp parallel for
+#pragma omp parallel for num_threads(std::max(1, omp_get_max_threads() - 2))
 #endif
 #endif
 	for (int i = 0; i < static_cast<int>(cloud->size()); ++i)

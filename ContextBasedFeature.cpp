@@ -136,7 +136,10 @@ bool ContextBasedFeature::prepare(	const CorePoints& corePoints,
 	if (!scaled() && !sfWasAlreadyExisting) //with 'kNN' neighbors, we can compute the values right away
 	{
 		unsigned pointCount = corePoints.size();
-		QString logMessage = QString("Computing %1 on cloud %2 with context cloud %3\n(core points: %4)").arg(typeStr).arg(corePoints.cloud->getName()).arg(cloud1Label).arg(pointCount);
+		QString logMessage = "Computing " + typeStr
+							 + " on cloud " + corePoints.cloud->getName() + " (" + QString::number(pointCount) + " points)"
+							 + " with context cloud " + cloud1Label
+							 + " (class " + QString::number(ctxClassLabel) + ")";
 
 		//first: look for the number of points in the relevent class
 		const ScalarType fClass = static_cast<ScalarType>(ctxClassLabel);
@@ -165,7 +168,7 @@ bool ContextBasedFeature::prepare(	const CorePoints& corePoints,
 			}
 
 			//compute the octree
-			ccLog::Print(QString("Computing octree of class %1 points (%2 points)").arg(ctxClassLabel).arg(classCount));
+			ccLog::Print(QString("Computing octree of class %1 (%2 points)").arg(ctxClassLabel).arg(classCount));
 			ccOctree::Shared classOctree = classCloud.computeOctree(progressCb);
 			if (!classOctree)
 			{
@@ -191,8 +194,7 @@ bool ContextBasedFeature::prepare(	const CorePoints& corePoints,
 			bool cancelled = false;
 #ifndef _DEBUG
 #if defined(_OPENMP)
-			omp_set_num_threads(std::max(1, omp_get_max_threads() - 2));
-#pragma omp parallel for
+#pragma omp parallel for num_threads(std::max(1, omp_get_max_threads() - 2))
 #endif
 #endif
 			for (int i = 0; i < static_cast<int>(pointCount); ++i)

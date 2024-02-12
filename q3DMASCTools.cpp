@@ -1223,20 +1223,21 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 			unsigned char octreeLevel = octree->findBestLevelForAGivenNeighbourhoodSizeExtraction(largestRadius);
 
 			unsigned pointCount = corePoints.size();
-			QString logMessage = QString("Computing %1 features on cloud %2\n(core points: %3)").arg(fas.featureCount).arg(sourceCloud->getName()).arg(pointCount);
+			QString logMessage = QString("Computing %1 features on cloud %2 (%3 core points)").arg(fas.featureCount).arg(sourceCloud->getName()).arg(pointCount);
 			if (progressCb)
 			{
 				progressCb->setMethodTitle("Compute features");
 				progressCb->setInfo(qPrintable(logMessage));
 			}
-			ccLog::Print(logMessage);
+			ccLog::Print(logMessage + " , nb threads " + QString::number(omp_get_max_threads() - 2) + ", nb points " + QString::number(pointCount));
 			CCCoreLib::NormalizedProgress nProgress(progressCb, pointCount);
+			nProgress.reset();
 
 			QMutex mutex;
+
 #ifndef _DEBUG
 #if defined(_OPENMP)
-			omp_set_num_threads(std::max(1, omp_get_max_threads() - 2));
-#pragma omp parallel for
+#pragma omp parallel for num_threads(std::max(1, omp_get_max_threads() - 2))
 #endif
 #endif
 			for (int i = 0; i < static_cast<int>(pointCount); ++i)
@@ -1372,10 +1373,10 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 						{
 							break;
 						}
-					} //for each scale
 
+					} //for each scale
 				}
-			
+
 				if (progressCb)
 				{
 					mutex.lock();
@@ -1385,15 +1386,15 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 					{
 						//process cancelled by the user
 						ccLog::Warning("Process cancelled");
-						errorStr = "Process cancelled";
+						errorStr = "Process cancelled, iteration " + QString::number(i);
 						success = false;
 						break;
 					}
 				}
-
 			} //for each point
-		
+
 		} //for each cloud
+
 	}
 
 	for (const Feature::Shared& feature : features)
