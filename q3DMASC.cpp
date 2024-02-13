@@ -372,7 +372,7 @@ void q3DMASCPlugin::doTrainAction()
 			masc::TrainParameters tempParams;
 			if (!masc::Tools::LoadTrainingFile(inputFilename, featuresTest, scalesTest, loadedCloudsTest, tempParams))
 			{
-				m_app->dispToConsole("Failed to load the training file (for test)", ccMainAppInterface::ERR_CONSOLE_MESSAGE);
+				m_app->dispToConsole("Failed to load the training file (for TEST)", ccMainAppInterface::ERR_CONSOLE_MESSAGE);
 				return;
 			}
 		}

@@ -424,8 +424,7 @@ static bool ComputeMathOpWithNearestNeighbor(	const CorePoints& corePoints,
 	error.clear();
 #ifndef _DEBUG
 #if defined(_OPENMP)
-	omp_set_num_threads(std::max(1, omp_get_max_threads() - 2));
-#pragma omp parallel for
+#pragma omp parallel for num_threads(std::max(1, omp_get_max_threads() - 2))
 #endif
 #endif
 	for (int i = 0; i < static_cast<int>(pointCount); ++i)
