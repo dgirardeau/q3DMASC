@@ -23,9 +23,6 @@
 //qCC_db
 #include <ccScalarField.h>
 
-//CCPluginAPI
-#include <ccQtHelpers.h>
-
 //Qt
 #include <QMutex>
 
@@ -197,10 +194,12 @@ bool ContextBasedFeature::prepare(	const CorePoints& corePoints,
 			bool cancelled = false;
 #ifndef _DEBUG
 #if defined(_OPENMP)
-#pragma omp parallel for num_threads(ccQtHelpers::GetMaxThreadCount(omp_get_max_threads()))
+#pragma omp parallel for num_threads(omp_get_max_threads())
 #endif
 #endif
 			for (int i = 0; i < static_cast<int>(pointCount); ++i)
+			{
+			if (!cancelled)
 			{
 				const CCVector3* P = corePoints.cloud->getPoint(i);
 				CCCoreLib::ReferenceCloud Yk(&classCloud);
@@ -262,9 +261,9 @@ bool ContextBasedFeature::prepare(	const CorePoints& corePoints,
 					{
 						//process cancelled by the user
 						errorMessage = "Process cancelled";
-						break;
 					}
 				}
+			}
 			}
 
 			if (progressCb)

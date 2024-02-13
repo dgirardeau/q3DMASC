@@ -89,9 +89,6 @@ constexpr const char* LAS_FIELD_NAMES[22] = {"X",
 //CCLib
 #include <WeibullDistribution.h>
 
-//CCPluginAPI
-#include <ccQtHelpers.h>
-
 //system
 #include <assert.h>
 
@@ -427,10 +424,13 @@ static bool ComputeMathOpWithNearestNeighbor(	const CorePoints& corePoints,
 	error.clear();
 #ifndef _DEBUG
 #if defined(_OPENMP)
-#pragma omp parallel for num_threads(ccQtHelpers::GetMaxThreadCount(omp_get_max_threads()))
+	bool cancelled = false;
+#pragma omp parallel for num_threads(omp_get_max_threads())
 #endif
 #endif
 	for (int i = 0; i < static_cast<int>(pointCount); ++i)
+	{
+	if (!cancelled)
 	{
 		const CCVector3* P = corePoints.cloud->getPoint(i);
 		CCCoreLib::ReferenceCloud Yk(&cloud2);
@@ -474,15 +474,15 @@ static bool ComputeMathOpWithNearestNeighbor(	const CorePoints& corePoints,
 		if (progressCb)
 		{
 			mutex.lock();
-			bool cancelled = !nProgress.oneStep();
+			cancelled = !nProgress.oneStep();
 			mutex.unlock();
 			if (cancelled)
 			{
 				//process cancelled by the user
 				error = "Process cancelled";
-				break;
 			}
 		}
+	}
 	}
 
 	outSF->computeMinAndMax();

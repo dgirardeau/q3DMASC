@@ -30,9 +30,6 @@
 #include <ccScalarField.h>
 #include <ccPointCloud.h>
 
-//CCPluginAPI
-#include <ccQtHelpers.h>
-
 //qPDALIO
 #include "../../../core/IO/qPDALIO/include/LASFields.h"
 
@@ -1226,25 +1223,28 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 			unsigned char octreeLevel = octree->findBestLevelForAGivenNeighbourhoodSizeExtraction(largestRadius);
 
 			unsigned pointCount = corePoints.size();
-			QString logMessage = QString("Computing %1 features on cloud %2 (%3 core points)").arg(fas.featureCount).arg(sourceCloud->getName()).arg(pointCount);
+			QString logMessage = QString("Computing %1 features on cloud %2 at %3 core points").arg(fas.featureCount).arg(sourceCloud->getName()).arg(pointCount);
 			if (progressCb)
 			{
 				progressCb->setMethodTitle("Compute features");
 				progressCb->setInfo(qPrintable(logMessage));
 			}
-			ccLog::Print(logMessage + ", nb points " + QString::number(pointCount));
+			ccLog::Print(logMessage);
 			CCCoreLib::NormalizedProgress nProgress(progressCb, pointCount);
 
 			QMutex mutex;
 
 #ifndef _DEBUG
 #if defined(_OPENMP)
-			int num_threads = ccQtHelpers::GetMaxThreadCount(omp_get_max_threads());
+			int num_threads = omp_get_max_threads();
 			ccLog::Print("Using OpenMP with " + QString::number(num_threads) +  " threads ");
+			bool cancelled = false;
 #pragma omp parallel for num_threads(num_threads)
 #endif
 #endif
 			for (int i = 0; i < static_cast<int>(pointCount); ++i)
+			{
+			if (!cancelled)
 			{
 				//spherical neighborhood extraction structure
 				CCCoreLib::DgmOctree::NearestNeighboursSearchStruct nNSS;
@@ -1384,7 +1384,7 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 				if (progressCb)
 				{
 					mutex.lock();
-					bool cancelled = !nProgress.oneStep();
+					cancelled = !nProgress.oneStep();
 					mutex.unlock();
 					if (cancelled)
 					{
@@ -1392,9 +1392,9 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 						ccLog::Warning("Process cancelled");
 						errorStr = "Process cancelled, iteration " + QString::number(i);
 						success = false;
-						break;
 					}
 				}
+			}
 			} //for each point
 
 		} //for each cloud

@@ -32,7 +32,6 @@
 
 //CCPluginAPI
 #include <ccMainAppInterface.h>
-#include <ccQtHelpers.h>
 
 //Qt
 #include <QCoreApplication>
@@ -210,10 +209,12 @@ bool Classifier::classify(	const Feature::Source::Set& featureSources,
 	int numberOfTrees = static_cast<int>(m_rtrees->getRoots().size());
 #ifndef _DEBUG
 #if defined(_OPENMP)
-#pragma omp parallel for num_threads(ccQtHelpers::GetMaxThreadCount(omp_get_max_threads()))
+	bool cancelled = false;
+#pragma omp parallel for num_threads(omp_get_max_threads())
 #endif
 #endif
 	for (int i = 0; i < static_cast<int>(cloud->size()); ++i)
+	{
 	{
 		//allocate the data matrix
 		cv::Mat test_data;
@@ -225,9 +226,11 @@ bool Classifier::classify(	const Feature::Source::Set& featureSources,
 		{
 			errorMessage = cvex.msg.c_str();
 			success = false;
-			break;
+			cancelled = true;
 		}
 
+		if (!cancelled)
+		{
 		for (int fIndex = 0; fIndex < attributesPerSample; ++fIndex)
 		{
 			double value = wrappers[fIndex]->pointValue(i);
@@ -258,8 +261,10 @@ bool Classifier::classify(	const Feature::Source::Set& featureSources,
 		{
 			//process cancelled by the user
 			success = false;
-			break;
+			cancelled = true;
 		}
+		}
+	}
 	}
 
 	classificationSF->computeMinAndMax();
