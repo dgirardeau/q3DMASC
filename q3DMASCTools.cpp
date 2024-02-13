@@ -30,6 +30,9 @@
 #include <ccScalarField.h>
 #include <ccPointCloud.h>
 
+//CCPluginAPI
+#include <ccQtHelpers.h>
+
 //qPDALIO
 #include "../../../core/IO/qPDALIO/include/LASFields.h"
 
@@ -1229,15 +1232,16 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 				progressCb->setMethodTitle("Compute features");
 				progressCb->setInfo(qPrintable(logMessage));
 			}
-			ccLog::Print(logMessage + " , nb threads " + QString::number(omp_get_max_threads() - 2) + ", nb points " + QString::number(pointCount));
+			ccLog::Print(logMessage + ", nb points " + QString::number(pointCount));
 			CCCoreLib::NormalizedProgress nProgress(progressCb, pointCount);
-			nProgress.reset();
 
 			QMutex mutex;
 
 #ifndef _DEBUG
 #if defined(_OPENMP)
-#pragma omp parallel for num_threads(std::max(1, omp_get_max_threads() - 2))
+			int num_threads = ccQtHelpers::GetMaxThreadCount(omp_get_max_threads());
+			ccLog::Print("Using OpenMP with " + QString::number(num_threads) +  " threads ");
+#pragma omp parallel for num_threads(num_threads)
 #endif
 #endif
 			for (int i = 0; i < static_cast<int>(pointCount); ++i)

@@ -30,8 +30,9 @@
 //qPDALIO
 #include "../../../core/IO/qPDALIO/include/LASFields.h"
 
-//qCC_plugins
+//CCPluginAPI
 #include <ccMainAppInterface.h>
+#include <ccQtHelpers.h>
 
 //Qt
 #include <QCoreApplication>
@@ -209,7 +210,7 @@ bool Classifier::classify(	const Feature::Source::Set& featureSources,
 	int numberOfTrees = static_cast<int>(m_rtrees->getRoots().size());
 #ifndef _DEBUG
 #if defined(_OPENMP)
-#pragma omp parallel for num_threads(std::max(1, omp_get_max_threads() - 2))
+#pragma omp parallel for num_threads(ccQtHelpers::GetMaxThreadCount(omp_get_max_threads()))
 #endif
 #endif
 	for (int i = 0; i < static_cast<int>(cloud->size()); ++i)

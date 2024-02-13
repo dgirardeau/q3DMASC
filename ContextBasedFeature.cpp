@@ -23,6 +23,9 @@
 //qCC_db
 #include <ccScalarField.h>
 
+//CCPluginAPI
+#include <ccQtHelpers.h>
+
 //Qt
 #include <QMutex>
 
@@ -194,7 +197,7 @@ bool ContextBasedFeature::prepare(	const CorePoints& corePoints,
 			bool cancelled = false;
 #ifndef _DEBUG
 #if defined(_OPENMP)
-#pragma omp parallel for num_threads(std::max(1, omp_get_max_threads() - 2))
+#pragma omp parallel for num_threads(ccQtHelpers::GetMaxThreadCount(omp_get_max_threads()))
 #endif
 #endif
 			for (int i = 0; i < static_cast<int>(pointCount); ++i)
