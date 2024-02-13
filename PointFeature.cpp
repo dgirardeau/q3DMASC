@@ -425,7 +425,7 @@ static bool ComputeMathOpWithNearestNeighbor(	const CorePoints& corePoints,
 #ifndef _DEBUG
 #if defined(_OPENMP)
 	bool cancelled = false;
-#pragma omp parallel for num_threads(omp_get_max_threads())
+#pragma omp parallel for
 #endif
 #endif
 	for (int i = 0; i < static_cast<int>(pointCount); ++i)
@@ -479,7 +479,7 @@ static bool ComputeMathOpWithNearestNeighbor(	const CorePoints& corePoints,
 			if (cancelled)
 			{
 				//process cancelled by the user
-				error = "Process cancelled";
+				error = "[Point feature] Process cancelled";
 			}
 		}
 	}

@@ -260,7 +260,7 @@ bool ContextBasedFeature::prepare(	const CorePoints& corePoints,
 					if (cancelled)
 					{
 						//process cancelled by the user
-						errorMessage = "Process cancelled";
+						errorMessage = "[ContextBasedFeature] Process cancelled";
 					}
 				}
 			}

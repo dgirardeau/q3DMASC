@@ -618,11 +618,11 @@ void q3DMASCPlugin::doTrainAction()
 						//prepare the features and the test cloud
 						if (!toPrepareTest.empty())
 						{
-							progressDlg.show();
-							QString error;
 							masc::CorePoints corePointsTest;
 							corePointsTest.cloud = corePointsTest.origin = testCloud;
 							corePointsTest.role = mainCloudLabel;
+							progressDlg.show();
+							QString error;
 							if (!masc::Tools::PrepareFeatures(corePointsTest, toPrepareTest, error, &progressDlg, &generatedScalarFieldsTest))
 							{
 								m_app->dispToConsole(error, ccMainAppInterface::ERR_CONSOLE_MESSAGE);

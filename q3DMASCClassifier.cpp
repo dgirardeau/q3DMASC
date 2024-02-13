@@ -210,7 +210,7 @@ bool Classifier::classify(	const Feature::Source::Set& featureSources,
 #ifndef _DEBUG
 #if defined(_OPENMP)
 	bool cancelled = false;
-#pragma omp parallel for num_threads(omp_get_max_threads())
+#pragma omp parallel for
 #endif
 #endif
 	for (int i = 0; i < static_cast<int>(cloud->size()); ++i)
