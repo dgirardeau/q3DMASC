@@ -127,7 +127,7 @@ bool ContextBasedFeature::prepare(	const CorePoints& corePoints,
 	sf = PrepareSF(corePoints.cloud, qPrintable(resultSFName), generatedScalarFields, SFCollector::CAN_REMOVE);
 	if (!sf)
 	{
-		errorMessage = QString("Failed to prepare scalar %1 @ scale %2").arg(resultSFName).arg(scale);
+		errorMessage = QString("[ContextBasedFeature::prepare] Failed to prepare scalar %1 @ scale %2").arg(resultSFName).arg(scale);
 		return false;
 	}
 	source.name = sf->getName();
@@ -172,7 +172,7 @@ bool ContextBasedFeature::prepare(	const CorePoints& corePoints,
 			ccOctree::Shared classOctree = classCloud.computeOctree(progressCb);
 			if (!classOctree)
 			{
-				errorMessage = "Failed to compute octree (not enough memory?)";
+				errorMessage = "[ContextBasedFeature::prepare] Failed to compute octree (not enough memory?)";
 				return false;
 			}
 

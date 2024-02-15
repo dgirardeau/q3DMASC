@@ -1212,7 +1212,7 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 				octree = sourceCloud->computeOctree(progressCb);
 				if (!octree)
 				{
-					errorStr = "Failed to compute octree (not enough memory?)";
+					errorStr = "[Tools::PrepareFeatures] Failed to compute octree (not enough memory?)";
 					return false;
 				}
 			}
@@ -1245,6 +1245,7 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 			if (!cancelled)
 			{
 				QString localErrorStr;
+				bool localSuccess = true;
 
 				//spherical neighborhood extraction structure
 				CCCoreLib::DgmOctree::NearestNeighboursSearchStruct nNSS;
@@ -1290,13 +1291,14 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 						//Point features
 						for (PointFeature::Shared& feature : fas.pointFeaturesPerScale[currentScale])
 						{
-							if (feature->cloud1 == sourceCloud && feature->statSF1 && feature->field1)
+							if (feature->cloud1 == sourceCloud && feature->statSF1 && feature->field1 && localSuccess)
 							{
 								double outputValue = 0;
 								if (!feature->computeStat(nNSS.pointsInNeighbourhood, feature->field1, outputValue))
 								{
 									//an error occurred
-									success = false;
+									localErrorStr = "An error occurred during the computation of feature " + feature->toString() + "on cloud " + feature->cloud1->getName();
+									localSuccess = false;
 									break;
 								}
 
@@ -1304,14 +1306,15 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 								feature->statSF1->setValue(i, v1);
 							}
 
-							if (feature->cloud2 == sourceCloud && feature->statSF2 && feature->field2)
+							if (feature->cloud2 == sourceCloud && feature->statSF2 && feature->field2 && localSuccess)
 							{
 								assert(feature->op != Feature::NO_OPERATION);
 								double outputValue = 0;
 								if (!feature->computeStat(nNSS.pointsInNeighbourhood, feature->field2, outputValue))
 								{
 									//an error occurred
-									success = false;
+									localErrorStr = "An error occurred during the computation of feature " + feature->toString() + "on cloud " + feature->cloud2->getName();
+									localSuccess = false;
 									break;
 								}
 
@@ -1323,14 +1326,14 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 						//Neighborhood features
 						for (NeighborhoodFeature::Shared& feature : fas.neighborhoodFeaturesPerScale[currentScale])
 						{
-							if (feature->cloud1 == sourceCloud && feature->sf1)
+							if (feature->cloud1 == sourceCloud && feature->sf1 && localSuccess)
 							{
 								double outputValue = 0;
 								if (!feature->computeValue(nNSS.pointsInNeighbourhood, nNSS.queryPoint, outputValue))
 								{
 									//an error occurred
 									localErrorStr = "An error occurred during the computation of feature " + feature->toString() + "on cloud " + feature->cloud1->getName();
-									success = false;
+									localSuccess = false;
 									break;
 								}
 
@@ -1338,7 +1341,7 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 								feature->sf1->setValue(i, v1);
 							}
 
-							if (feature->cloud2 == sourceCloud && feature->sf2)
+							if (feature->cloud2 == sourceCloud && feature->sf2 && localSuccess)
 							{
 								assert(feature->op != Feature::NO_OPERATION);
 								double outputValue = 0;
@@ -1346,7 +1349,7 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 								{
 									//an error occurred
 									localErrorStr = "An error occurred during the computation of feature " + feature->toString() + "on cloud " + feature->cloud2->getName();
-									success = false;
+									localSuccess = false;
 									break;
 								}
 
@@ -1358,14 +1361,14 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 						//Context-based features
 						for (ContextBasedFeature::Shared& feature : fas.contextBasedFeaturesPerScale[currentScale])
 						{
-							if (feature->cloud1 == sourceCloud && feature->sf)
+							if (feature->cloud1 == sourceCloud && feature->sf && localSuccess)
 							{
 								ScalarType outputValue = 0;
 								if (!feature->computeValue(nNSS.pointsInNeighbourhood, nNSS.queryPoint, outputValue))
 								{
 									//an error occurred
 									localErrorStr = "An error occurred during the computation of feature " + feature->toString() + "on cloud " + feature->cloud1->getName();
-									success = false;
+									localSuccess = false;
 									break;
 								}
 
@@ -1373,37 +1376,42 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 							}
 						}
 
-						if (!success)
+						if (!localSuccess)
 						{
-							ccLog::Warning(localErrorStr);
-							ccLog::Warning("(!success) with currentScale  " + QString::number(currentScale) + " point " + QString::number(i));
+							localErrorStr = localErrorStr + " at scale  " + QString::number(currentScale) + " on point " + QString::number(i);
+							break;
 						}
 
 					} //for each scale
 				}
 
-				if (!success)
+				if (!localSuccess)
 				{
 					mutex.lock();
 					cancelled = true;
-					errorStr = "Process cancelled (features computation not successful), point " + QString::number(i) + " (using OpenMP with " + QString::number(omp_get_num_threads()) +  " threads)";
-					ccLog::Warning(errorStr);
+					success = false;
+					errorStr = "Feature computation failed for point " + QString::number(i) + " (using OpenMP with " + QString::number(omp_get_num_threads()) +  " threads)";
+					ccLog::Error(localErrorStr);
 					mutex.unlock();
 				}
 
+				mutex.lock();
 				if (progressCb)
 				{
-					mutex.lock();
-					cancelled = !nProgress.oneStep();
-					if (cancelled)
+					if (!cancelled)
 					{
-						//process cancelled by the user
-						errorStr = "Process cancelled, point " + QString::number(i) + " (using OpenMP with " + QString::number(omp_get_num_threads()) +  " threads)";
-						ccLog::Warning(errorStr);
-						success = false;
+						cancelled = !nProgress.oneStep();
+						if (cancelled)
+						{
+							//process cancelled by the user
+							errorStr = "Process cancelled at point " + QString::number(i) + " (using OpenMP with " + QString::number(omp_get_num_threads()) +  " threads)";
+							ccLog::Warning(errorStr);
+							ccLog::Error(localErrorStr);
+							success = false;
+						}
 					}
-					mutex.unlock();
 				}
+				mutex.unlock();
 			}
 			} //for each point
 
