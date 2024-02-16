@@ -43,7 +43,6 @@
 
 //system
 #include <assert.h>
-#include <iostream>
 
 #if defined(_OPENMP)
 #include <omp.h>
@@ -1085,7 +1084,7 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 				{
 					//build the scaled feature list attached to the first cloud
 					if (feature->cloud1
-						&& !static_cast<PointFeature*>(feature.data())->statSF1WasAlreadyExisting) // nothing to compute if the scalar field was already there
+						&& !feature->sf1WasAlreadyExisting) // nothing to compute if the scalar field was already there
 					{
 						FeaturesAndScales& fas = cloudsWithScaledFeatures[feature->cloud1];
 						fas.pointFeaturesPerScale[feature->scale].push_back(qSharedPointerCast<PointFeature>(feature));
@@ -1100,9 +1099,9 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 						&& feature->cloud2 != feature->cloud1
 						&& feature->op != Feature::NO_OPERATION)
 					{
-						if(!static_cast<PointFeature*>(feature.data())->statSF1WasAlreadyExisting) // nothing to compute if the scalar field was already there
+						if(!feature->sf1WasAlreadyExisting) // nothing to compute if the scalar field was already there
 						{
-							if (!static_cast<PointFeature*>(feature.data())->statSF2WasAlreadyExisting)
+							if (!feature->sf2WasAlreadyExisting)
 							{
 								FeaturesAndScales& fas = cloudsWithScaledFeatures[feature->cloud2];
 								++fas.featureCount;
@@ -1122,7 +1121,7 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 				{
 					//build the scaled feature list attached to the first cloud
 					if (feature->cloud1
-						&& !static_cast<NeighborhoodFeature*>(feature.data())->sf1WasAlreadyExisting) // nothing to compute if the scalar field was already there
+						&& !feature->sf1WasAlreadyExisting) // nothing to compute if the scalar field was already there
 					{
 						FeaturesAndScales& fas = cloudsWithScaledFeatures[feature->cloud1];
 						fas.neighborhoodFeaturesPerScale[feature->scale].push_back(qSharedPointerCast<NeighborhoodFeature>(feature));
@@ -1138,9 +1137,9 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 						&& feature->cloud2 != feature->cloud1
 						&& feature->op != Feature::NO_OPERATION)
 					{
-						if (!static_cast<NeighborhoodFeature*>(feature.data())->sf1WasAlreadyExisting) // nothing to compute if the scalar field was already there
+						if (!feature->sf1WasAlreadyExisting) // nothing to compute if the scalar field was already there
 						{
-							if (!static_cast<NeighborhoodFeature*>(feature.data())->sf2WasAlreadyExisting)
+							if (!feature->sf2WasAlreadyExisting)
 							{
 								FeaturesAndScales& fas = cloudsWithScaledFeatures[feature->cloud2];
 								fas.neighborhoodFeaturesPerScale[feature->scale].push_back(qSharedPointerCast<NeighborhoodFeature>(feature));
@@ -1160,7 +1159,7 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 				{
 					//build the scaled feature list attached to the context cloud
 					if (feature->cloud1
-						&& !static_cast<ContextBasedFeature*>(feature.data())->sfWasAlreadyExisting) // nothing to compute if the scalar field was already there
+						&& !feature->sf1WasAlreadyExisting) // nothing to compute if the scalar field was already there
 					{
 						FeaturesAndScales& fas = cloudsWithScaledFeatures[feature->cloud1];
 						fas.contextBasedFeaturesPerScale[feature->scale].push_back(qSharedPointerCast<ContextBasedFeature>(feature));
@@ -1233,10 +1232,10 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 			CCCoreLib::NormalizedProgress nProgress(progressCb, pointCount);
 
 			QMutex mutex;
+			bool cancelled = false;
 
 #ifndef _DEBUG
 #if defined(_OPENMP)
-			bool cancelled = false;
 #pragma omp parallel for
 #endif
 #endif

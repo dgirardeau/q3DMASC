@@ -162,6 +162,8 @@ namespace masc
 			, source(p_source, p_sourceName)
 			, stat(NO_STAT)
 			, op(NO_OPERATION)
+			, sf1WasAlreadyExisting(false)
+			, sf2WasAlreadyExisting(false)
 		{}
 
 		//! Returns the type (must be reimplemented by child struct)
@@ -236,5 +238,8 @@ namespace masc
 	
 		Stat stat; //only considered if a scale is defined
 		Operation op; //only considered if 2 clouds are defined
+
+		bool sf1WasAlreadyExisting;
+		bool sf2WasAlreadyExisting; // only considered if a second scalar field may be necessary (PointFeature, NeighborhoodFeature)
 	};
 }

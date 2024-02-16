@@ -422,9 +422,9 @@ static bool ComputeMathOpWithNearestNeighbor(	const CorePoints& corePoints,
 	double meanNeighborhoodSize = 0;
 	int tenth = pointCount / 10;
 	error.clear();
+	bool cancelled = false;
 #ifndef _DEBUG
 #if defined(_OPENMP)
-	bool cancelled = false;
 #pragma omp parallel for
 #endif
 #endif
@@ -584,8 +584,8 @@ bool PointFeature::prepare(	const CorePoints& corePoints,
 		resultSF1Name += "@" + QString::number(scale);
 
 		//prepare the corresponding scalar field
-		statSF1WasAlreadyExisting = CheckSFExistence(corePoints.cloud, qPrintable(resultSF1Name));
-		if (statSF1WasAlreadyExisting)
+		sf1WasAlreadyExisting = CheckSFExistence(corePoints.cloud, qPrintable(resultSF1Name));
+		if (sf1WasAlreadyExisting)
 		{
 			// if the SF exists, it is not added to generatedScalarFields
 			statSF1 = PrepareSF(corePoints.cloud, qPrintable(resultSF1Name), generatedScalarFields, SFCollector::ALWAYS_KEEP);
@@ -601,14 +601,14 @@ bool PointFeature::prepare(	const CorePoints& corePoints,
 		}
 		source.name = statSF1->getName();
 
-		if (field2 && op != Feature::NO_OPERATION && !statSF1WasAlreadyExisting) // nothing to do if statSF1 was already there
+		if (field2 && op != Feature::NO_OPERATION && !sf1WasAlreadyExisting) // nothing to do if statSF1 was already there
 		{
 			QString resultSF2Name = field2->getName() + QString("_") + cloud2Label + "_" + Feature::StatToString(stat) + "@" + QString::number(scale);
 			//keepStatSF2 = (corePoints.cloud->getScalarFieldIndexByName(qPrintable(resultSFName2)) >= 0); //we remember that the scalar field was already existing!
 
 			assert(!statSF2);
-			statSF2WasAlreadyExisting = CheckSFExistence(corePoints.cloud, qPrintable(resultSF2Name));
-			if (statSF2WasAlreadyExisting)
+			sf2WasAlreadyExisting = CheckSFExistence(corePoints.cloud, qPrintable(resultSF2Name));
+			if (sf2WasAlreadyExisting)
 				statSF2 = PrepareSF(corePoints.cloud, qPrintable(resultSF2Name), generatedScalarFields, SFCollector::ALWAYS_KEEP);
 			else
 				statSF2 = PrepareSF(corePoints.cloud, qPrintable(resultSF2Name), generatedScalarFields, SFCollector::ALWAYS_REMOVE);
@@ -863,7 +863,7 @@ bool PointFeature::finish(const CorePoints& corePoints, QString& error)
 		}
 	}
 
-	if (statSF2 && !statSF1WasAlreadyExisting)
+	if (statSF2 && !sf1WasAlreadyExisting)
 	{
 		//now perform the math operation
 		if (op != Feature::NO_OPERATION)

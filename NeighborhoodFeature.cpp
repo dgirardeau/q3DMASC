@@ -111,7 +111,6 @@ bool NeighborhoodFeature::prepare(	const CorePoints& corePoints,
 	if (cloud2 && op != Feature::NO_OPERATION && !sf1WasAlreadyExisting)
 	{
 		QString resultSFName2 = ToString(type) + "_" + cloud2Label + "@" + QString::number(scale);
-		keepSF2 = (corePoints.cloud->getScalarFieldIndexByName(qPrintable(resultSFName2)) >= 0); //we remember that the scalar field was already existing!
 
 		assert(!sf2);
 

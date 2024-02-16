@@ -207,9 +207,10 @@ bool Classifier::classify(	const Feature::Source::Set& featureSources,
 
 	bool success = true;
 	int numberOfTrees = static_cast<int>(m_rtrees->getRoots().size());
+	bool cancelled = false;
+
 #ifndef _DEBUG
 #if defined(_OPENMP)
-	bool cancelled = false;
 #pragma omp parallel for
 #endif
 #endif
