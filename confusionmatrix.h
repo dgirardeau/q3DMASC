@@ -25,10 +25,8 @@ public:
 		F1_SCORE = 2
 	};
 
-	explicit ConfusionMatrix(	const std::vector<ScalarType>& actual,
-								const std::vector<ScalarType>& predicted,
-								QWidget *parent = nullptr,
-								ccMainAppInterface* app = nullptr);
+	explicit ConfusionMatrix(const std::vector<ScalarType>& actual,
+								const std::vector<ScalarType>& predicted);
 	~ConfusionMatrix() override;
 
 	void computePrecisionRecallF1Score(cv::Mat& matrix, cv::Mat& precisionRecallF1Score, cv::Mat &vec_TP_FN);

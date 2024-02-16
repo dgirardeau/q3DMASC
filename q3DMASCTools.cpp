@@ -1231,7 +1231,6 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 			ccLog::Print(logMessage);
 			CCCoreLib::NormalizedProgress nProgress(progressCb, pointCount);
 
-			QMutex mutex;
 			bool cancelled = false;
 
 #ifndef _DEBUG
@@ -1386,15 +1385,12 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 
 				if (!localSuccess)
 				{
-					mutex.lock();
 					cancelled = true;
 					success = false;
 					errorStr = "Feature computation failed for point " + QString::number(i) + " (using OpenMP with " + QString::number(omp_get_num_threads()) +  " threads)";
 					ccLog::Error(localErrorStr);
-					mutex.unlock();
 				}
 
-				mutex.lock();
 				if (progressCb)
 				{
 					if (!cancelled)
@@ -1405,12 +1401,10 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 							//process cancelled by the user
 							errorStr = "Process cancelled at point " + QString::number(i) + " (using OpenMP with " + QString::number(omp_get_num_threads()) +  " threads)";
 							ccLog::Warning(errorStr);
-							ccLog::Error(localErrorStr);
 							success = false;
 						}
 					}
 				}
-				mutex.unlock();
 			}
 			} //for each point
 

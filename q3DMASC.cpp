@@ -425,7 +425,6 @@ void q3DMASCPlugin::doTrainAction()
 	//compute the core points (if necessary)
 	ccProgressDialog progressDlg(true, m_app->getMainWindow());
 	progressDlg.setAutoClose(false);
-	ccLog::Error("Qt::WA_DeleteOnClose "  + QString::number(progressDlg.testAttribute(Qt::WA_DeleteOnClose)));
 	if (!corePoints.prepare(&progressDlg))
 	{
 		m_app->dispToConsole("Failed to compute/prepare the core points!", ccMainAppInterface::ERR_CONSOLE_MESSAGE);

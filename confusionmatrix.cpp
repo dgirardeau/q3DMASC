@@ -32,8 +32,7 @@ QColor getColor(double value, double r1, double g1, double b1)
 	return QColor(r, g, b);
 }
 
-ConfusionMatrix::ConfusionMatrix(const std::vector<ScalarType> &actual, const std::vector<ScalarType> &predicted, QWidget *parent, ccMainAppInterface *app) :
-	QWidget(parent),
+ConfusionMatrix::ConfusionMatrix(const std::vector<ScalarType> &actual, const std::vector<ScalarType> &predicted) :
 	ui(new Ui::ConfusionMatrix)
 {
 	ui->setupUi(this);
@@ -41,10 +40,6 @@ ConfusionMatrix::ConfusionMatrix(const std::vector<ScalarType> &actual, const st
 
 	compute(actual, predicted);
 
-	if (app)
-	{
-		this->show();
-	}
 	this->ui->tableWidget->resizeColumnsToContents();
 	this->ui->tableWidget->setSizeAdjustPolicy(QAbstractScrollArea::AdjustToContents);
 	QSize tableSize = this->ui->tableWidget->sizeHint();

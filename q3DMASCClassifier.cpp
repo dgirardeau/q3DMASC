@@ -481,7 +481,12 @@ bool Classifier::evaluate(const Feature::Source::Set& featureSources,
 		metrics.ratio = static_cast<float>(metrics.goodGuess) / metrics.sampleCount;
 	}
 
-	train3DMASCDialog.addConfusionMatrixAndSaveTraces(new ConfusionMatrix(actualClass, predictectedClass, nullptr, app));
+	ConfusionMatrix* confusionMatrix = new ConfusionMatrix(actualClass, predictectedClass);
+	train3DMASCDialog.addConfusionMatrixAndSaveTraces(confusionMatrix);
+	if (app)
+	{
+		confusionMatrix->show();
+	}
 
 	//show the Classification_prediction field by default
 	if (outSF)
