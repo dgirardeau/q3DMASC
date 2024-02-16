@@ -189,7 +189,7 @@ void q3DMASCPlugin::doClassifyAction()
 		generatedScalarFields.releaseSFs(false);
 		return;
 	}
-	progressDlg.close();
+	progressDlg.hide();
 	QCoreApplication::processEvents();
 
 	//apply classifier
@@ -372,7 +372,7 @@ void q3DMASCPlugin::doTrainAction()
 			masc::TrainParameters tempParams;
 			if (!masc::Tools::LoadTrainingFile(inputFilename, featuresTest, scalesTest, loadedCloudsTest, tempParams))
 			{
-				m_app->dispToConsole("Failed to load the training file (for test)", ccMainAppInterface::ERR_CONSOLE_MESSAGE);
+				m_app->dispToConsole("Failed to load the training file (for TEST)", ccMainAppInterface::ERR_CONSOLE_MESSAGE);
 				return;
 			}
 		}
@@ -391,6 +391,7 @@ void q3DMASCPlugin::doTrainAction()
 
 	//display the loaded features and let the user select the ones to use
 	trainDlg.setResultText("Select features and press 'Run'");
+
 	std::vector<FeatureSelection> originalFeatures;
 	originalFeatures.reserve(features.size());
 	for (const masc::Feature::Shared& f : features)
@@ -398,6 +399,7 @@ void q3DMASCPlugin::doTrainAction()
 		originalFeatures.push_back(FeatureSelection(f));
 		trainDlg.addFeature(f->toString(), originalFeatures.back().importance, originalFeatures.back().selected);
 	}
+
 	for(double scale : scales)
 		trainDlg.addScale(scale, true);
 	trainDlg.connectScaleSelectionToFeatureSelection();
@@ -470,7 +472,8 @@ void q3DMASCPlugin::doTrainAction()
 	//train / test subsets
 	QSharedPointer<CCCoreLib::ReferenceCloud> trainSubset, testSubset;
 	float previousTestSubsetRatio = -1.0f;
-	SFCollector generatedScalarFields, generatedScalarFieldsTest;
+	SFCollector generatedScalarFields;
+	SFCollector generatedScalarFieldsTest;
 
 	//we will train + evaluate the classifier, then display the results
 	//then let the user change parameters and (potentially) start again
@@ -514,7 +517,7 @@ void q3DMASCPlugin::doTrainAction()
 					generatedScalarFieldsTest.releaseSFs(false);
 					return;
 				}
-				progressDlg.close();
+				progressDlg.hide();
 				QCoreApplication::processEvents();
 				m_app->redrawAll();
 
@@ -618,11 +621,13 @@ void q3DMASCPlugin::doTrainAction()
 						//prepare the features and the test cloud
 						if (!toPrepareTest.empty())
 						{
-							progressDlg.show();
-							QString error;
 							masc::CorePoints corePointsTest;
-							corePointsTest.cloud = corePointsTest.origin = testCloud;
+							corePointsTest.cloud = testCloud;
+							corePointsTest.origin = testCloud;
 							corePointsTest.role = mainCloudLabel;
+							progressDlg.show();
+							QCoreApplication::processEvents();
+							QString error;
 							if (!masc::Tools::PrepareFeatures(corePointsTest, toPrepareTest, error, &progressDlg, &generatedScalarFieldsTest))
 							{
 								m_app->dispToConsole(error, ccMainAppInterface::ERR_CONSOLE_MESSAGE);
@@ -630,7 +635,7 @@ void q3DMASCPlugin::doTrainAction()
 								generatedScalarFieldsTest.releaseSFs(false);
 								return;
 							}
-							progressDlg.close();
+							progressDlg.hide();
 							QCoreApplication::processEvents();
 							m_app->redrawAll();
 

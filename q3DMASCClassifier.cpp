@@ -30,7 +30,7 @@
 //qPDALIO
 #include "../../../core/IO/qPDALIO/include/LASFields.h"
 
-//qCC_plugins
+//CCPluginAPI
 #include <ccMainAppInterface.h>
 
 //Qt
@@ -207,13 +207,15 @@ bool Classifier::classify(	const Feature::Source::Set& featureSources,
 
 	bool success = true;
 	int numberOfTrees = static_cast<int>(m_rtrees->getRoots().size());
+	bool cancelled = false;
+
 #ifndef _DEBUG
 #if defined(_OPENMP)
-	omp_set_num_threads(std::max(1, omp_get_max_threads() - 2));
-#pragma omp parallel for
+#pragma omp parallel for num_threads(omp_get_max_threads() - 2)
 #endif
 #endif
 	for (int i = 0; i < static_cast<int>(cloud->size()); ++i)
+	{
 	{
 		//allocate the data matrix
 		cv::Mat test_data;
@@ -225,9 +227,11 @@ bool Classifier::classify(	const Feature::Source::Set& featureSources,
 		{
 			errorMessage = cvex.msg.c_str();
 			success = false;
-			break;
+			cancelled = true;
 		}
 
+		if (!cancelled)
+		{
 		for (int fIndex = 0; fIndex < attributesPerSample; ++fIndex)
 		{
 			double value = wrappers[fIndex]->pointValue(i);
@@ -258,8 +262,10 @@ bool Classifier::classify(	const Feature::Source::Set& featureSources,
 		{
 			//process cancelled by the user
 			success = false;
-			break;
+			cancelled = true;
 		}
+		}
+	}
 	}
 
 	classificationSF->computeMinAndMax();
@@ -475,7 +481,12 @@ bool Classifier::evaluate(const Feature::Source::Set& featureSources,
 		metrics.ratio = static_cast<float>(metrics.goodGuess) / metrics.sampleCount;
 	}
 
-	train3DMASCDialog.addConfusionMatrixAndSaveTraces(new ConfusionMatrix(actualClass, predictectedClass, nullptr, app));
+	ConfusionMatrix* confusionMatrix = new ConfusionMatrix(actualClass, predictectedClass);
+	train3DMASCDialog.addConfusionMatrixAndSaveTraces(confusionMatrix);
+	if (app)
+	{
+		confusionMatrix->show();
+	}
 
 	//show the Classification_prediction field by default
 	if (outSF)

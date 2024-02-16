@@ -151,9 +151,6 @@ namespace masc
 			: type(p_type)
 			, sf1(nullptr)
 			, sf2(nullptr)
-			, keepSF2(false)
-			, sf1WasAlreadyExisting(false)
-			, sf2WasAlreadyExisting(false)
 		{
 		}
 
@@ -177,8 +174,5 @@ namespace masc
 
 		//! Feature values
 		CCCoreLib::ScalarField *sf1, *sf2;
-		bool keepSF2;
-		bool sf1WasAlreadyExisting;
-		bool sf2WasAlreadyExisting;
 	};
 }

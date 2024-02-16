@@ -48,7 +48,7 @@ void SFCollector::releaseSFs(bool keepByDefault)
 
 		if (desc.behavior == ALWAYS_KEEP || (keepByDefault && desc.behavior == CAN_REMOVE))
 		{
-//			ccLog::Warning(QString("[SFCollector] Keep scalar field '%1'").arg(sf->getName()));
+			// ccLog::Warning(QString("[SFCollector] Keep scalar field '%1' on cloud '%2'").arg(sf->getName()).arg(desc.cloud->getName()));
 			//keep this SF
 			continue;
 		}
@@ -56,12 +56,12 @@ void SFCollector::releaseSFs(bool keepByDefault)
 		int sfIdx = desc.cloud->getScalarFieldIndexByName(sf->getName());
 		if (sfIdx >= 0)
 		{
-//			ccLog::Warning(QString("[SFCollector] Remove scalar field '%1'").arg(sf->getName()));
+			// ccLog::Warning(QString("[SFCollector] Remove scalar field '%1' from '%2'").arg(sf->getName()).arg(desc.cloud->getName()));
 			desc.cloud->deleteScalarField(sfIdx);
 		}
 		else
 		{
-			ccLog::Warning(QString("[SFCollector] Scalar field '%1' can't be found anymore, impossible to remove it").arg(sf->getName()));
+			// ccLog::Warning(QString("[SFCollector] Scalar field '%1' can't be found anymore on cloud '%2', impossible to remove it").arg(sf->getName()).arg(desc.cloud->getName()));
 		}
 	}
 

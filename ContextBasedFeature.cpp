@@ -123,20 +123,23 @@ bool ContextBasedFeature::prepare(	const CorePoints& corePoints,
 
 	//and the scalar field
 	assert(!sf);
-	sfWasAlreadyExisting = CheckSFExistence(corePoints.cloud, qPrintable(resultSFName));
+	sf1WasAlreadyExisting = CheckSFExistence(corePoints.cloud, qPrintable(resultSFName));
 	sf = PrepareSF(corePoints.cloud, qPrintable(resultSFName), generatedScalarFields, SFCollector::CAN_REMOVE);
 	if (!sf)
 	{
-		errorMessage = QString("Failed to prepare scalar %1 @ scale %2").arg(resultSFName).arg(scale);
+		errorMessage = QString("[ContextBasedFeature::prepare] Failed to prepare scalar %1 @ scale %2").arg(resultSFName).arg(scale);
 		return false;
 	}
 	source.name = sf->getName();
 
 	// NOT NECESSARY IF THE VALUE IS ALREADY COMPUTED
-	if (!scaled() && !sfWasAlreadyExisting) //with 'kNN' neighbors, we can compute the values right away
+	if (!scaled() && !sf1WasAlreadyExisting) //with 'kNN' neighbors, we can compute the values right away
 	{
 		unsigned pointCount = corePoints.size();
-		QString logMessage = QString("Computing %1 on cloud %2 with context cloud %3\n(core points: %4)").arg(typeStr).arg(corePoints.cloud->getName()).arg(cloud1Label).arg(pointCount);
+		QString logMessage = "Computing " + typeStr
+							 + " on cloud " + corePoints.cloud->getName() + " (" + QString::number(pointCount) + " points)"
+							 + " with context cloud " + cloud1Label
+							 + " (class " + QString::number(ctxClassLabel) + ")";
 
 		//first: look for the number of points in the relevent class
 		const ScalarType fClass = static_cast<ScalarType>(ctxClassLabel);
@@ -165,11 +168,11 @@ bool ContextBasedFeature::prepare(	const CorePoints& corePoints,
 			}
 
 			//compute the octree
-			ccLog::Print(QString("Computing octree of class %1 points (%2 points)").arg(ctxClassLabel).arg(classCount));
+			ccLog::Print(QString("Computing octree of class %1 (%2 points)").arg(ctxClassLabel).arg(classCount));
 			ccOctree::Shared classOctree = classCloud.computeOctree(progressCb);
 			if (!classOctree)
 			{
-				errorMessage = "Failed to compute octree (not enough memory?)";
+				errorMessage = "[ContextBasedFeature::prepare] Failed to compute octree (not enough memory?)";
 				return false;
 			}
 
@@ -191,11 +194,12 @@ bool ContextBasedFeature::prepare(	const CorePoints& corePoints,
 			bool cancelled = false;
 #ifndef _DEBUG
 #if defined(_OPENMP)
-			omp_set_num_threads(std::max(1, omp_get_max_threads() - 2));
-#pragma omp parallel for
+#pragma omp parallel for num_threads(std::max(1, omp_get_max_threads() - 2))
 #endif
 #endif
 			for (int i = 0; i < static_cast<int>(pointCount); ++i)
+			{
+			if (!cancelled)
 			{
 				const CCVector3* P = corePoints.cloud->getPoint(i);
 				CCCoreLib::ReferenceCloud Yk(&classCloud);
@@ -256,10 +260,10 @@ bool ContextBasedFeature::prepare(	const CorePoints& corePoints,
 					if (cancelled)
 					{
 						//process cancelled by the user
-						errorMessage = "Process cancelled";
-						break;
+						errorMessage = "[ContextBasedFeature] Process cancelled";
 					}
 				}
+			}
 			}
 
 			if (progressCb)
