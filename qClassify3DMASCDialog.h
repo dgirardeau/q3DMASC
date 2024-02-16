@@ -42,7 +42,10 @@ public:
 	void writeSettings();
 
 	//! Sets the clouds roles
-	void setCloudRoles(const QList<QString>& roles, QString corePointsLabel);
+	void setCloudRoles(const QList<QString>& roles, QString &corePointsLabel, const QMap<QString, QString> &rolesAndNames);
+
+	//! Preset the combo boxes if possible with the names specified in the parameter file
+	void setComboBoxIndex(QMap<QString, QString> rolesAndNames, QLabel* label, QMap<QString, QVariant> namesAndUniqueIds, QComboBox* comboBox);
 
 	//! Returns the selected point clouds
 	void getClouds(QMap<QString, ccPointCloud*>& clouds) const;

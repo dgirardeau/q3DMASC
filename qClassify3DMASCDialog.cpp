@@ -28,10 +28,7 @@
 #include <QPushButton>
 #include <QComboBox>
 #include <QSettings>
-//#include <QApplication>
 
-//system
-#include <limits>
 
 static ccPointCloud* GetCloudFromCombo(QComboBox* comboBox, ccHObject* dbRoot)
 {
@@ -91,6 +88,8 @@ Classify3DMASCDialog::Classify3DMASCDialog(ccMainAppInterface* app, bool trainMo
 			}
 		}
 
+		testCloudComboBox->addItem("", 0);
+
 		//if 3 clouds are loaded, then there's chances that the first one is the global  cloud!
 		cloud1ComboBox->setCurrentIndex(/*cloudCount > 0 ? (cloudCount > 2 ? 1 : 0) : */-1);
 		connect(cloud1ComboBox, SIGNAL(currentIndexChanged(int)), this, SLOT(onCloudChanged(int)));
@@ -140,70 +139,109 @@ void Classify3DMASCDialog::writeSettings()
 	settings.setValue("keepAttributes", keepAttributesCheckBox->isChecked());
 }
 
-void Classify3DMASCDialog::setCloudRoles(const QList<QString>& roles, QString corePointsLabel)
+void Classify3DMASCDialog::setComboBoxIndex(QMap<QString, QString> rolesAndNames, QLabel* label, QMap<QString, QVariant> namesAndUniqueIds, QComboBox* comboBox)
+{
+	QString name;
+
+	if (label != testLabel)
+	{
+		name = rolesAndNames[label->text()];
+	}
+	else
+	{
+		name = rolesAndNames[QString("TEST")]; // this is because the label text of testLabel is 'TEST on (optional)'
+	}
+	QMap<QString, QVariant>::iterator it = namesAndUniqueIds.find(name);
+	if (it != namesAndUniqueIds.end())
+	{
+		int index = comboBox->findData(it.value());
+		if (index != -1)
+		{
+			comboBox->setCurrentIndex(index);
+		}
+	}
+}
+
+void Classify3DMASCDialog::setCloudRoles(const QList<QString>& roles, QString& corePointsLabel, const QMap<QString, QString>& rolesAndNames)
 {
 	int index = 0;
 	for (const QString& role : roles)
 	{
-		switch (index)
+		if (role != "TEST")
 		{
-		case 0:
-			cloud1Label->setText(role);
-			if (corePointsLabel.isEmpty()) // if "core_points:" is not in the parameter file, the corePointsLabel is the first encountered role
-				corePointsLabel = role;
-//				cloud1RadioButton->setChecked(true);
-			break;
-		case 1:
-			cloud2Label->setText(role);
-			if (corePointsLabel == role)
-//				cloud2RadioButton->setChecked(true);
-			break;
-		case 2:
-			cloud3Label->setText(role);
-			if (corePointsLabel == role)
-//				cloud3RadioButton->setChecked(true);
-			break;
-		case 3:
-			cloud4Label->setText(role);
-			if (corePointsLabel == role)
-//				cloud4RadioButton->setChecked(true);
-			break;
-		default:
-			//this dialog can't handle more than 3 roles!
-			break;
+			switch (index)
+			{
+			case 0:
+				cloud1Label->setText(role);
+				if (corePointsLabel.isEmpty()) // if "core_points:" is not in the parameter file, the corePointsLabel is the first encountered role
+				{
+					corePointsLabel = role;
+				}
+				break;
+			case 1:
+				cloud2Label->setText(role);
+				break;
+			case 2:
+				cloud3Label->setText(role);
+				break;
+			case 3:
+				cloud4Label->setText(role);
+				break;
+			default:
+				//this dialog can't handle more than 3 roles!
+				break;
+			}
+			++index;
 		}
-		++index;
 	}
 
 	if (index < 1)
 	{
-//		cloud1RadioButton->setEnabled(false);
 		cloud1ComboBox->setEnabled(false);
 	}
 	if (index < 2)
 	{
-//		cloud2RadioButton->setEnabled(false);
-//		cloud2RadioButton->setVisible(false);
 		cloud2ComboBox->setEnabled(false);
 		cloud2ComboBox->setVisible(false);
 		cloud2Label->setVisible(false);
 	}
 	if (index < 3)
 	{
-//		cloud3RadioButton->setEnabled(false);
-//		cloud3RadioButton->setVisible(false);
 		cloud3ComboBox->setEnabled(false);
 		cloud3ComboBox->setVisible(false);
 		cloud3Label->setVisible(false);
 	}
 	if (index < 4)
 	{
-//		cloud4RadioButton->setEnabled(false);
-//		cloud4RadioButton->setVisible(false);
 		cloud4ComboBox->setEnabled(false);
 		cloud4ComboBox->setVisible(false);
 		cloud4Label->setVisible(false);
 	}
+
+	// now we will try to preset the combo boxes depending on the names which are in the parameter file
+	QMap<QString, QVariant> namesAndUniqueIds;
+
+	// build a map 'name : uniqueId' of the available clouds in the database tree (duplicate names are not handled, simply keep the first occurrence)
+	ccHObject::Container clouds;
+	if (m_app->dbRootObject())
+	{
+		m_app->dbRootObject()->filterChildren(clouds, true, CC_TYPES::POINT_CLOUD);
+	}
+	for (size_t i = 0; i < clouds.size(); ++i)
+	{
+		if (clouds[i]->isA(CC_TYPES::POINT_CLOUD)) //as filterChildren only test 'isKindOf'
+		{
+			QVariant uniqueID(clouds[i]->getUniqueID());
+			namesAndUniqueIds[clouds[i]->getName().toUpper()] = uniqueID;
+		}
+	}
+
+	// preset the combo boxes if possible
+	setComboBoxIndex(rolesAndNames, cloud1Label, namesAndUniqueIds, cloud1ComboBox);
+	setComboBoxIndex(rolesAndNames, cloud2Label, namesAndUniqueIds, cloud2ComboBox);
+	setComboBoxIndex(rolesAndNames, cloud3Label, namesAndUniqueIds, cloud3ComboBox);
+	setComboBoxIndex(rolesAndNames, cloud4Label, namesAndUniqueIds, cloud4ComboBox);
+	setComboBoxIndex(rolesAndNames, testLabel, namesAndUniqueIds, testCloudComboBox);
 }
 
 void Classify3DMASCDialog::getClouds(QMap<QString, ccPointCloud*>& clouds) const
@@ -214,42 +252,26 @@ void Classify3DMASCDialog::getClouds(QMap<QString, ccPointCloud*>& clouds) const
 		return;
 	}
 	
-//	if (cloud1RadioButton->isEnabled())
 	if (cloud1ComboBox->isEnabled())
 	{
 		clouds.insert(cloud1Label->text(), GetCloudFromCombo(cloud1ComboBox, m_app->dbRootObject()));
-//		if (cloud1RadioButton->isChecked())
-//		{
-//			mainCloud = cloud1Label->text();
-//		}
 	}
-//	if (cloud2RadioButton->isEnabled())
+
 	if (cloud2ComboBox->isEnabled())
 	{
 		clouds.insert(cloud2Label->text(), GetCloudFromCombo(cloud2ComboBox, m_app->dbRootObject()));
-//		if (cloud2RadioButton->isChecked())
-//		{
-//			mainCloud = cloud2Label->text();
-//		}
 	}
-//	if (cloud3RadioButton->isEnabled())
+
 	if (cloud3ComboBox->isEnabled())
 	{
 		clouds.insert(cloud3Label->text(), GetCloudFromCombo(cloud3ComboBox, m_app->dbRootObject()));
-//		if (cloud3RadioButton->isChecked())
-//		{
-//			mainCloud = cloud3Label->text();
-//		}
 	}
-//	if (cloud4RadioButton->isEnabled())
+
 	if (cloud4ComboBox->isEnabled())
 	{
 		clouds.insert(cloud4Label->text(), GetCloudFromCombo(cloud4ComboBox, m_app->dbRootObject()));
-//		if (cloud4RadioButton->isChecked())
-//		{
-//			mainCloud = cloud4Label->text();
-//		}
 	}
+
 	if (testCloudComboBox->currentIndex() >= 0)
 	{
 		clouds.insert("TEST", GetCloudFromCombo(testCloudComboBox, m_app->dbRootObject()));
