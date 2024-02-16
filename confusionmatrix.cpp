@@ -32,8 +32,8 @@ QColor getColor(double value, double r1, double g1, double b1)
 	return QColor(r, g, b);
 }
 
-ConfusionMatrix::ConfusionMatrix(const std::vector<ScalarType> &actual, const std::vector<ScalarType> &predicted) :
-	ui(new Ui::ConfusionMatrix)
+ConfusionMatrix::ConfusionMatrix(const std::vector<ScalarType> &actual, const std::vector<ScalarType> &predicted)
+	: ui(new Ui::ConfusionMatrix)
 {
 	ui->setupUi(this);
 	this->setWindowFlag(Qt::WindowStaysOnTopHint);

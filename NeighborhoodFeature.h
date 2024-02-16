@@ -151,8 +151,6 @@ namespace masc
 			: type(p_type)
 			, sf1(nullptr)
 			, sf2(nullptr)
-			// , sf1WasAlreadyExisting(false)
-			// , sf2WasAlreadyExisting(false)
 		{
 		}
 

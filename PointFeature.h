@@ -148,9 +148,6 @@ namespace masc
 			, field2(nullptr)
 			, statSF1(nullptr)
 			, statSF2(nullptr)
-			// , statSF1WasAlreadyExisting(false)
-			// , statSF2WasAlreadyExisting(false)
-			//, keepStatSF2(false)
 		{
 			//auomatically set the right source for specific features
 			switch (type)

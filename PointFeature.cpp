@@ -418,14 +418,13 @@ static bool ComputeMathOpWithNearestNeighbor(	const CorePoints& corePoints,
 	ccLog::Print(logMessage);
 	CCCoreLib::NormalizedProgress nProgress(progressCb, pointCount);
 
-	QMutex mutex;
 	double meanNeighborhoodSize = 0;
 	int tenth = pointCount / 10;
 	error.clear();
 	bool cancelled = false;
 #ifndef _DEBUG
 #if defined(_OPENMP)
-#pragma omp parallel for
+#pragma omp parallel for num_threads(std::max(1, omp_get_max_threads() - 2))
 #endif
 #endif
 	for (int i = 0; i < static_cast<int>(pointCount); ++i)
@@ -473,9 +472,7 @@ static bool ComputeMathOpWithNearestNeighbor(	const CorePoints& corePoints,
 
 		if (progressCb)
 		{
-			mutex.lock();
 			cancelled = !nProgress.oneStep();
-			mutex.unlock();
 			if (cancelled)
 			{
 				//process cancelled by the user
