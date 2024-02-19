@@ -120,8 +120,8 @@ void q3DMASCPlugin::doClassifyAction()
 	QList<QString> cloudLabels;
 	QString corePointsLabel;
 	bool filenamesSpecified = false;
-	QMap<QString, QString> labelMapName;
-	if (!masc::Tools::LoadClassifierCloudLabels(inputFilename, cloudLabels, corePointsLabel, filenamesSpecified, labelMapName))
+	QMap<QString, QString> rolesAndNames;
+	if (!masc::Tools::LoadClassifierCloudLabels(inputFilename, cloudLabels, corePointsLabel, filenamesSpecified, rolesAndNames))
 	{
 		m_app->dispToConsole("Failed to read classifier file (see Console)", ccMainAppInterface::ERR_CONSOLE_MESSAGE);
 		return;
@@ -139,7 +139,7 @@ void q3DMASCPlugin::doClassifyAction()
 
 	//now show a dialog where the user will be able to set the cloud roles
 	Classify3DMASCDialog classifDlg(m_app);
-	classifDlg.setCloudRoles(cloudLabels, corePointsLabel, labelMapName);
+	classifDlg.setCloudRoles(cloudLabels, corePointsLabel, rolesAndNames);
 	classifDlg.label_trainOrClassify->setText(corePointsLabel + " will be classified");
 	classifDlg.classifierFileLineEdit->setText(inputFilename);
 	classifDlg.testCloudComboBox->hide();

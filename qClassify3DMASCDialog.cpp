@@ -90,7 +90,7 @@ Classify3DMASCDialog::Classify3DMASCDialog(ccMainAppInterface* app, bool trainMo
 
 		testCloudComboBox->addItem("", 0);
 
-		//if 3 clouds are loaded, then there's chances that the first one is the global  cloud!
+		//if 3 clouds are loaded, then there's chances that the first one is the global cloud!
 		cloud1ComboBox->setCurrentIndex(/*cloudCount > 0 ? (cloudCount > 2 ? 1 : 0) : */-1);
 		connect(cloud1ComboBox, SIGNAL(currentIndexChanged(int)), this, SLOT(onCloudChanged(int)));
 		cloud2ComboBox->setCurrentIndex(/*cloudCount > 1 ? (cloudCount > 2 ? 2 : 1) : */-1);
@@ -143,13 +143,13 @@ void Classify3DMASCDialog::setComboBoxIndex(QMap<QString, QString> rolesAndNames
 {
 	QString name;
 
-	if (label != testLabel)
+	if (label == testLabel)
 	{
-		name = rolesAndNames[label->text()];
+		name = rolesAndNames[QString("TEST")];  // testLabel is specific, the role is always TEST
 	}
 	else
 	{
-		name = rolesAndNames[QString("TEST")]; // this is because the label text of testLabel is 'TEST on (optional)'
+		name = rolesAndNames[label->text()];
 	}
 	QMap<QString, QVariant>::iterator it = namesAndUniqueIds.find(name);
 	if (it != namesAndUniqueIds.end())
