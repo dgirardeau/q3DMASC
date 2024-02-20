@@ -69,23 +69,20 @@ Classify3DMASCDialog::Classify3DMASCDialog(ccMainAppInterface* app, bool trainMo
 		ccHObject::Container clouds;
 		if (m_app->dbRootObject())
 		{
-			m_app->dbRootObject()->filterChildren(clouds, true, CC_TYPES::POINT_CLOUD);
+			m_app->dbRootObject()->filterChildren(clouds, true, CC_TYPES::POINT_CLOUD, true);
 		}
 
 		unsigned cloudCount = 0;
 		for (size_t i = 0; i < clouds.size(); ++i)
 		{
-			if (clouds[i]->isA(CC_TYPES::POINT_CLOUD)) //as filterChildren only test 'isKindOf'
-			{
-				QString name = clouds[i]->getName() + QString(" [%1]").arg(clouds[i]->getUniqueID());
-				QVariant uniqueID(clouds[i]->getUniqueID());
-				cloud1ComboBox->addItem(name, uniqueID);
-				cloud2ComboBox->addItem(name, uniqueID);
-				cloud3ComboBox->addItem(name, uniqueID);
-				cloud4ComboBox->addItem(name, uniqueID);
-				testCloudComboBox->addItem(name, uniqueID);
-				++cloudCount;
-			}
+			QString name = clouds[i]->getName() + QString(" [%1]").arg(clouds[i]->getUniqueID());
+			QVariant uniqueID(clouds[i]->getUniqueID());
+			cloud1ComboBox->addItem(name, uniqueID);
+			cloud2ComboBox->addItem(name, uniqueID);
+			cloud3ComboBox->addItem(name, uniqueID);
+			cloud4ComboBox->addItem(name, uniqueID);
+			testCloudComboBox->addItem(name, uniqueID);
+			++cloudCount;
 		}
 
 		testCloudComboBox->addItem("", 0);
@@ -139,19 +136,11 @@ void Classify3DMASCDialog::writeSettings()
 	settings.setValue("keepAttributes", keepAttributesCheckBox->isChecked());
 }
 
-void Classify3DMASCDialog::setComboBoxIndex(QMap<QString, QString> rolesAndNames, QLabel* label, QMap<QString, QVariant> namesAndUniqueIds, QComboBox* comboBox)
+void Classify3DMASCDialog::setComboBoxIndex(const QMap<QString, QString>& rolesAndNames, QLabel* label, const QMap<QString, QVariant>& namesAndUniqueIds, QComboBox* comboBox)
 {
-	QString name;
+	QString name = label == testLabel ? QString("TEST") :  label->text(); // testLabel is specific, the role is always TEST
 
-	if (label == testLabel)
-	{
-		name = rolesAndNames[QString("TEST")];  // testLabel is specific, the role is always TEST
-	}
-	else
-	{
-		name = rolesAndNames[label->text()];
-	}
-	QMap<QString, QVariant>::iterator it = namesAndUniqueIds.find(name);
+	QMap<QString, QVariant>::const_iterator it(namesAndUniqueIds.find(name));
 	if (it != namesAndUniqueIds.end())
 	{
 		int index = comboBox->findData(it.value());
@@ -229,7 +218,7 @@ void Classify3DMASCDialog::setCloudRoles(const QList<QString>& roles, QString& c
 	}
 	for (size_t i = 0; i < clouds.size(); ++i)
 	{
-		if (clouds[i]->isA(CC_TYPES::POINT_CLOUD)) //as filterChildren only test 'isKindOf'
+		if (clouds[i]->isA(CC_TYPES::POINT_CLOUD)) //as filterChildren only tests 'isKindOf'
 		{
 			QVariant uniqueID(clouds[i]->getUniqueID());
 			namesAndUniqueIds[clouds[i]->getName().toUpper()] = uniqueID;
