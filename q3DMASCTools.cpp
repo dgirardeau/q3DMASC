@@ -112,11 +112,12 @@ bool Tools::SaveClassifier(	QString filename,
 	return true;
 }
 
-bool Tools::LoadClassifierCloudLabels(QString filename, QList<QString>& labels, QString& corePointsLabel, bool& filenamesSpecified)
+bool Tools::LoadClassifierCloudLabels(QString filename, QList<QString>& labels, QString& corePointsLabel, bool& filenamesSpecified, QMap<QString, QString>& rolesAndNames)
 {
 	//just in case
 	corePointsLabel.clear();
 	labels.clear();
+	rolesAndNames.clear();
 
 	QFile file(filename);
 	if (!file.open(QFile::Text | QFile::ReadOnly))
@@ -155,6 +156,7 @@ bool Tools::LoadClassifierCloudLabels(QString filename, QList<QString>& labels, 
 				return false;
 			}
 			labels.push_back(label);
+			rolesAndNames[label] = tokens.back();
 
 			if (tokens.size() > 1)
 				++filenameCount;

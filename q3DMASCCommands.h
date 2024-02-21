@@ -165,7 +165,8 @@ struct Command3DMASCClassif : public ccCommandLineInterface::Command
 			QList<QString> cloudLabels;
 			QString corePointsLabel;
 			bool filenamesSpecified = false;
-			if (!masc::Tools::LoadClassifierCloudLabels(classifierFilename, cloudLabels, corePointsLabel, filenamesSpecified))
+			QMap<QString, QString> labelsAndNames;
+			if (!masc::Tools::LoadClassifierCloudLabels(classifierFilename, cloudLabels, corePointsLabel, filenamesSpecified, labelsAndNames))
 			{
 				return cmd.error("Failed to read classifier file");
 			}

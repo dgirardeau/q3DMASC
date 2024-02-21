@@ -40,7 +40,7 @@ namespace masc
 
 		static bool LoadTrainingFile(QString filename, Feature::Set& rawFeatures, std::vector<double>& scales, NamedClouds& loadedClouds, TrainParameters& parameters, CorePoints* corePoints = nullptr, QWidget* parent = nullptr);
 
-		static bool LoadClassifierCloudLabels(QString filename, QList<QString>& labels, QString& corePointsLabel, bool& filenamesSpecified);
+		static bool LoadClassifierCloudLabels(QString filename, QList<QString>& labels, QString& corePointsLabel, bool& filenamesSpecified, QMap<QString, QString>& rolesAndNames);
 
 		static bool LoadClassifier(QString filename, NamedClouds& clouds, Feature::Set& rawFeatures, masc::Classifier& classifier, QWidget* parent = nullptr);
 
