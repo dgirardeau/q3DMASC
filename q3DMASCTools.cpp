@@ -1389,7 +1389,11 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 				{
 					cancelled = true;
 					success = false;
+#if defined(_OPENMP)
 					errorStr = "Feature computation failed for point " + QString::number(i) + " (using OpenMP with " + QString::number(omp_get_num_threads()) +  " threads)";
+#else
+					errorStr = "Feature computation failed for point " + QString::number(i);
+#endif
 					ccLog::Error(localErrorStr);
 				}
 
@@ -1401,7 +1405,11 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 						if (cancelled)
 						{
 							//process cancelled by the user
+#if defined(_OPENMP)
 							errorStr = "Process cancelled at point " + QString::number(i) + " (using OpenMP with " + QString::number(omp_get_num_threads()) +  " threads)";
+#else
+					        errorStr = "Process cancelled at point " + QString::number(i);
+#endif
 							ccLog::Warning(errorStr);
 							success = false;
 						}
