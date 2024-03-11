@@ -46,7 +46,7 @@
 #include <omp.h>
 #endif
 
-#if defined(__APPLE__)
+#if defined(CC_MAC_OS) || defined(CC_LINUX)
 #include <unistd.h>
 #endif
 
