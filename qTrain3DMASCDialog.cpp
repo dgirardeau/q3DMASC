@@ -101,7 +101,7 @@ int Train3DMASCDialog::addFeature(QString name, float importance, bool isChecked
 	nameItem->setCheckState(isChecked ? Qt::Checked : Qt::Unchecked);
 	tableWidget->setItem(index, 0, nameItem);
 
-	QTableWidgetItem* importanceItem = new QTableWidgetItem(isnan(importance) ? QString() : QString::number(importance));
+	QTableWidgetItem* importanceItem = new QTableWidgetItem(std::isnan(importance) ? QString() : QString::number(importance));
 	tableWidget->setItem(index, 1, importanceItem);
 
 	return index;
@@ -175,7 +175,7 @@ void Train3DMASCDialog::setFeatureImportance(QString featureName, float importan
 		if (tableWidget->item(index, 0)->text() == featureName)
 		{
 			QTableWidgetItem* item = tableWidget->item(index, FeatureImportanceColumn);
-			item->setText(isnan(importance) ? QString() : QString::number(importance, 'f', 6));
+			item->setText(std::isnan(importance) ? QString() : QString::number(importance, 'f', 6));
 			return;
 		}
 	}
