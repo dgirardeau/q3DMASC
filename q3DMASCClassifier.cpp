@@ -224,7 +224,6 @@ bool Classifier::classify(	const Feature::Source::Set& featureSources,
 		{
 			errorMessage = cvex.msg.c_str();
 			success = false;
-			break;
 		}
 
 		for (int fIndex = 0; fIndex < attributesPerSample; ++fIndex)
@@ -257,7 +256,6 @@ bool Classifier::classify(	const Feature::Source::Set& featureSources,
 		{
 			//process cancelled by the user
 			success = false;
-			break;
 		}
 	}
 

@@ -478,7 +478,6 @@ static bool ComputeMathOpWithNearestNeighbor(	const CorePoints& corePoints,
 			{
 				//process cancelled by the user
 				error = "Process cancelled";
-				break;
 			}
 		}
 	}

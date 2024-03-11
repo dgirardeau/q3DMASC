@@ -1387,7 +1387,6 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 						ccLog::Warning("Process cancelled");
 						errorStr = "Process cancelled";
 						success = false;
-						break;
 					}
 				}
 
