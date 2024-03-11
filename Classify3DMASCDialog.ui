@@ -65,14 +65,14 @@
       <item row="4" column="0">
        <widget class="QLabel" name="cloud2Label">
         <property name="text">
-         <string>PC2</string>
+         <string>-</string>
         </property>
        </widget>
       </item>
       <item row="5" column="0">
        <widget class="QLabel" name="cloud3Label">
         <property name="text">
-         <string>CTX</string>
+         <string>-</string>
         </property>
        </widget>
       </item>
@@ -112,14 +112,14 @@
       <item row="3" column="0">
        <widget class="QLabel" name="cloud1Label">
         <property name="text">
-         <string>PC1</string>
+         <string>-</string>
         </property>
        </widget>
       </item>
       <item row="6" column="0">
        <widget class="QLabel" name="cloud4Label">
         <property name="text">
-         <string>PCX</string>
+         <string>-</string>
         </property>
        </widget>
       </item>

@@ -120,7 +120,8 @@ void q3DMASCPlugin::doClassifyAction()
 	QList<QString> cloudLabels;
 	QString corePointsLabel;
 	bool filenamesSpecified = false;
-	if (!masc::Tools::LoadClassifierCloudLabels(inputFilename, cloudLabels, corePointsLabel, filenamesSpecified))
+	QMap<QString, QString> rolesAndNames;
+	if (!masc::Tools::LoadClassifierCloudLabels(inputFilename, cloudLabels, corePointsLabel, filenamesSpecified, rolesAndNames))
 	{
 		m_app->dispToConsole("Failed to read classifier file (see Console)", ccMainAppInterface::ERR_CONSOLE_MESSAGE);
 		return;
@@ -138,7 +139,7 @@ void q3DMASCPlugin::doClassifyAction()
 
 	//now show a dialog where the user will be able to set the cloud roles
 	Classify3DMASCDialog classifDlg(m_app);
-	classifDlg.setCloudRoles(cloudLabels, corePointsLabel);
+	classifDlg.setCloudRoles(cloudLabels, corePointsLabel, rolesAndNames);
 	classifDlg.label_trainOrClassify->setText(corePointsLabel + " will be classified");
 	classifDlg.classifierFileLineEdit->setText(inputFilename);
 	classifDlg.testCloudComboBox->hide();
@@ -189,7 +190,7 @@ void q3DMASCPlugin::doClassifyAction()
 		generatedScalarFields.releaseSFs(false);
 		return;
 	}
-	progressDlg.close();
+	progressDlg.hide();
 	QCoreApplication::processEvents();
 
 	//apply classifier
@@ -260,7 +261,8 @@ void q3DMASCPlugin::doTrainAction()
 	QList<QString> cloudLabels;
 	QString corePointsLabel;
 	bool filenamesSpecified = false;
-	if (!masc::Tools::LoadClassifierCloudLabels(inputFilename, cloudLabels, corePointsLabel, filenamesSpecified))
+	QMap<QString, QString> rolesAndNames;
+	if (!masc::Tools::LoadClassifierCloudLabels(inputFilename, cloudLabels, corePointsLabel, filenamesSpecified, rolesAndNames))
 	{
 		m_app->dispToConsole("Failed to read classifier file (see Console)", ccMainAppInterface::ERR_CONSOLE_MESSAGE);
 		return;
@@ -288,7 +290,7 @@ void q3DMASCPlugin::doTrainAction()
 		//now show a dialog where the user will be able to set the cloud roles
 		Classify3DMASCDialog classifDlg(m_app, true);
 		classifDlg.setWindowTitle("3DMASC Train");
-		classifDlg.setCloudRoles(cloudLabels, corePointsLabel);
+		classifDlg.setCloudRoles(cloudLabels, corePointsLabel, rolesAndNames);
 		classifDlg.label_trainOrClassify->setText("The classifier will be trained on " + corePointsLabel);
 		classifDlg.classifierFileLineEdit->setText(inputFilename);
 		classifDlg.keepAttributesCheckBox->hide(); // this parameter is set in the trainDlg dialog
@@ -372,7 +374,7 @@ void q3DMASCPlugin::doTrainAction()
 			masc::TrainParameters tempParams;
 			if (!masc::Tools::LoadTrainingFile(inputFilename, featuresTest, scalesTest, loadedCloudsTest, tempParams))
 			{
-				m_app->dispToConsole("Failed to load the training file (for test)", ccMainAppInterface::ERR_CONSOLE_MESSAGE);
+				m_app->dispToConsole("Failed to load the training file (for TEST)", ccMainAppInterface::ERR_CONSOLE_MESSAGE);
 				return;
 			}
 		}
@@ -391,6 +393,7 @@ void q3DMASCPlugin::doTrainAction()
 
 	//display the loaded features and let the user select the ones to use
 	trainDlg.setResultText("Select features and press 'Run'");
+
 	std::vector<FeatureSelection> originalFeatures;
 	originalFeatures.reserve(features.size());
 	for (const masc::Feature::Shared& f : features)
@@ -398,6 +401,7 @@ void q3DMASCPlugin::doTrainAction()
 		originalFeatures.push_back(FeatureSelection(f));
 		trainDlg.addFeature(f->toString(), originalFeatures.back().importance, originalFeatures.back().selected);
 	}
+
 	for(double scale : scales)
 		trainDlg.addScale(scale, true);
 	trainDlg.connectScaleSelectionToFeatureSelection();
@@ -470,7 +474,8 @@ void q3DMASCPlugin::doTrainAction()
 	//train / test subsets
 	QSharedPointer<CCCoreLib::ReferenceCloud> trainSubset, testSubset;
 	float previousTestSubsetRatio = -1.0f;
-	SFCollector generatedScalarFields, generatedScalarFieldsTest;
+	SFCollector generatedScalarFields;
+	SFCollector generatedScalarFieldsTest;
 
 	//we will train + evaluate the classifier, then display the results
 	//then let the user change parameters and (potentially) start again
@@ -514,7 +519,7 @@ void q3DMASCPlugin::doTrainAction()
 					generatedScalarFieldsTest.releaseSFs(false);
 					return;
 				}
-				progressDlg.close();
+				progressDlg.hide();
 				QCoreApplication::processEvents();
 				m_app->redrawAll();
 
@@ -618,11 +623,13 @@ void q3DMASCPlugin::doTrainAction()
 						//prepare the features and the test cloud
 						if (!toPrepareTest.empty())
 						{
-							progressDlg.show();
-							QString error;
 							masc::CorePoints corePointsTest;
-							corePointsTest.cloud = corePointsTest.origin = testCloud;
+							corePointsTest.cloud = testCloud;
+							corePointsTest.origin = testCloud;
 							corePointsTest.role = mainCloudLabel;
+							progressDlg.show();
+							QCoreApplication::processEvents();
+							QString error;
 							if (!masc::Tools::PrepareFeatures(corePointsTest, toPrepareTest, error, &progressDlg, &generatedScalarFieldsTest))
 							{
 								m_app->dispToConsole(error, ccMainAppInterface::ERR_CONSOLE_MESSAGE);
@@ -630,7 +637,7 @@ void q3DMASCPlugin::doTrainAction()
 								generatedScalarFieldsTest.releaseSFs(false);
 								return;
 							}
-							progressDlg.close();
+							progressDlg.hide();
 							QCoreApplication::processEvents();
 							m_app->redrawAll();
 
@@ -653,7 +660,8 @@ void q3DMASCPlugin::doTrainAction()
 											trainDlg,
 											testCloud ? nullptr : testSubset.data(),
 											testCloud ? "Classification_prediction" : "", // outputSFName, empty is the test cloud is not a separate cloud
-											m_app->getMainWindow()))
+											m_app->getMainWindow(),
+											m_app))
 				{
 					m_app->dispToConsole(errorMessage, ccMainAppInterface::ERR_CONSOLE_MESSAGE);
 					generatedScalarFields.releaseSFs(false);

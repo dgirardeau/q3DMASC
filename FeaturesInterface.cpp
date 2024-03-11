@@ -50,12 +50,12 @@ CCCoreLib::ScalarField* Feature::PrepareSF(ccPointCloud* cloud, const char* resu
 	int sfIdx = cloud->getScalarFieldIndexByName(resultSFName);
 	if (sfIdx >= 0)
 	{
-//		ccLog::Warning("Existing SF: " + QString(resultSFName) + ", do not store in generatedScalarFields");
+		// ccLog::Warning("Existing SF: " + QString(resultSFName) + ", do not store in generatedScalarFields");
 		resultSF = cloud->getScalarField(sfIdx);
 	}
 	else
 	{
-//		ccLog::Warning("SF does not exist, create it: " + QString(resultSFName)  + ", SFCollector::Behavior " + QString::number(behavior));
+		// ccLog::Warning("SF does not exist, create it: " + QString(resultSFName)  + ", SFCollector::Behavior " + QString::number(behavior));
 		ccScalarField* newSF = new ccScalarField(resultSFName);
 		if (!newSF->resizeSafe(cloud->size()))
 		{

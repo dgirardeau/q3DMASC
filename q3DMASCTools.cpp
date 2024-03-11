@@ -43,7 +43,6 @@
 
 //system
 #include <assert.h>
-#include <iostream>
 
 #if defined(_OPENMP)
 #include <omp.h>
@@ -113,11 +112,12 @@ bool Tools::SaveClassifier(	QString filename,
 	return true;
 }
 
-bool Tools::LoadClassifierCloudLabels(QString filename, QList<QString>& labels, QString& corePointsLabel, bool& filenamesSpecified)
+bool Tools::LoadClassifierCloudLabels(QString filename, QList<QString>& labels, QString& corePointsLabel, bool& filenamesSpecified, QMap<QString, QString>& rolesAndNames)
 {
 	//just in case
 	corePointsLabel.clear();
 	labels.clear();
+	rolesAndNames.clear();
 
 	QFile file(filename);
 	if (!file.open(QFile::Text | QFile::ReadOnly))
@@ -156,6 +156,7 @@ bool Tools::LoadClassifierCloudLabels(QString filename, QList<QString>& labels, 
 				return false;
 			}
 			labels.push_back(label);
+			rolesAndNames[label] = tokens.back();
 
 			if (tokens.size() > 1)
 				++filenameCount;
@@ -1085,7 +1086,7 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 				{
 					//build the scaled feature list attached to the first cloud
 					if (feature->cloud1
-						&& !static_cast<PointFeature*>(feature.data())->statSF1WasAlreadyExisting) // nothing to compute if the scalar field was already there
+						&& !feature->sf1WasAlreadyExisting) // nothing to compute if the scalar field was already there
 					{
 						FeaturesAndScales& fas = cloudsWithScaledFeatures[feature->cloud1];
 						fas.pointFeaturesPerScale[feature->scale].push_back(qSharedPointerCast<PointFeature>(feature));
@@ -1100,9 +1101,9 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 						&& feature->cloud2 != feature->cloud1
 						&& feature->op != Feature::NO_OPERATION)
 					{
-						if(!static_cast<PointFeature*>(feature.data())->statSF1WasAlreadyExisting) // nothing to compute if the scalar field was already there
+						if(!feature->sf1WasAlreadyExisting) // nothing to compute if the scalar field was already there
 						{
-							if (!static_cast<PointFeature*>(feature.data())->statSF2WasAlreadyExisting)
+							if (!feature->sf2WasAlreadyExisting)
 							{
 								FeaturesAndScales& fas = cloudsWithScaledFeatures[feature->cloud2];
 								++fas.featureCount;
@@ -1122,7 +1123,7 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 				{
 					//build the scaled feature list attached to the first cloud
 					if (feature->cloud1
-						&& !static_cast<NeighborhoodFeature*>(feature.data())->sf1WasAlreadyExisting) // nothing to compute if the scalar field was already there
+						&& !feature->sf1WasAlreadyExisting) // nothing to compute if the scalar field was already there
 					{
 						FeaturesAndScales& fas = cloudsWithScaledFeatures[feature->cloud1];
 						fas.neighborhoodFeaturesPerScale[feature->scale].push_back(qSharedPointerCast<NeighborhoodFeature>(feature));
@@ -1138,9 +1139,9 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 						&& feature->cloud2 != feature->cloud1
 						&& feature->op != Feature::NO_OPERATION)
 					{
-						if (!static_cast<NeighborhoodFeature*>(feature.data())->sf1WasAlreadyExisting) // nothing to compute if the scalar field was already there
+						if (!feature->sf1WasAlreadyExisting) // nothing to compute if the scalar field was already there
 						{
-							if (!static_cast<NeighborhoodFeature*>(feature.data())->sf2WasAlreadyExisting)
+							if (!feature->sf2WasAlreadyExisting)
 							{
 								FeaturesAndScales& fas = cloudsWithScaledFeatures[feature->cloud2];
 								fas.neighborhoodFeaturesPerScale[feature->scale].push_back(qSharedPointerCast<NeighborhoodFeature>(feature));
@@ -1160,7 +1161,7 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 				{
 					//build the scaled feature list attached to the context cloud
 					if (feature->cloud1
-						&& !static_cast<ContextBasedFeature*>(feature.data())->sfWasAlreadyExisting) // nothing to compute if the scalar field was already there
+						&& !feature->sf1WasAlreadyExisting) // nothing to compute if the scalar field was already there
 					{
 						FeaturesAndScales& fas = cloudsWithScaledFeatures[feature->cloud1];
 						fas.contextBasedFeaturesPerScale[feature->scale].push_back(qSharedPointerCast<ContextBasedFeature>(feature));
@@ -1212,7 +1213,7 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 				octree = sourceCloud->computeOctree(progressCb);
 				if (!octree)
 				{
-					errorStr = "Failed to compute octree (not enough memory?)";
+					errorStr = "[Tools::PrepareFeatures] Failed to compute octree (not enough memory?)";
 					return false;
 				}
 			}
@@ -1223,7 +1224,7 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 			unsigned char octreeLevel = octree->findBestLevelForAGivenNeighbourhoodSizeExtraction(largestRadius);
 
 			unsigned pointCount = corePoints.size();
-			QString logMessage = QString("Computing %1 features on cloud %2\n(core points: %3)").arg(fas.featureCount).arg(sourceCloud->getName()).arg(pointCount);
+			QString logMessage = QString("Computing %1 features on cloud %2 at %3 core points").arg(fas.featureCount).arg(sourceCloud->getName()).arg(pointCount);
 			if (progressCb)
 			{
 				progressCb->setMethodTitle("Compute features");
@@ -1232,15 +1233,20 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 			ccLog::Print(logMessage);
 			CCCoreLib::NormalizedProgress nProgress(progressCb, pointCount);
 
-			QMutex mutex;
+			bool cancelled = false;
+
 #ifndef _DEBUG
 #if defined(_OPENMP)
-			omp_set_num_threads(std::max(1, omp_get_max_threads() - 2));
-#pragma omp parallel for
+#pragma omp parallel for num_threads(std::max(1, omp_get_max_threads() - 2))
 #endif
 #endif
 			for (int i = 0; i < static_cast<int>(pointCount); ++i)
 			{
+			if (!cancelled)
+			{
+				QString localErrorStr;
+				bool localSuccess = true;
+
 				//spherical neighborhood extraction structure
 				CCCoreLib::DgmOctree::NearestNeighboursSearchStruct nNSS;
 				{
@@ -1285,13 +1291,14 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 						//Point features
 						for (PointFeature::Shared& feature : fas.pointFeaturesPerScale[currentScale])
 						{
-							if (feature->cloud1 == sourceCloud && feature->statSF1 && feature->field1)
+							if (feature->cloud1 == sourceCloud && feature->statSF1 && feature->field1 && localSuccess)
 							{
 								double outputValue = 0;
 								if (!feature->computeStat(nNSS.pointsInNeighbourhood, feature->field1, outputValue))
 								{
 									//an error occurred
-									success = false;
+									localErrorStr = "An error occurred during the computation of feature " + feature->toString() + "on cloud " + feature->cloud1->getName();
+									localSuccess = false;
 									break;
 								}
 
@@ -1299,14 +1306,15 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 								feature->statSF1->setValue(i, v1);
 							}
 
-							if (feature->cloud2 == sourceCloud && feature->statSF2 && feature->field2)
+							if (feature->cloud2 == sourceCloud && feature->statSF2 && feature->field2 && localSuccess)
 							{
 								assert(feature->op != Feature::NO_OPERATION);
 								double outputValue = 0;
 								if (!feature->computeStat(nNSS.pointsInNeighbourhood, feature->field2, outputValue))
 								{
 									//an error occurred
-									success = false;
+									localErrorStr = "An error occurred during the computation of feature " + feature->toString() + "on cloud " + feature->cloud2->getName();
+									localSuccess = false;
 									break;
 								}
 
@@ -1318,14 +1326,14 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 						//Neighborhood features
 						for (NeighborhoodFeature::Shared& feature : fas.neighborhoodFeaturesPerScale[currentScale])
 						{
-							if (feature->cloud1 == sourceCloud && feature->sf1)
+							if (feature->cloud1 == sourceCloud && feature->sf1 && localSuccess)
 							{
 								double outputValue = 0;
 								if (!feature->computeValue(nNSS.pointsInNeighbourhood, nNSS.queryPoint, outputValue))
 								{
 									//an error occurred
-									errorStr = "An error occurred during the computation of feature " + feature->toString() + "on cloud " + feature->cloud1->getName();
-									success = false;
+									localErrorStr = "An error occurred during the computation of feature " + feature->toString() + "on cloud " + feature->cloud1->getName();
+									localSuccess = false;
 									break;
 								}
 
@@ -1333,15 +1341,15 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 								feature->sf1->setValue(i, v1);
 							}
 
-							if (feature->cloud2 == sourceCloud && feature->sf2)
+							if (feature->cloud2 == sourceCloud && feature->sf2 && localSuccess)
 							{
 								assert(feature->op != Feature::NO_OPERATION);
 								double outputValue = 0;
 								if (!feature->computeValue(nNSS.pointsInNeighbourhood, nNSS.queryPoint, outputValue))
 								{
 									//an error occurred
-									errorStr = "An error occurred during the computation of feature " + feature->toString() + "on cloud " + feature->cloud2->getName();
-									success = false;
+									localErrorStr = "An error occurred during the computation of feature " + feature->toString() + "on cloud " + feature->cloud2->getName();
+									localSuccess = false;
 									break;
 								}
 
@@ -1353,14 +1361,14 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 						//Context-based features
 						for (ContextBasedFeature::Shared& feature : fas.contextBasedFeaturesPerScale[currentScale])
 						{
-							if (feature->cloud1 == sourceCloud && feature->sf)
+							if (feature->cloud1 == sourceCloud && feature->sf && localSuccess)
 							{
 								ScalarType outputValue = 0;
 								if (!feature->computeValue(nNSS.pointsInNeighbourhood, nNSS.queryPoint, outputValue))
 								{
 									//an error occurred
-									errorStr = "An error occurred during the computation of feature " + feature->toString() + "on cloud " + feature->cloud1->getName();
-									success = false;
+									localErrorStr = "An error occurred during the computation of feature " + feature->toString() + "on cloud " + feature->cloud1->getName();
+									localSuccess = false;
 									break;
 								}
 
@@ -1368,31 +1376,50 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 							}
 						}
 
-						if (!success)
+						if (!localSuccess)
 						{
+							localErrorStr = localErrorStr + " at scale  " + QString::number(currentScale) + " on point " + QString::number(i);
 							break;
 						}
-					} //for each scale
 
+					} //for each scale
 				}
-			
+
+				if (!localSuccess)
+				{
+					cancelled = true;
+					success = false;
+#if defined(_OPENMP)
+					errorStr = "Feature computation failed for point " + QString::number(i) + " (using OpenMP with " + QString::number(omp_get_num_threads()) +  " threads)";
+#else
+					errorStr = "Feature computation failed for point " + QString::number(i);
+#endif
+					ccLog::Error(localErrorStr);
+				}
+
 				if (progressCb)
 				{
-					mutex.lock();
-					bool cancelled = !nProgress.oneStep();
-					mutex.unlock();
-					if (cancelled)
+					if (!cancelled)
 					{
-						//process cancelled by the user
-						ccLog::Warning("Process cancelled");
-						errorStr = "Process cancelled";
-						success = false;
+						cancelled = !nProgress.oneStep();
+						if (cancelled)
+						{
+							//process cancelled by the user
+#if defined(_OPENMP)
+							errorStr = "Process cancelled at point " + QString::number(i) + " (using OpenMP with " + QString::number(omp_get_num_threads()) +  " threads)";
+#else
+					        errorStr = "Process cancelled at point " + QString::number(i);
+#endif
+							ccLog::Warning(errorStr);
+							success = false;
+						}
 					}
 				}
-
+			}
 			} //for each point
-		
+
 		} //for each cloud
+
 	}
 
 	for (const Feature::Shared& feature : features)
