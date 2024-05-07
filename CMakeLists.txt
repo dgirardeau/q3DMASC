@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 3.5)
 
 option( PLUGIN_STANDARD_3DMASC "Check to install q3DMASC plugin" OFF )
 
