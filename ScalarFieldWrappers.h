@@ -28,6 +28,7 @@
 class IScalarFieldWrapper
 {
 public:
+	virtual ~IScalarFieldWrapper() {}
 	using Shared = QSharedPointer<IScalarFieldWrapper>;
 	virtual double pointValue(unsigned index) const = 0;
 	virtual bool isValid() const = 0;
