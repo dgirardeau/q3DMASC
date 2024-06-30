@@ -341,6 +341,7 @@ bool NeighborhoodFeature::computeValue(CCCoreLib::DgmOctree::NeighboursSet& poin
 			assert(false);
 		}
 	}
+	break;
 
 	case ANISO:
 	if (kNN >= 3)
