@@ -99,7 +99,11 @@ namespace masc
 			return "Invalid";
 		}
 
-		static inline PointFeatureType FromString(const QString& token) { return FromUpperString(token.toUpper()); }
+		static inline PointFeatureType FromString(const QString& token)
+		{
+			return FromUpperString(token.toUpper());
+		}
+
 		static PointFeatureType FromUpperString(const QString& token)
 		{
 			if (token == "INT")
@@ -176,6 +180,9 @@ namespace masc
 			}
 		}
 
+		//! Destructor
+		~PointFeature() override {}
+
 		//inherited from Feature
 		virtual Type getType() const override { return Type::PointFeature; }
 		virtual Feature::Shared clone() const override { return Feature::Shared(new PointFeature(*this)); }
@@ -209,6 +216,7 @@ namespace masc
 		IScalarFieldWrapper::Shared field2;
 
 		//! For scaled features
-		CCCoreLib::ScalarField *statSF1, *statSF2;
+		CCCoreLib::ScalarField* statSF1;
+		CCCoreLib::ScalarField* statSF2;
 	};
 }

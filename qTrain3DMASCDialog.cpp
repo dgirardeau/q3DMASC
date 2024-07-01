@@ -293,7 +293,7 @@ bool Train3DMASCDialog::openTraceFile()
 		}
 	}
 
-	if (m_traceFile && m_traceFile->isOpen())
+	if (m_traceFile->isOpen())
 	{
 		traceFileConfigured = true;
 		ccLog::Print("save trace in: " + traceFilePath);
@@ -302,7 +302,9 @@ bool Train3DMASCDialog::openTraceFile()
 		return true;
 	}
 	else
+	{
 		return false;
+	}
 }
 
 bool Train3DMASCDialog::closeTraceFile()

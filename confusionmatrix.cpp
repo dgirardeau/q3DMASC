@@ -16,24 +16,31 @@
 
 #include <ccLog.h>
 
-QColor getColor(double value, double r1, double g1, double b1)
+static QColor GetColor(double value, double r1, double g1, double b1)
 {
-	double r0 = 255;
-	double g0 = 255;
-	double b0 = 255;
+	double r0 = 255.0;
+	double g0 = 255.0;
+	double b0 = 255.0;
 	if (value < 0.05)
+	{
 		value = 0.05;
-	if (value > 0.95)
+	}
+	else if (value > 0.95)
+	{
 		value = 0.95;
-	int r = int((r1 - r0) * value + r0);
-	int g = int ((g1 - g0) * value + g0);
-	int b = int ((b1 - b0) * value + b0);
+	}
+	int r = static_cast<int>((r1 - r0) * value + r0);
+	int g = static_cast<int>((g1 - g0) * value + g0);
+	int b = static_cast<int>((b1 - b0) * value + b0);
 //	ccLog::Warning("value " + QString::number(value) + " (" + QString::number(r) + ", " + QString::number(g) + ", " + QString::number(b) + ")");
 	return QColor(r, g, b);
 }
 
 ConfusionMatrix::ConfusionMatrix(const std::vector<ScalarType> &actual, const std::vector<ScalarType> &predicted)
-	: ui(new Ui::ConfusionMatrix)
+	: nbClasses(0)
+	, ui(new Ui::ConfusionMatrix)
+	, m_overallAccuracy(0.0f)
+	
 {
 	ui->setupUi(this);
 	this->setWindowFlag(Qt::WindowStaysOnTopHint);
@@ -50,6 +57,7 @@ ConfusionMatrix::ConfusionMatrix(const std::vector<ScalarType> &actual, const st
 ConfusionMatrix::~ConfusionMatrix()
 {
 	delete ui;
+	ui = nullptr;
 }
 
 void ConfusionMatrix::computePrecisionRecallF1Score(cv::Mat& matrix, cv::Mat& precisionRecallF1Score, cv::Mat& vec_TP_FN)
@@ -233,10 +241,12 @@ void ConfusionMatrix::compute(const std::vector<ScalarType>& actual, const std::
 			QTableWidgetItem *newItem = new QTableWidgetItem(QString::number(val));
 			if (row == column)
 			{
-				newItem->setBackground(getColor(val / vec_TP_FN.at<int>(row, 0), 0, 128, 255));
+				newItem->setBackground(GetColor(val / vec_TP_FN.at<int>(row, 0), 0, 128, 255));
 			}
 			else
-				newItem->setBackground(getColor(val / vec_TP_FN.at<int>(row, 0), 200, 50, 50));
+			{
+				newItem->setBackground(GetColor(val / vec_TP_FN.at<int>(row, 0), 200, 50, 50));
+			}
 			this->ui->tableWidget->setItem(2 + row, + 2 + column, newItem);
 		}
 

@@ -166,6 +166,9 @@ namespace masc
 			, sf2WasAlreadyExisting(false)
 		{}
 
+		//! Destructor
+		virtual ~Feature() {}
+
 		//! Returns the type (must be reimplemented by child struct)
 		virtual Type getType() const = 0;
 
