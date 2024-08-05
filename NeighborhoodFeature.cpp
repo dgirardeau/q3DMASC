@@ -228,6 +228,7 @@ bool NeighborhoodFeature::computeValue(CCCoreLib::DgmOctree::NeighboursSet& poin
 	case SPHER:
 	case LINEA:
 	case PLANA:
+	case VERT:
 	{
 		CCCoreLib::Neighbourhood::GeomFeature f;
 		switch (type)
@@ -249,6 +250,9 @@ bool NeighborhoodFeature::computeValue(CCCoreLib::DgmOctree::NeighboursSet& poin
 			break;
 		case PLANA:
 			f = CCCoreLib::Neighbourhood::Planarity;
+			break;
+		case VERT:
+			f = CCCoreLib::Neighbourhood::Verticality;
 			break;
 		default:
 			//impossible
