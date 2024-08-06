@@ -48,6 +48,7 @@ namespace masc
 			, Zmin
 			, ANISO
 			, FOM
+			, VERT
 			//, LINEF
 			//, ORIENF
 		};
@@ -90,6 +91,8 @@ namespace masc
 				return "ANISO";
 			case FOM:
 				return "FOM";
+			case VERT:
+				return "VERT";
 			//case LINEF:
 			//	return "LINEF";
 			//case ORIENF:
@@ -136,6 +139,8 @@ namespace masc
 				return ANISO;
 			else if (token == "FOM")
 				return FOM;
+			else if (token == "VERT")
+				return VERT;
 			//else if (token == "LINEF")
 			//	return LINEF;
 			//else if (token == "ORIENF")

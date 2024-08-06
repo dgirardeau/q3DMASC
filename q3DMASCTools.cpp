@@ -1297,7 +1297,7 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 								if (!feature->computeStat(nNSS.pointsInNeighbourhood, feature->field1, outputValue))
 								{
 									//an error occurred
-									localErrorStr = "An error occurred during the computation of feature " + feature->toString() + "on cloud " + feature->cloud1->getName();
+									localErrorStr = "An error occurred during the computation of feature " + feature->toString() + " on cloud " + feature->cloud1->getName();
 									localSuccess = false;
 									break;
 								}
@@ -1313,7 +1313,7 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 								if (!feature->computeStat(nNSS.pointsInNeighbourhood, feature->field2, outputValue))
 								{
 									//an error occurred
-									localErrorStr = "An error occurred during the computation of feature " + feature->toString() + "on cloud " + feature->cloud2->getName();
+									localErrorStr = "An error occurred during the computation of feature " + feature->toString() + " on cloud " + feature->cloud2->getName();
 									localSuccess = false;
 									break;
 								}
@@ -1332,7 +1332,7 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 								if (!feature->computeValue(nNSS.pointsInNeighbourhood, nNSS.queryPoint, outputValue))
 								{
 									//an error occurred
-									localErrorStr = "An error occurred during the computation of feature " + feature->toString() + "on cloud " + feature->cloud1->getName();
+									localErrorStr = "An error occurred during the computation of feature " + feature->toString() + " on cloud " + feature->cloud1->getName();
 									localSuccess = false;
 									break;
 								}
@@ -1348,7 +1348,7 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 								if (!feature->computeValue(nNSS.pointsInNeighbourhood, nNSS.queryPoint, outputValue))
 								{
 									//an error occurred
-									localErrorStr = "An error occurred during the computation of feature " + feature->toString() + "on cloud " + feature->cloud2->getName();
+									localErrorStr = "An error occurred during the computation of feature " + feature->toString() + " on cloud " + feature->cloud2->getName();
 									localSuccess = false;
 									break;
 								}
@@ -1367,7 +1367,7 @@ bool Tools::PrepareFeatures(const CorePoints& corePoints, Feature::Set& features
 								if (!feature->computeValue(nNSS.pointsInNeighbourhood, nNSS.queryPoint, outputValue))
 								{
 									//an error occurred
-									localErrorStr = "An error occurred during the computation of feature " + feature->toString() + "on cloud " + feature->cloud1->getName();
+									localErrorStr = "An error occurred during the computation of feature " + feature->toString() + " on cloud " + feature->cloud1->getName();
 									localSuccess = false;
 									break;
 								}
