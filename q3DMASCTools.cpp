@@ -765,6 +765,7 @@ bool Tools::LoadFile(	const QString& filename,
 	//to use the same 'global shift' for multiple files
 	CCVector3d loadCoordinatesShift(0, 0, 0);
 	bool loadCoordinatesTransEnabled = false;
+	bool loadCoordinatesTransForced = false;
 	FileIOFilter::LoadParameters loadParameters;
 	if (!cloudsAreProvided)
 	{
@@ -772,6 +773,7 @@ bool Tools::LoadFile(	const QString& filename,
 		loadParameters.shiftHandlingMode = ccGlobalShiftManager::DIALOG_IF_NECESSARY;
 		loadParameters._coordinatesShift = &loadCoordinatesShift;
 		loadParameters._coordinatesShiftEnabled = &loadCoordinatesTransEnabled;
+		loadParameters._coordinatesShiftForced = &loadCoordinatesTransForced;
 		loadParameters.parentWidget = parent;
 		FileIOFilter::ResetSesionCounter();
 	}
