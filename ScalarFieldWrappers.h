@@ -43,9 +43,9 @@ public:
 		: m_sf(sf)
 	{}
 
-	virtual inline double pointValue(unsigned index) const override { return m_sf->at(index); }
+	virtual inline double pointValue(unsigned index) const override { return m_sf->getValue(index); }
 	virtual inline bool isValid() const { return m_sf != nullptr; }
-	virtual inline QString getName() const { return m_sf->getName(); }
+	virtual inline QString getName() const { return QString::fromStdString(m_sf->getName()); }
 	virtual size_t size() const override { return m_sf->size(); }
 
 protected:

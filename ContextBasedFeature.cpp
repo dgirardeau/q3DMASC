@@ -123,14 +123,14 @@ bool ContextBasedFeature::prepare(	const CorePoints& corePoints,
 
 	//and the scalar field
 	assert(!sf);
-	sf1WasAlreadyExisting = CheckSFExistence(corePoints.cloud, qPrintable(resultSFName));
-	sf = PrepareSF(corePoints.cloud, qPrintable(resultSFName), generatedScalarFields, SFCollector::CAN_REMOVE);
+	sf1WasAlreadyExisting = CheckSFExistence(corePoints.cloud, resultSFName);
+	sf = PrepareSF(corePoints.cloud, resultSFName, generatedScalarFields, SFCollector::CAN_REMOVE);
 	if (!sf)
 	{
 		errorMessage = QString("[ContextBasedFeature::prepare] Failed to prepare scalar %1 @ scale %2").arg(resultSFName).arg(scale);
 		return false;
 	}
-	source.name = sf->getName();
+	source.name = QString::fromStdString(sf->getName());
 
 	// NOT NECESSARY IF THE VALUE IS ALREADY COMPUTED
 	if (!scaled() && !sf1WasAlreadyExisting) //with 'kNN' neighbors, we can compute the values right away

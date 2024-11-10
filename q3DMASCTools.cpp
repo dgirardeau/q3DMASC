@@ -1013,14 +1013,14 @@ CCCoreLib::ScalarField* Tools::RetrieveSF(const ccPointCloud* cloud, const QStri
 	int sfIdx = -1;
 	if (caseSensitive)
 	{
-		sfIdx = cloud->getScalarFieldIndexByName(qPrintable(sfName));
+		sfIdx = cloud->getScalarFieldIndexByName(sfName.toStdString());
 	}
 	else
 	{
 		QString sfNameUpper = sfName.toUpper();
 		for (unsigned i = 0; i < cloud->getNumberOfScalarFields(); ++i)
 		{
-			if (QString(cloud->getScalarField(i)->getName()).toUpper() == sfNameUpper)
+			if (QString::fromStdString(cloud->getScalarField(i)->getName()).toUpper() == sfNameUpper)
 			{
 				sfIdx = static_cast<int>(i);
 				break;
