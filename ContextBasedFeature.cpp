@@ -158,7 +158,7 @@ bool ContextBasedFeature::prepare(	const CorePoints& corePoints,
 				errorMessage = "Not enough memory";
 				return false;
 			}
-			
+
 			for (unsigned i = 0; i < classifSF->size(); ++i)
 			{
 				if (classifSF->getValue(i) == fClass)
@@ -223,6 +223,10 @@ bool ContextBasedFeature::prepare(	const CorePoints& corePoints,
 						break;
 					case DH:
 						s = static_cast<ScalarType>(sqrt(pow(P->x - sumQ.x / kNN, 2.0) + pow(P->y - sumQ.y / kNN, 2.0)));
+						break;
+					default:
+						assert(false);
+						s = CCCoreLib::NAN_VALUE;
 						break;
 					}
 				}
