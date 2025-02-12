@@ -89,23 +89,23 @@ bool NeighborhoodFeature::prepare(	const CorePoints& corePoints,
 
 	//and the scalar field
 	assert(!sf1);
-	sf1WasAlreadyExisting = CheckSFExistence(corePoints.cloud, qPrintable(resultSFName));
+	sf1WasAlreadyExisting = CheckSFExistence(corePoints.cloud, resultSFName);
 	if (sf1WasAlreadyExisting)
 	{
-		sf1 = PrepareSF(corePoints.cloud, qPrintable(resultSFName), generatedScalarFields, SFCollector::ALWAYS_KEEP);
+		sf1 = PrepareSF(corePoints.cloud, resultSFName, generatedScalarFields, SFCollector::ALWAYS_KEEP);
 		if (generatedScalarFields->scalarFields.contains(sf1)) // i.e. the SF is existing but was not present at the startup of the plugin
 			generatedScalarFields->setBehavior(sf1, SFCollector::CAN_REMOVE);
 	}
 	else
 	{
-		sf1 = PrepareSF(corePoints.cloud, qPrintable(resultSFName), generatedScalarFields, SFCollector::CAN_REMOVE);
+		sf1 = PrepareSF(corePoints.cloud, resultSFName, generatedScalarFields, SFCollector::CAN_REMOVE);
 	}
 	if (!sf1)
 	{
 		error = QString("Failed to prepare scalar %1 @ scale %2").arg(resultSFName).arg(scale);
 		return false;
 	}
-	source.name = sf1->getName();
+	source.name = QString::fromStdString(sf1->getName());
 
 	// sf2 is not needed if sf1 was already existing!
 	if (cloud2 && op != Feature::NO_OPERATION && !sf1WasAlreadyExisting)
@@ -114,8 +114,8 @@ bool NeighborhoodFeature::prepare(	const CorePoints& corePoints,
 
 		assert(!sf2);
 
-		sf2WasAlreadyExisting = CheckSFExistence(corePoints.cloud, qPrintable(resultSFName2));		
-		sf2 = PrepareSF(corePoints.cloud, qPrintable(resultSFName2), generatedScalarFields, sf2WasAlreadyExisting ? SFCollector::ALWAYS_KEEP : SFCollector::ALWAYS_REMOVE);
+		sf2WasAlreadyExisting = CheckSFExistence(corePoints.cloud, resultSFName2);		
+		sf2 = PrepareSF(corePoints.cloud, resultSFName2, generatedScalarFields, sf2WasAlreadyExisting ? SFCollector::ALWAYS_KEEP : SFCollector::ALWAYS_REMOVE);
 
 		if (!sf2)
 		{

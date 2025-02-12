@@ -3,7 +3,7 @@
 #include <QWidget>
 #include <set>
 
-#include "CCTypes.h"
+#include <GenericDistribution.h>
 
 #include <ccMainAppInterface.h>
 
@@ -25,13 +25,12 @@ public:
 		F1_SCORE = 2
 	};
 
-	explicit ConfusionMatrix(const std::vector<ScalarType>& actual,
-								const std::vector<ScalarType>& predicted);
+	explicit ConfusionMatrix(const CCCoreLib::GenericDistribution::ScalarContainer& actual, const CCCoreLib::GenericDistribution::ScalarContainer& predicted);
 	~ConfusionMatrix() override;
 
 	void computePrecisionRecallF1Score(cv::Mat& matrix, cv::Mat& precisionRecallF1Score, cv::Mat &vec_TP_FN);
 	float computeOverallAccuracy(cv::Mat& matrix);
-	void compute(const std::vector<ScalarType> &actual, const std::vector<ScalarType> &predicted);
+	void compute(const CCCoreLib::GenericDistribution::ScalarContainer& actual, const CCCoreLib::GenericDistribution::ScalarContainer& predicted);
 	void setSessionRun(QString session, int run);
 	bool save(QString filePath);
 	float getOverallAccuracy();

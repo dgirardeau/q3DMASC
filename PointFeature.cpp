@@ -581,34 +581,34 @@ bool PointFeature::prepare(	const CorePoints& corePoints,
 		resultSF1Name += "@" + QString::number(scale);
 
 		//prepare the corresponding scalar field
-		sf1WasAlreadyExisting = CheckSFExistence(corePoints.cloud, qPrintable(resultSF1Name));
+		sf1WasAlreadyExisting = CheckSFExistence(corePoints.cloud, resultSF1Name);
 		if (sf1WasAlreadyExisting)
 		{
 			// if the SF exists, it is not added to generatedScalarFields
-			statSF1 = PrepareSF(corePoints.cloud, qPrintable(resultSF1Name), generatedScalarFields, SFCollector::ALWAYS_KEEP);
+			statSF1 = PrepareSF(corePoints.cloud, resultSF1Name, generatedScalarFields, SFCollector::ALWAYS_KEEP);
 			if (generatedScalarFields->scalarFields.contains(statSF1)) // i.e. the SF is existing but was not present at the startup of the plugin
 				generatedScalarFields->setBehavior(statSF1, SFCollector::CAN_REMOVE);
 		}
 		else
-			statSF1 = PrepareSF(corePoints.cloud, qPrintable(resultSF1Name), generatedScalarFields, SFCollector::CAN_REMOVE);
+			statSF1 = PrepareSF(corePoints.cloud, resultSF1Name, generatedScalarFields, SFCollector::CAN_REMOVE);
 		if (!statSF1)
 		{
 			error = QString("Failed to prepare scalar field for field '%1' @ scale %2").arg(field1->getName()).arg(scale);
 			return false;
 		}
-		source.name = statSF1->getName();
+		source.name = QString::fromStdString(statSF1->getName());
 
 		if (field2 && op != Feature::NO_OPERATION && !sf1WasAlreadyExisting) // nothing to do if statSF1 was already there
 		{
 			QString resultSF2Name = field2->getName() + QString("_") + cloud2Label + "_" + Feature::StatToString(stat) + "@" + QString::number(scale);
-			//keepStatSF2 = (corePoints.cloud->getScalarFieldIndexByName(qPrintable(resultSFName2)) >= 0); //we remember that the scalar field was already existing!
+			//keepStatSF2 = (corePoints.cloud->getScalarFieldIndexByName(resultSFName2) >= 0); //we remember that the scalar field was already existing!
 
 			assert(!statSF2);
-			sf2WasAlreadyExisting = CheckSFExistence(corePoints.cloud, qPrintable(resultSF2Name));
+			sf2WasAlreadyExisting = CheckSFExistence(corePoints.cloud, resultSF2Name);
 			if (sf2WasAlreadyExisting)
-				statSF2 = PrepareSF(corePoints.cloud, qPrintable(resultSF2Name), generatedScalarFields, SFCollector::ALWAYS_KEEP);
+				statSF2 = PrepareSF(corePoints.cloud, resultSF2Name, generatedScalarFields, SFCollector::ALWAYS_KEEP);
 			else
-				statSF2 = PrepareSF(corePoints.cloud, qPrintable(resultSF2Name), generatedScalarFields, SFCollector::ALWAYS_REMOVE);
+				statSF2 = PrepareSF(corePoints.cloud, resultSF2Name, generatedScalarFields, SFCollector::ALWAYS_REMOVE);
 			if (!statSF2)
 			{
 				error = QString("Failed to prepare scalar field for field '%1' @ scale %2").arg(field2->getName()).arg(scale);
@@ -623,7 +623,7 @@ bool PointFeature::prepare(	const CorePoints& corePoints,
 		assert(cloud1 == corePoints.cloud || cloud1 == corePoints.origin);
 
 		//retrieve/create a SF to host the result
-		int sfIdx = corePoints.cloud->getScalarFieldIndexByName(qPrintable(resultSF1Name));
+		int sfIdx = corePoints.cloud->getScalarFieldIndexByName(resultSF1Name.toStdString());
 
 		CCCoreLib::ScalarField* resultSF = nullptr;
 		if (sfIdx >= 0)
@@ -634,7 +634,7 @@ bool PointFeature::prepare(	const CorePoints& corePoints,
 		else
 		{
 			//copy the SF1 field
-			resultSF = new ccScalarField(qPrintable(resultSF1Name));
+			resultSF = new ccScalarField(resultSF1Name.toStdString());
 			if (!resultSF->resizeSafe(corePoints.cloud->size()))
 			{
 				error = "Not enough memory";
@@ -679,7 +679,7 @@ bool PointFeature::prepare(	const CorePoints& corePoints,
 			corePoints.cloud->setCurrentDisplayedScalarField(newSFIdx);
 		}
 
-		source.name = resultSF->getName();
+		source.name = QString::fromStdString(resultSF->getName());
 
 		return true;
 	}
@@ -738,7 +738,7 @@ bool PointFeature::computeStat(const CCCoreLib::DgmOctree::NeighboursSet& points
 		double sum = 0.0;
 		double sum2 = 0.0;
 
-		CCCoreLib::WeibullDistribution::ScalarContainer values;
+		std::vector<ScalarType> values;
 		if (storeValues)
 		{
 			try
@@ -781,8 +781,10 @@ bool PointFeature::computeStat(const CCCoreLib::DgmOctree::NeighboursSet& points
 		case Feature::MODE:
 		{
 			CCCoreLib::WeibullDistribution w;
-			if (w.computeParameters(values))
+			if (w.computeParameters(CCCoreLib::WeibullDistribution::VectorAsScalarContainer(values)))
+			{
 				outputValue = w.computeMode();
+			}
 		}
 		break;
 
@@ -810,8 +812,10 @@ bool PointFeature::computeStat(const CCCoreLib::DgmOctree::NeighboursSet& points
 		case Feature::SKEW:
 		{
 			CCCoreLib::WeibullDistribution w;
-			if (w.computeParameters(values))
+			if (w.computeParameters(CCCoreLib::WeibullDistribution::VectorAsScalarContainer(values)))
+			{
 				outputValue = w.computeSkewness();
+			}
 		}
 		break;
 

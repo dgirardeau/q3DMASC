@@ -123,14 +123,14 @@ bool ContextBasedFeature::prepare(	const CorePoints& corePoints,
 
 	//and the scalar field
 	assert(!sf);
-	sf1WasAlreadyExisting = CheckSFExistence(corePoints.cloud, qPrintable(resultSFName));
-	sf = PrepareSF(corePoints.cloud, qPrintable(resultSFName), generatedScalarFields, SFCollector::CAN_REMOVE);
+	sf1WasAlreadyExisting = CheckSFExistence(corePoints.cloud, resultSFName);
+	sf = PrepareSF(corePoints.cloud, resultSFName, generatedScalarFields, SFCollector::CAN_REMOVE);
 	if (!sf)
 	{
 		errorMessage = QString("[ContextBasedFeature::prepare] Failed to prepare scalar %1 @ scale %2").arg(resultSFName).arg(scale);
 		return false;
 	}
-	source.name = sf->getName();
+	source.name = QString::fromStdString(sf->getName());
 
 	// NOT NECESSARY IF THE VALUE IS ALREADY COMPUTED
 	if (!scaled() && !sf1WasAlreadyExisting) //with 'kNN' neighbors, we can compute the values right away
@@ -158,7 +158,7 @@ bool ContextBasedFeature::prepare(	const CorePoints& corePoints,
 				errorMessage = "Not enough memory";
 				return false;
 			}
-			
+
 			for (unsigned i = 0; i < classifSF->size(); ++i)
 			{
 				if (classifSF->getValue(i) == fClass)
@@ -223,6 +223,10 @@ bool ContextBasedFeature::prepare(	const CorePoints& corePoints,
 						break;
 					case DH:
 						s = static_cast<ScalarType>(sqrt(pow(P->x - sumQ.x / kNN, 2.0) + pow(P->y - sumQ.y / kNN, 2.0)));
+						break;
+					default:
+						assert(false);
+						s = CCCoreLib::NAN_VALUE;
 						break;
 					}
 				}

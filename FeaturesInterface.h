@@ -215,10 +215,10 @@ namespace masc
 	public: //helpers
 
 		//! Creates (or resets) a scalar field with the given name on the input core points cloud
-		static bool CheckSFExistence(ccPointCloud* cloud, const char* resultSFName);
+		static bool CheckSFExistence(ccPointCloud* cloud, const QString& resultSFName);
 
 		//! Creates (or resets) a scalar field with the given name on the input core points cloud
-		static CCCoreLib::ScalarField* PrepareSF(ccPointCloud* cloud, const char* resultSFName, SFCollector* generatedScalarFields/*= nullptr*/, SFCollector::Behavior behavior);
+		static CCCoreLib::ScalarField* PrepareSF(ccPointCloud* cloud, const QString& resultSFName, SFCollector* generatedScalarFields/*= nullptr*/, SFCollector::Behavior behavior);
 
 		//! Performs a mathematical operation between two scalars
 		static ScalarType PerformMathOp(double s1, double s2, Operation op);

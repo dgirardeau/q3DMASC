@@ -25,21 +25,24 @@
 
 using namespace masc;
 
-bool Feature::CheckSFExistence(ccPointCloud* cloud, const char* resultSFName)
+bool Feature::CheckSFExistence(ccPointCloud* cloud, const QString& resultSFName)
 {
-	if (!cloud || !resultSFName)
+	if (!cloud || resultSFName.isEmpty())
 	{
 		assert(false);
 		return false;
 	}
 
-	int sfIdx = cloud->getScalarFieldIndexByName(resultSFName);
+	int sfIdx = cloud->getScalarFieldIndexByName(resultSFName.toStdString());
 	return (sfIdx >= 0);
 }
 
-CCCoreLib::ScalarField* Feature::PrepareSF(ccPointCloud* cloud, const char* resultSFName, SFCollector* generatedScalarFields/*=nullptr*/, SFCollector::Behavior behavior/*=SFCollector::CAN_REMOVE*/)
+CCCoreLib::ScalarField* Feature::PrepareSF(	ccPointCloud* cloud,
+											const QString& resultSFName,
+											SFCollector* generatedScalarFields/*=nullptr*/,
+											SFCollector::Behavior behavior/*=SFCollector::CAN_REMOVE*/ )
 {
-	if (!cloud || !resultSFName)
+	if (!cloud || resultSFName.isEmpty())
 	{
 		//invalid input parameters
 		assert(false);
@@ -47,7 +50,7 @@ CCCoreLib::ScalarField* Feature::PrepareSF(ccPointCloud* cloud, const char* resu
 	}
 
 	CCCoreLib::ScalarField* resultSF = nullptr;
-	int sfIdx = cloud->getScalarFieldIndexByName(resultSFName);
+	int sfIdx = cloud->getScalarFieldIndexByName(resultSFName.toStdString());
 	if (sfIdx >= 0)
 	{
 		// ccLog::Warning("Existing SF: " + QString(resultSFName) + ", do not store in generatedScalarFields");
@@ -56,7 +59,7 @@ CCCoreLib::ScalarField* Feature::PrepareSF(ccPointCloud* cloud, const char* resu
 	else
 	{
 		// ccLog::Warning("SF does not exist, create it: " + QString(resultSFName)  + ", SFCollector::Behavior " + QString::number(behavior));
-		ccScalarField* newSF = new ccScalarField(resultSFName);
+		ccScalarField* newSF = new ccScalarField(resultSFName.toStdString());
 		if (!newSF->resizeSafe(cloud->size()))
 		{
 			ccLog::Warning("Not enough memory");

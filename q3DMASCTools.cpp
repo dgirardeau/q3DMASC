@@ -42,7 +42,7 @@
 #include <QCoreApplication>
 
 //system
-#include <assert.h>
+#include <cassert>
 
 #if defined(_OPENMP)
 #include <omp.h>
@@ -96,7 +96,7 @@ bool Tools::SaveClassifier(	QString filename,
 	{
 		stream << "cloud: " << label << endl;
 	}
-	
+
 	if (!corePointsRole.isEmpty())
 	{
 		stream << "# Core points (classified role)" << endl;
@@ -686,7 +686,7 @@ static bool ReadCorePoints(const QString& command, const Tools::NamedClouds& clo
 
 		} //end of subsampling options
 	}
-	
+
 	return true;
 }
 
@@ -698,7 +698,7 @@ static bool ReadCloud(const QString& command, Tools::NamedClouds& clouds, const 
 		ccLog::Warning("Malformed file: expecting 2 tokens after 'cloud:' on line #" + QString::number(lineNumber));
 		return false;
 	}
-	
+
 	QString pcName = tokens[0].trimmed();
 	QString pcFilename = defaultDir.absoluteFilePath(tokens[1].trimmed());
 	//try to open the cloud
@@ -1013,21 +1013,21 @@ CCCoreLib::ScalarField* Tools::RetrieveSF(const ccPointCloud* cloud, const QStri
 	int sfIdx = -1;
 	if (caseSensitive)
 	{
-		sfIdx = cloud->getScalarFieldIndexByName(qPrintable(sfName));
+		sfIdx = cloud->getScalarFieldIndexByName(sfName.toStdString());
 	}
 	else
 	{
 		QString sfNameUpper = sfName.toUpper();
 		for (unsigned i = 0; i < cloud->getNumberOfScalarFields(); ++i)
 		{
-			if (QString(cloud->getScalarField(i)->getName()).toUpper() == sfNameUpper)
+			if (QString::fromStdString(cloud->getScalarField(i)->getName()).toUpper() == sfNameUpper)
 			{
 				sfIdx = static_cast<int>(i);
 				break;
 			}
 		}
 	}
-	
+
 	if (sfIdx >= 0)
 	{
 		return cloud->getScalarField(sfIdx);

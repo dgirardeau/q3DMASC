@@ -36,7 +36,7 @@ static QColor GetColor(double value, double r1, double g1, double b1)
 	return QColor(r, g, b);
 }
 
-ConfusionMatrix::ConfusionMatrix(const std::vector<ScalarType> &actual, const std::vector<ScalarType> &predicted)
+ConfusionMatrix::ConfusionMatrix(const CCCoreLib::GenericDistribution::ScalarContainer& actual, const CCCoreLib::GenericDistribution::ScalarContainer& predicted)
 	: nbClasses(0)
 	, ui(new Ui::ConfusionMatrix)
 	, m_overallAccuracy(0.0f)
@@ -78,7 +78,7 @@ void ConfusionMatrix::computePrecisionRecallF1Score(cv::Mat& matrix, cv::Mat& pr
 		}
 		float TP_FP = TP + FP;
 		if (TP_FP == 0)
-			precisionRecallF1Score.at<float>(predictedIdx, PRECISION) = CCCoreLib::NAN_VALUE;
+			precisionRecallF1Score.at<float>(predictedIdx, PRECISION) = std::numeric_limits<float>::quiet_NaN();
 		else
 			precisionRecallF1Score.at<float>(predictedIdx, PRECISION) = TP / TP_FP;
 	}
@@ -97,7 +97,7 @@ void ConfusionMatrix::computePrecisionRecallF1Score(cv::Mat& matrix, cv::Mat& pr
 		}
 		float TP_FN = TP + FN;
 		if (TP_FN == 0)
-			precisionRecallF1Score.at<float>(realIdx, RECALL) = CCCoreLib::NAN_VALUE;
+			precisionRecallF1Score.at<float>(realIdx, RECALL) = std::numeric_limits<float>::quiet_NaN();
 		else
 			precisionRecallF1Score.at<float>(realIdx, RECALL) = TP / TP_FN;
 		vec_TP_FN.at<int>(realIdx, 0) = TP_FN;
@@ -109,7 +109,7 @@ void ConfusionMatrix::computePrecisionRecallF1Score(cv::Mat& matrix, cv::Mat& pr
 		float den = precisionRecallF1Score.at<float>(realIdx, PRECISION)
 				+ precisionRecallF1Score.at<float>(realIdx, RECALL);
 		if (den == 0)
-			precisionRecallF1Score.at<float>(realIdx, F1_SCORE) = CCCoreLib::NAN_VALUE;
+			precisionRecallF1Score.at<float>(realIdx, F1_SCORE) = std::numeric_limits<float>::quiet_NaN();
 		else
 			precisionRecallF1Score.at<float>(realIdx, F1_SCORE) =
 					2
@@ -141,20 +141,19 @@ float ConfusionMatrix::computeOverallAccuracy(cv::Mat& matrix)
 	if ((totalTrue + totalFalse) != 0)
 		m_overallAccuracy = totalTrue / (totalTrue + totalFalse);
 	else
-		m_overallAccuracy = CCCoreLib::NAN_VALUE;
+		m_overallAccuracy = std::numeric_limits<float>::quiet_NaN();
 
 	return m_overallAccuracy;
 }
 
-void ConfusionMatrix::compute(const std::vector<ScalarType>& actual, const std::vector<ScalarType>& predicted)
+void ConfusionMatrix::compute(const CCCoreLib::GenericDistribution::ScalarContainer& actual, const CCCoreLib::GenericDistribution::ScalarContainer& predicted)
 {
-	int idxActual;
-	int idxPredicted;
-	int actualClass;
-	int predictedClass;
-
 	// get the set of classes with the contents of the actual classes
-	std::set<ScalarType> classes(actual.begin(), actual.end());
+	std::set<ScalarType> classes;
+	for (size_t i = 0; i < actual.size(); ++i)
+	{
+		classes.insert(actual.getValue(i));
+	}
 	int nbClasses = static_cast<int>(classes.size());
 	confusionMatrix = cv::Mat(nbClasses, nbClasses, CV_32S, cv::Scalar(0));
 	precisionRecallF1Score = cv::Mat(nbClasses, 3, CV_32F, cv::Scalar(0));
@@ -163,10 +162,10 @@ void ConfusionMatrix::compute(const std::vector<ScalarType>& actual, const std::
 	// fill the confusion matrix
 	for (int i = 0; i < actual.size(); i++)
 	{
-		actualClass = actual.at(i);
-		idxActual = std::distance(classes.begin(), classes.find(actualClass));
-		predictedClass = predicted.at(i);
-		idxPredicted = std::distance(classes.begin(), classes.find(predictedClass));
+		int actualClass = static_cast<int>(actual.getValue(i));
+		int idxActual = std::distance(classes.begin(), classes.find(actualClass));
+		int predictedClass = static_cast<int>(predicted.getValue(i));
+		int idxPredicted = std::distance(classes.begin(), classes.find(predictedClass));
 		confusionMatrix.at<int>(idxActual, idxPredicted)++;
 	}
 

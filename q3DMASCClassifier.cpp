@@ -70,7 +70,7 @@ static IScalarFieldWrapper::Shared GetSource(const Feature::Source& fs, const cc
 	case Feature::Source::ScalarField:
 	{
 		assert(!fs.name.isEmpty());
-		int sfIdx = cloud->getScalarFieldIndexByName(qPrintable(fs.name));
+		int sfIdx = cloud->getScalarFieldIndexByName(fs.name.toStdString());
 		if (sfIdx >= 0)
 		{
 			source.reset(new ScalarFieldWrapper(cloud->getScalarField(sfIdx)));
@@ -288,7 +288,8 @@ bool Classifier::classify(	const Feature::Source::Set& featureSources,
 	{
 		if (app)
 		{
-			ConfusionMatrix *confusionMatrix = new ConfusionMatrix(*classifSFBackup, *classificationSF);
+			ConfusionMatrix* confusionMatrix = new ConfusionMatrix(CCCoreLib::GenericDistribution::SFAsScalarContainer(*classifSFBackup),
+				CCCoreLib::GenericDistribution::SFAsScalarContainer(*classificationSF));
 		}
 	}
 
@@ -346,12 +347,12 @@ bool Classifier::evaluate(const Feature::Source::Set& featureSources,
 
 	if (!outputSFName.isEmpty())
 	{
-		int outIdx = testCloud->getScalarFieldIndexByName(qPrintable(outputSFName));
+		int outIdx = testCloud->getScalarFieldIndexByName(outputSFName.toStdString());
 		if (outIdx >= 0)
 			testCloud->deleteScalarField(outIdx);
 		else
 			ccLog::Print("add " + outputSFName + " to the TEST cloud");
-		outIdx = testCloud->addScalarField(qPrintable(outputSFName));
+		outIdx = testCloud->addScalarField(outputSFName.toStdString());
 		outSF  = static_cast<ccScalarField*>(testCloud->getScalarField(outIdx));
 	}
 
@@ -481,7 +482,8 @@ bool Classifier::evaluate(const Feature::Source::Set& featureSources,
 		metrics.ratio = static_cast<float>(metrics.goodGuess) / metrics.sampleCount;
 	}
 
-	ConfusionMatrix* confusionMatrix = new ConfusionMatrix(actualClass, predictectedClass);
+	ConfusionMatrix* confusionMatrix = new ConfusionMatrix(CCCoreLib::GenericDistribution::VectorAsScalarContainer(actualClass),
+		CCCoreLib::GenericDistribution::VectorAsScalarContainer(predictectedClass));
 	train3DMASCDialog.addConfusionMatrixAndSaveTraces(confusionMatrix);
 	if (app)
 	{
