@@ -31,8 +31,6 @@
 //System
 #include <assert.h>
 
-#include <iostream>
-
 static const int FeatureImportanceColumn = 1;
 
 Train3DMASCDialog::Train3DMASCDialog(QWidget* parent/*=nullptr*/)

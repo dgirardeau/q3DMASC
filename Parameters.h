@@ -24,7 +24,7 @@ namespace masc
 	{
 		int maxDepth = 25;			//To be left as a parameter of the training plugin (default 25)
 		int minSampleCount = 1;		//To be left as a parameter of the training plugin (default 1)
-		//int maxCategories = 0;		//Normally not important as there’s no categorical variable
+		//int maxCategories = 0;	//Normally not important as there is no categorical variable
 		int activeVarCount = 0;		//Use 0 as the default parameter (works best)
 		int maxTreeCount = 100;		//Left as a parameter of the training plugin (default: 100)
 	};

@@ -20,9 +20,6 @@
 //Qt
 #include <QMap>
 
-//system
-#include <set>
-
 class ccPointCloud;
 
 namespace CCCoreLib

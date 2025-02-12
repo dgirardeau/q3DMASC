@@ -24,7 +24,7 @@
 #include <ScalarField.h>
 
 //system
-#include <assert.h>
+#include <cassert>
 
 void SFCollector::push(ccPointCloud* cloud, CCCoreLib::ScalarField* sf, Behavior behavior)
 {
@@ -52,7 +52,7 @@ void SFCollector::releaseSFs(bool keepByDefault)
 			//keep this SF
 			continue;
 		}
-		
+
 		int sfIdx = desc.cloud->getScalarFieldIndexByName(sf->getName());
 		if (sfIdx >= 0)
 		{
