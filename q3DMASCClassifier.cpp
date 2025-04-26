@@ -288,8 +288,9 @@ bool Classifier::classify(	const Feature::Source::Set& featureSources,
 	{
 		if (app)
 		{
-			ConfusionMatrix* confusionMatrix = new ConfusionMatrix(CCCoreLib::GenericDistribution::SFAsScalarContainer(*classifSFBackup),
-				CCCoreLib::GenericDistribution::SFAsScalarContainer(*classificationSF));
+			ConfusionMatrix* confusionMatrix = new ConfusionMatrix(	CCCoreLib::GenericDistribution::SFAsScalarContainer(*classifSFBackup),
+																	CCCoreLib::GenericDistribution::SFAsScalarContainer(*classificationSF));
+			confusionMatrix->show();
 		}
 	}
 
@@ -482,8 +483,8 @@ bool Classifier::evaluate(const Feature::Source::Set& featureSources,
 		metrics.ratio = static_cast<float>(metrics.goodGuess) / metrics.sampleCount;
 	}
 
-	ConfusionMatrix* confusionMatrix = new ConfusionMatrix(CCCoreLib::GenericDistribution::VectorAsScalarContainer(actualClass),
-		CCCoreLib::GenericDistribution::VectorAsScalarContainer(predictectedClass));
+	ConfusionMatrix* confusionMatrix = new ConfusionMatrix(	CCCoreLib::GenericDistribution::VectorAsScalarContainer(actualClass),
+															CCCoreLib::GenericDistribution::VectorAsScalarContainer(predictectedClass) );
 	train3DMASCDialog.addConfusionMatrixAndSaveTraces(confusionMatrix);
 	if (app)
 	{

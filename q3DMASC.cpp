@@ -198,7 +198,7 @@ void q3DMASCPlugin::doClassifyAction()
 		QString errorMessage;
 		masc::Feature::Source::Set featureSources;
 		masc::Feature::ExtractSources(features, featureSources);
-		if (!classifier.classify(featureSources, corePoints.cloud, errorMessage, m_app->getMainWindow()))
+		if (!classifier.classify(featureSources, corePoints.cloud, errorMessage, m_app->getMainWindow(), m_app))
 		{
 			m_app->dispToConsole(errorMessage, ccMainAppInterface::ERR_CONSOLE_MESSAGE);
 			generatedScalarFields.releaseSFs(false);

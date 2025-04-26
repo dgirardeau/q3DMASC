@@ -25,22 +25,22 @@ public:
 		F1_SCORE = 2
 	};
 
-	explicit ConfusionMatrix(const CCCoreLib::GenericDistribution::ScalarContainer& actual, const CCCoreLib::GenericDistribution::ScalarContainer& predicted);
+	explicit ConfusionMatrix(	const CCCoreLib::GenericDistribution::ScalarContainer& actual,
+								const CCCoreLib::GenericDistribution::ScalarContainer& predicted );
 	~ConfusionMatrix() override;
 
 	void computePrecisionRecallF1Score(cv::Mat& matrix, cv::Mat& precisionRecallF1Score, cv::Mat &vec_TP_FN);
 	float computeOverallAccuracy(cv::Mat& matrix);
-	void compute(const CCCoreLib::GenericDistribution::ScalarContainer& actual, const CCCoreLib::GenericDistribution::ScalarContainer& predicted);
+	void compute(	const CCCoreLib::GenericDistribution::ScalarContainer& actual,
+					const CCCoreLib::GenericDistribution::ScalarContainer& predicted );
 	void setSessionRun(QString session, int run);
 	bool save(QString filePath);
-	float getOverallAccuracy();
+	float getOverallAccuracy() const;
 
 private:
-	std::set<ScalarType> classes;
-	int nbClasses;
-	Ui::ConfusionMatrix *ui;
-	cv::Mat confusionMatrix;
-	cv::Mat precisionRecallF1Score;
-	std::vector<ScalarType> class_numbers;
+	Ui::ConfusionMatrix* m_ui;
+	cv::Mat m_confusionMatrix;
+	cv::Mat m_precisionRecallF1Score;
+	std::vector<ScalarType> m_classNumbers;
 	float m_overallAccuracy;
 };
