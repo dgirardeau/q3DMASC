@@ -44,7 +44,7 @@ if (PLUGIN_STANDARD_3DMASC)
 
 	#include( CMakePluginTemplate )
 	#include( ../../CMakePluginTpl.cmake )
-	
+
 	set_target_properties( ${PROJECT_NAME} PROPERTIES
 		# FIXME Remove after everything has moved to targets
 		AUTOUIC_SEARCH_PATHS "${CloudCompare_SOURCE_DIR}/ui_templates;${CMAKE_CURRENT_SOURCE_DIR}/ui")
@@ -56,8 +56,15 @@ if (PLUGIN_STANDARD_3DMASC)
 			${CloudCompare_SOURCE_DIR}/../common)
 
 	target_link_libraries( ${PROJECT_NAME} ${OpenCV_LIBS} )
-	set( OPENCV_DEP_DLL_FILES ${OpenCV_DIR}/x64/vc15/bin/opencv_world340.dll )
-	copy_files("${OPENCV_DEP_DLL_FILES}" "${CLOUDCOMPARE_DEST_FOLDER}") #mind the quotes!
+
+	if (WIN32)  # We need to copy the OpenCV "World" DLL file next to CloudCompare.exe
+		if(NOT DEFINED OpenCV_WORLD_DLL OR OpenCV_WORLD_DLL STREQUAL "")
+			message(SEND_ERROR
+				"${CMAKE_CURRENT_LIST_FILE}(${CMAKE_CURRENT_LIST_LINE}):error:"
+				"OpenCV_WORLD_DLL is not set. Please set it in your CMake configuration.")
+		endif()
+		copy_files("${OpenCV_WORLD_DLL}" "${CLOUDCOMPARE_DEST_FOLDER}" 1) #mind the quotes!
+	endif()
 
 	#================
 	# git commit hash
