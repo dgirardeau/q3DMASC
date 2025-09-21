@@ -50,6 +50,10 @@
 #include <unistd.h>
 #endif
 
+#if defined(CC_WINDOWS)
+#include <Windows.h>
+#endif
+
 using namespace masc;
 
 Classifier::Classifier()

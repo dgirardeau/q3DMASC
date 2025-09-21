@@ -130,7 +130,7 @@ struct Command3DMASCClassif : public ccCommandLineInterface::Command
 			cmd.arguments().pop_front();
 
 			//process the cloud roles description
-			QStringList tokens = cloudRolesStr.simplified().split(QChar(' '), QString::SkipEmptyParts);
+			QStringList tokens = cloudRolesStr.simplified().split(QChar(' '), Qt::SkipEmptyParts);
 
 			masc::Tools::NamedClouds cloudPerRole;
 			QString mainCloudRole;

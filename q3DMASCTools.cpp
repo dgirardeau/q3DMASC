@@ -74,8 +74,8 @@ bool Tools::SaveClassifier(	QString filename,
 
 	QTextStream stream(&file);
 
-	stream << "# 3DMASC classifier file" << endl;
-	stream << "classifier: " << yamlFilename << endl;
+	stream << "# 3DMASC classifier file" << Qt::endl;
+	stream << "classifier: " << yamlFilename << Qt::endl;
 
 	//look for all clouds (labels)
 	QList<QString> cloudLabels;
@@ -91,22 +91,22 @@ bool Tools::SaveClassifier(	QString filename,
 		cloudLabels.push_back(corePointsRole);
 	}
 
-	stream << "# Clouds (roles)" << endl;
+	stream << "# Clouds (roles)" << Qt::endl;
 	for (const QString& label : cloudLabels)
 	{
-		stream << "cloud: " << label << endl;
+		stream << "cloud: " << label << Qt::endl;
 	}
 
 	if (!corePointsRole.isEmpty())
 	{
-		stream << "# Core points (classified role)" << endl;
-		stream << "core_points: " << corePointsRole << endl;
+		stream << "# Core points (classified role)" << Qt::endl;
+		stream << "core_points: " << corePointsRole << Qt::endl;
 	}
 
-	stream << "# Features" << endl;
+	stream << "# Features" << Qt::endl;
 	for (Feature::Shared f : features)
 	{
-		stream << "feature: " << f->toString() << endl;
+		stream << "feature: " << f->toString() << Qt::endl;
 	}
 
 	return true;

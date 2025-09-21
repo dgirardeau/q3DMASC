@@ -253,7 +253,7 @@ bool Train3DMASCDialog::openTraceFile()
 	QDir parameterDir = QDir(info.path());
 
 	QFileDialog dialog(this);
-	dialog.setFileMode(QFileDialog::DirectoryOnly);
+	dialog.setFileMode(QFileDialog::Directory);
 	dialog.setWindowTitle("Choose a valid directory for the traces");
 	dialog.setDirectory(QStandardPaths::standardLocations(QStandardPaths::DocumentsLocation).at(0));
 

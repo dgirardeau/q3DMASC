@@ -721,12 +721,12 @@ void q3DMASCPlugin::doTrainAction()
 							ccLog::Warning(QString("Can't open file '%1' for writing").arg(filename));
 						}
 						QTextStream stream(&file);
-						stream << "# feature importance" << endl;
+						stream << "# feature importance" << Qt::endl;
 						for (size_t i = 0; i < originalFeatures.size(); ++i)
 						{
 							if (originalFeatures[i].selected)
 							{
-								stream << originalFeatures[i].feature->toString() << " " << originalFeatures[i].importance << endl;
+								stream << originalFeatures[i].feature->toString() << " " << originalFeatures[i].importance << Qt::endl;
 							}
 						}
 					}

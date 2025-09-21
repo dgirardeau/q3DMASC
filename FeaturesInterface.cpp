@@ -160,10 +160,10 @@ bool Feature::SaveSources(const Source::Set& sources, QString filename)
 	}
 	
 	QTextStream stream(&file);
-	stream << "#Features_SF" << endl;
+	stream << "#Features_SF" << Qt::endl;
 	for (const Source& s : sources)
 	{
-		stream << s.type << ":" << s.name << endl;
+		stream << s.type << ":" << s.name << Qt::endl;
 	}
 
 	return true;
