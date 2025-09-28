@@ -56,8 +56,13 @@ if (PLUGIN_STANDARD_3DMASC)
 			${CloudCompare_SOURCE_DIR}/../common)
 
 	target_link_libraries( ${PROJECT_NAME} ${OpenCV_LIBS} )
-	set( OpenCV_WORLD_DLL "" CACHE FILEPATH "Opencv 'World' DLL file path" )
-	copy_files("${OpenCV_WORLD_DLL}" "${CLOUDCOMPARE_DEST_FOLDER}" 1) #mind the quotes!
+	set( OpenCV_WORLD_DLL "" CACHE FILEPATH "OpenCV 'World' DLL file path" )
+	copy_files("${OpenCV_WORLD_DLL}" "${CLOUDCOMPARE_DEST_FOLDER}" 0) #mind the quotes!
+
+	if( CMAKE_CONFIGURATION_TYPES )
+		set( OpenCV_WORLD_DEBUG_DLL "" CACHE FILEPATH "OpenCV Debug 'World' DLL file path" )
+		copy_files("${OpenCV_WORLD_DEBUG_DLL}" "${CLOUDCOMPARE_DEST_FOLDER}" 2) #mind the quotes!
+	endif()
 
 	#================
 	# git commit hash
