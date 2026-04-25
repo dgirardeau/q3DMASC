@@ -280,6 +280,11 @@ bool Classifier::classify(	const Feature::Source::Set& featureSources,
 		int classifSFIdx = cloud->getScalarFieldIndexByName(classificationSF->getName());
 		cloud->setCurrentDisplayedScalarField(classifSFIdx);
 		cloud->showSF(true);
+
+		if (app)
+		{
+			app->updatePropertiesView();
+		}
 	}
 
 	if (parentWidget && cloud->getDisplay())
