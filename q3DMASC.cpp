@@ -459,7 +459,7 @@ void q3DMASCPlugin::doTrainAction()
 		corePoints.cloud->setName(QString("Core points (%1)").arg(corePointsName));
 		group->addChild(corePoints.cloud);
 	}
-	
+
 	if (group->getChildrenNumber() != 0)
 	{
 		m_app->addToDB(group);
@@ -721,12 +721,12 @@ void q3DMASCPlugin::doTrainAction()
 							ccLog::Warning(QString("Can't open file '%1' for writing").arg(filename));
 						}
 						QTextStream stream(&file);
-						stream << "# feature importance" << endl;
+						stream << "# feature importance" << Qt::endl;
 						for (size_t i = 0; i < originalFeatures.size(); ++i)
 						{
 							if (originalFeatures[i].selected)
 							{
-								stream << originalFeatures[i].feature->toString() << " " << originalFeatures[i].importance << endl;
+								stream << originalFeatures[i].feature->toString() << " " << originalFeatures[i].importance << Qt::endl;
 							}
 						}
 					}
@@ -796,6 +796,6 @@ void q3DMASCPlugin::registerCommands(ccCommandLineInterface* cmd)
 		assert(false);
 		return;
 	}
-	
+
 	cmd->registerCommand(ccCommandLineInterface::Command::Shared(new Command3DMASCClassif));
 }

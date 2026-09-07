@@ -50,6 +50,10 @@
 #include <unistd.h>
 #endif
 
+#if defined(CC_WINDOWS)
+#include <Windows.h>
+#endif
+
 using namespace masc;
 
 Classifier::Classifier()
@@ -120,7 +124,7 @@ bool Classifier::classify(	const Feature::Source::Set& featureSources,
 		errorMessage = QObject::tr("Invalid input");
 		return false;
 	}
-	
+
 	if (!isValid())
 	{
 		errorMessage = QObject::tr("Invalid classifier");
@@ -195,7 +199,7 @@ bool Classifier::classify(	const Feature::Source::Set& featureSources,
 		}
 	}
 
-	QScopedPointer<ccProgressDialog> pDlg;
+	std::unique_ptr<ccProgressDialog> pDlg;
 	if (parentWidget)
 	{
 		pDlg.reset(new ccProgressDialog(parentWidget));
@@ -203,7 +207,7 @@ bool Classifier::classify(	const Feature::Source::Set& featureSources,
 		pDlg->show();
 		QCoreApplication::processEvents();
 	}
-	CCCoreLib::NormalizedProgress nProgress(pDlg.data(), cloud->size());
+	CCCoreLib::NormalizedProgress nProgress(pDlg.get(), cloud->size());
 
 	bool success = true;
 	int numberOfTrees = static_cast<int>(m_rtrees->getRoots().size());
@@ -276,6 +280,11 @@ bool Classifier::classify(	const Feature::Source::Set& featureSources,
 		int classifSFIdx = cloud->getScalarFieldIndexByName(classificationSF->getName());
 		cloud->setCurrentDisplayedScalarField(classifSFIdx);
 		cloud->showSF(true);
+
+		if (app)
+		{
+			app->updatePropertiesView();
+		}
 	}
 
 	if (parentWidget && cloud->getDisplay())
@@ -385,7 +394,7 @@ bool Classifier::evaluate(const Feature::Source::Set& featureSources,
 		return false;
 	}
 
-	QScopedPointer<ccProgressDialog> pDlg;
+	std::unique_ptr<ccProgressDialog> pDlg;
 	if (parentWidget)
 	{
 		pDlg.reset(new ccProgressDialog(parentWidget));
@@ -393,7 +402,7 @@ bool Classifier::evaluate(const Feature::Source::Set& featureSources,
 		pDlg->show();
 		QCoreApplication::processEvents();
 	}
-	CCCoreLib::NormalizedProgress nProgress(pDlg.data(), testSampleCount);
+	CCCoreLib::NormalizedProgress nProgress(pDlg.get(), testSampleCount);
 
 	//fill the data matrix
 	for (int fIndex = 0; fIndex < attributesPerSample; ++fIndex)
@@ -600,7 +609,7 @@ bool Classifier::train(	const ccPointCloud* cloud,
 		}
 	}
 
-	QScopedPointer<QProgressDialog> pDlg;
+	std::unique_ptr<QProgressDialog> pDlg;
 	if (parentWidget)
 	{
 		pDlg.reset(new QProgressDialog(parentWidget));
@@ -631,11 +640,11 @@ bool Classifier::train(	const ccPointCloud* cloud,
 			cv::Mat sampleIndexes = cv::Mat::zeros(1, training_data.rows, CV_8U);
 //			cv::Mat trainSamples = sampleIndexes.colRange(0, sampleCount);
 //			trainSamples.setTo(cv::Scalar::all(1));
-			
+
 			cv::Mat varTypes(training_data.cols + 1, 1, CV_8U);
 			varTypes.setTo(cv::Scalar::all(cv::ml::VAR_ORDERED));
 			varTypes.at<uchar>(training_data.cols) = cv::ml::VAR_CATEGORICAL;
-			
+
 			cv::Ptr<cv::ml::TrainData> trainData = cv::ml::TrainData::create(training_data, cv::ml::ROW_SAMPLE, train_labels,  /* samples layout responses */
 																			 cv::noArray(), sampleIndexes, /* varIdx sampleIdx */
 																			 cv::noArray(), varTypes); // sampleWeights varType
@@ -714,7 +723,7 @@ bool Classifier::toFile(QString filename, QWidget* parentWidget/*=nullptr*/) con
 		ccLog::Warning(QObject::tr("Classifier hasn't been trained, can't save it"));
 		return false;
 	}
-	
+
 	//save the classifier
 	QProgressDialog pDlg(parentWidget);
 	pDlg.setRange(0, 0); //infinite loop
@@ -724,7 +733,7 @@ bool Classifier::toFile(QString filename, QWidget* parentWidget/*=nullptr*/) con
 
 	cv::String cvFilename = filename.toStdString();
 	m_rtrees->save(cvFilename);
-	
+
 	pDlg.close();
 	QCoreApplication::processEvents();
 
@@ -735,7 +744,7 @@ bool Classifier::toFile(QString filename, QWidget* parentWidget/*=nullptr*/) con
 bool Classifier::fromFile(QString filename, QWidget* parentWidget/*=nullptr*/)
 {
 	//load the classifier
-	QScopedPointer<QProgressDialog> pDlg;
+	std::unique_ptr<QProgressDialog> pDlg;
 	if (parentWidget)
 	{
 		pDlg.reset(new QProgressDialog(parentWidget));
@@ -744,7 +753,7 @@ bool Classifier::fromFile(QString filename, QWidget* parentWidget/*=nullptr*/)
 		pDlg->show();
 		QCoreApplication::processEvents();
 	}
-	
+
 	try
 	{
 		m_rtrees = cv::ml::RTrees::load(filename.toStdString());

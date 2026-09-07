@@ -130,7 +130,7 @@ struct Command3DMASCClassif : public ccCommandLineInterface::Command
 			cmd.arguments().pop_front();
 
 			//process the cloud roles description
-			QStringList tokens = cloudRolesStr.simplified().split(QChar(' '), QString::SkipEmptyParts);
+			QStringList tokens = cloudRolesStr.simplified().split(QChar(' '), Qt::SkipEmptyParts);
 
 			masc::Tools::NamedClouds cloudPerRole;
 			QString mainCloudRole;
@@ -219,7 +219,7 @@ struct Command3DMASCClassif : public ccCommandLineInterface::Command
 			corePoints.role = mainCloudRole;
 
 			//prepare the main cloud
-			QScopedPointer<ccProgressDialog> pDlg;
+			std::unique_ptr<ccProgressDialog> pDlg;
 			if (!cmd.silentMode())
 			{
 				pDlg.reset(new ccProgressDialog(true, cmd.widgetParent()));
@@ -227,7 +227,7 @@ struct Command3DMASCClassif : public ccCommandLineInterface::Command
 			}
 
 			QString errorMessage;
-			if (!masc::Tools::PrepareFeatures(corePoints, features, errorMessage, pDlg.data(), &generatedScalarFields))
+			if (!masc::Tools::PrepareFeatures(corePoints, features, errorMessage, pDlg.get(), &generatedScalarFields))
 			{
 				generatedScalarFields.releaseSFs(false);
 				return cmd.error(errorMessage);
