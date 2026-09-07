@@ -219,7 +219,7 @@ struct Command3DMASCClassif : public ccCommandLineInterface::Command
 			corePoints.role = mainCloudRole;
 
 			//prepare the main cloud
-			QScopedPointer<ccProgressDialog> pDlg;
+			std::unique_ptr<ccProgressDialog> pDlg;
 			if (!cmd.silentMode())
 			{
 				pDlg.reset(new ccProgressDialog(true, cmd.widgetParent()));
@@ -227,7 +227,7 @@ struct Command3DMASCClassif : public ccCommandLineInterface::Command
 			}
 
 			QString errorMessage;
-			if (!masc::Tools::PrepareFeatures(corePoints, features, errorMessage, pDlg.data(), &generatedScalarFields))
+			if (!masc::Tools::PrepareFeatures(corePoints, features, errorMessage, pDlg.get(), &generatedScalarFields))
 			{
 				generatedScalarFields.releaseSFs(false);
 				return cmd.error(errorMessage);
