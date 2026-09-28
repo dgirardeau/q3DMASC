@@ -102,6 +102,6 @@ namespace masc
 		//! Context class (label)
 		int ctxClassLabel;
 		//! The computed scalar
-		CCCoreLib::ScalarField* sf;
+		CCCoreLib::ScalarField::Shared sf;
 	};
 }

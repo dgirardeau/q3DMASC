@@ -52,7 +52,7 @@ bool ContextBasedFeature::checkValidity(QString corePointRole, QString &error) c
 		return false;
 	}
 
-	CCCoreLib::ScalarField* classifSF = Tools::GetClassificationSF(cloud1);
+	auto classifSF = Tools::GetClassificationSF(cloud1);
 	if (!classifSF)
 	{
 		error = QString("Context cloud (%1) has no classification field").arg(cloud1Label);
@@ -100,7 +100,7 @@ bool ContextBasedFeature::prepare(	const CorePoints& corePoints,
 		return false;
 	}
 
-	CCCoreLib::ScalarField* classifSF = Tools::GetClassificationSF(cloud1);
+	auto classifSF = Tools::GetClassificationSF(cloud1);
 	if (!classifSF || classifSF->size() < cloud1->size())
 	{
 		assert(false);

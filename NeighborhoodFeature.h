@@ -177,7 +177,9 @@ namespace masc
 		**/
 		NeighborhoodFeatureType type;
 
-		//! Feature values
-		CCCoreLib::ScalarField *sf1, *sf2;
+		//! First set of feature values
+		CCCoreLib::ScalarField::Shared sf1;
+		//! Second set of feature values
+		CCCoreLib::ScalarField::Shared sf2;
 	};
 }

@@ -216,7 +216,7 @@ namespace masc
 		IScalarFieldWrapper::Shared field2;
 
 		//! For scaled features
-		CCCoreLib::ScalarField* statSF1;
-		CCCoreLib::ScalarField* statSF2;
+		CCCoreLib::ScalarField::Shared statSF1;
+		CCCoreLib::ScalarField::Shared statSF2;
 	};
 }

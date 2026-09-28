@@ -218,13 +218,13 @@ namespace masc
 		static bool CheckSFExistence(ccPointCloud* cloud, const QString& resultSFName);
 
 		//! Creates (or resets) a scalar field with the given name on the input core points cloud
-		static CCCoreLib::ScalarField* PrepareSF(ccPointCloud* cloud, const QString& resultSFName, SFCollector* generatedScalarFields/*= nullptr*/, SFCollector::Behavior behavior);
+		static CCCoreLib::ScalarField::Shared PrepareSF(ccPointCloud* cloud, const QString& resultSFName, SFCollector* generatedScalarFields/*= nullptr*/, SFCollector::Behavior behavior);
 
 		//! Performs a mathematical operation between two scalars
 		static ScalarType PerformMathOp(double s1, double s2, Operation op);
 
 		//! Performs a mathematical operation between two scalar fields (they must have the same size!)
-		static bool PerformMathOp(CCCoreLib::ScalarField* sf1, const CCCoreLib::ScalarField* sf2, Operation op);
+		static bool PerformMathOp(CCCoreLib::ScalarField& sf1, const CCCoreLib::ScalarField& sf2, Operation op);
 
 		//! Performs a mathematical operation between two scalar fields (they must have the same size!)
 		static bool PerformMathOp(const IScalarFieldWrapper& sf1, const IScalarFieldWrapper& sf2, Operation op, CCCoreLib::ScalarField* outSF);

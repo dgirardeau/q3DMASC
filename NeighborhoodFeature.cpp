@@ -93,8 +93,8 @@ bool NeighborhoodFeature::prepare(	const CorePoints& corePoints,
 	if (sf1WasAlreadyExisting)
 	{
 		sf1 = PrepareSF(corePoints.cloud, resultSFName, generatedScalarFields, SFCollector::ALWAYS_KEEP);
-		if (generatedScalarFields->scalarFields.contains(sf1)) // i.e. the SF is existing but was not present at the startup of the plugin
-			generatedScalarFields->setBehavior(sf1, SFCollector::CAN_REMOVE);
+		if (generatedScalarFields->scalarFields.contains(sf1.get())) // i.e. the SF is existing but was not present at the startup of the plugin
+			generatedScalarFields->setBehavior(sf1.get(), SFCollector::CAN_REMOVE);
 	}
 	else
 	{
@@ -158,7 +158,7 @@ bool NeighborhoodFeature::finish(const CorePoints& corePoints, QString& error)
 		//now perform the math operation
 		if (op != Feature::NO_OPERATION)
 		{
-			if (!PerformMathOp(sf1, sf2, op))
+			if (!PerformMathOp(*sf1, *sf2, op))
 			{
 				error = "Failed to perform the MATH operation";
 				success = false;
