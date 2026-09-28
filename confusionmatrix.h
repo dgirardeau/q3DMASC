@@ -38,7 +38,7 @@ public:
 	float getOverallAccuracy() const;
 
 private:
-	Ui::ConfusionMatrix* m_ui;
+	std::unique_ptr<Ui::ConfusionMatrix> m_ui;
 	cv::Mat m_confusionMatrix;
 	cv::Mat m_precisionRecallF1Score;
 	std::vector<ScalarType> m_classNumbers;
