@@ -38,7 +38,7 @@ static QColor GetColor(double value, double r1, double g1, double b1)
 
 ConfusionMatrix::ConfusionMatrix(	const CCCoreLib::GenericDistribution::ScalarContainer& actual,
 									const CCCoreLib::GenericDistribution::ScalarContainer& predicted )
-	: m_ui(new Ui::ConfusionMatrix)
+	: m_ui(std::make_unique<Ui::ConfusionMatrix>())
 	, m_overallAccuracy(0.0f)
 	
 {
@@ -54,11 +54,7 @@ ConfusionMatrix::ConfusionMatrix(	const CCCoreLib::GenericDistribution::ScalarCo
 	this->setMinimumSize(widgetSize);
 }
 
-ConfusionMatrix::~ConfusionMatrix()
-{
-	delete m_ui;
-	m_ui = nullptr;
-}
+ConfusionMatrix::~ConfusionMatrix() = default;
 
 void ConfusionMatrix::computePrecisionRecallF1Score(cv::Mat& matrix, cv::Mat& precisionRecallF1Score, cv::Mat& vec_TP_FN)
 {
