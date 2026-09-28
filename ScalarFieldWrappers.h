@@ -39,7 +39,7 @@ public:
 class ScalarFieldWrapper : public IScalarFieldWrapper
 {
 public:
-	ScalarFieldWrapper(CCCoreLib::ScalarField* sf)
+	ScalarFieldWrapper(CCCoreLib::ScalarField::Shared sf)
 		: m_sf(sf)
 	{}
 
@@ -49,13 +49,13 @@ public:
 	size_t size() const override { return m_sf->size(); }
 
 protected:
-	CCCoreLib::ScalarField* m_sf;
+	CCCoreLib::ScalarField::Shared m_sf;
 };
 
 class ScalarFieldRatioWrapper : public IScalarFieldWrapper
 {
 public:
-	ScalarFieldRatioWrapper(CCCoreLib::ScalarField* sfp, CCCoreLib::ScalarField* sfq, QString name)
+	ScalarFieldRatioWrapper(CCCoreLib::ScalarField::Shared sfp, CCCoreLib::ScalarField::Shared sfq, QString name)
 		: m_sfp(sfp)
 		, m_sfq(sfq)
 		, m_name(name)
@@ -73,7 +73,8 @@ public:
 	inline size_t size() const override { return std::min(m_sfp->size(), m_sfq->size()); }
 
 protected:
-	CCCoreLib::ScalarField *m_sfp, *m_sfq;
+	CCCoreLib::ScalarField::Shared m_sfp;
+	CCCoreLib::ScalarField::Shared m_sfq;
 	QString m_name;
 };
 

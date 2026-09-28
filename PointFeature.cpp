@@ -258,7 +258,7 @@ IScalarFieldWrapper::Shared PointFeature::retrieveField(ccPointCloud* cloud, QSt
 	{
 	case PointFeature::Intensity:
 	{
-		CCCoreLib::ScalarField* sf = Tools::RetrieveSF(cloud, LAS_FIELD_NAMES[LAS_INTENSITY], false);
+		auto sf = Tools::RetrieveSF(cloud, LAS_FIELD_NAMES[LAS_INTENSITY], false);
 		if (!sf)
 		{
 			error = "Cloud has no 'intensity' scalar field";
@@ -274,7 +274,7 @@ IScalarFieldWrapper::Shared PointFeature::retrieveField(ccPointCloud* cloud, QSt
 		return IScalarFieldWrapper::Shared(new DimScalarFieldWrapper(cloud, DimScalarFieldWrapper::DimZ));
 	case PointFeature::NbRet:
 	{
-		CCCoreLib::ScalarField* sf = Tools::RetrieveSF(cloud, LAS_FIELD_NAMES[LAS_NUMBER_OF_RETURNS], false);
+		auto sf = Tools::RetrieveSF(cloud, LAS_FIELD_NAMES[LAS_NUMBER_OF_RETURNS], false);
 		if (!sf)
 		{
 			error = "Cloud has no 'number of returns' scalar field";
@@ -284,7 +284,7 @@ IScalarFieldWrapper::Shared PointFeature::retrieveField(ccPointCloud* cloud, QSt
 	}
 	case PointFeature::RetNb:
 	{
-		CCCoreLib::ScalarField* sf = Tools::RetrieveSF(cloud, LAS_FIELD_NAMES[LAS_RETURN_NUMBER], false);
+		auto sf = Tools::RetrieveSF(cloud, LAS_FIELD_NAMES[LAS_RETURN_NUMBER], false);
 		if (!sf)
 		{
 			error = "Cloud has no 'return number' scalar field";
@@ -295,13 +295,13 @@ IScalarFieldWrapper::Shared PointFeature::retrieveField(ccPointCloud* cloud, QSt
 	case PointFeature::EchoRat:
 	{
 		//retrieve the two scalar fields 'p/q'
-		CCCoreLib::ScalarField* numberOfRetSF = Tools::RetrieveSF(cloud, LAS_FIELD_NAMES[LAS_NUMBER_OF_RETURNS], false);
+		auto numberOfRetSF = Tools::RetrieveSF(cloud, LAS_FIELD_NAMES[LAS_NUMBER_OF_RETURNS], false);
 		if (!numberOfRetSF)
 		{
 			error = "Can't compute the 'echo ratio' field: no 'Number of Return' SF available";
 			return nullptr;
 		}
-		CCCoreLib::ScalarField* retNumberSF = Tools::RetrieveSF(cloud, LAS_FIELD_NAMES[LAS_RETURN_NUMBER], false);
+		auto retNumberSF = Tools::RetrieveSF(cloud, LAS_FIELD_NAMES[LAS_RETURN_NUMBER], false);
 		if (!retNumberSF)
 		{
 			error = "Can't compute the 'echo ratio' field: no 'Return number' SF available";
@@ -322,7 +322,7 @@ IScalarFieldWrapper::Shared PointFeature::retrieveField(ccPointCloud* cloud, QSt
 		return IScalarFieldWrapper::Shared(new ColorScalarFieldWrapper(cloud, ColorScalarFieldWrapper::Blue));
 	case PointFeature::NIR:
 	{
-		CCCoreLib::ScalarField* sf = Tools::RetrieveSF(cloud, s_NIRSFName, false);
+		auto sf = Tools::RetrieveSF(cloud, s_NIRSFName, false);
 		if (!sf)
 		{
 			error = "Cloud has no 'NIR' scalar field";
@@ -343,7 +343,7 @@ IScalarFieldWrapper::Shared PointFeature::retrieveField(ccPointCloud* cloud, QSt
 	}
 	case PointFeature::M3C2:
 	{
-		CCCoreLib::ScalarField* sf = Tools::RetrieveSF(cloud, s_M3C2SFName, true);
+		auto sf = Tools::RetrieveSF(cloud, s_M3C2SFName, true);
 		if (!sf)
 		{
 			error = "Cloud has no 'm3c2 distance' scalar field";
@@ -353,7 +353,7 @@ IScalarFieldWrapper::Shared PointFeature::retrieveField(ccPointCloud* cloud, QSt
 	}
 	case PointFeature::PCV:
 	{
-		CCCoreLib::ScalarField* sf = Tools::RetrieveSF(cloud, s_PCVSFName, true);
+		auto sf = Tools::RetrieveSF(cloud, s_PCVSFName, true);
 		if (!sf)
 		{
 			error = "Cloud has no 'PCV/Illuminance' scalar field";
@@ -378,14 +378,14 @@ IScalarFieldWrapper::Shared PointFeature::retrieveField(ccPointCloud* cloud, QSt
 
 static bool ComputeMathOpWithNearestNeighbor(	const CorePoints& corePoints,
 												const IScalarFieldWrapper& field1,
-												CCCoreLib::ScalarField* outSF,
+												CCCoreLib::ScalarField& outSF,
 												ccPointCloud& cloud2,
 												const IScalarFieldWrapper& field2,
 												masc::Feature::Operation op,
 												QString& error,
 												CCCoreLib::GenericProgressCallback* progressCb = nullptr)
 {
-	if (op == masc::Feature::NO_OPERATION || !outSF || outSF->size() != corePoints.size())
+	if (op == masc::Feature::NO_OPERATION || outSF.size() != corePoints.size())
 	{
 		//invalid input parameters
 		assert(false);
@@ -445,7 +445,7 @@ static bool ComputeMathOpWithNearestNeighbor(	const CorePoints& corePoints,
 			s = masc::Feature::PerformMathOp(s1, s2, op);
 		}
 
-		outSF->setValue(i, s);
+		outSF.setValue(i, s);
 
 		if (i && (i % tenth) == 0)
 		{
@@ -482,7 +482,7 @@ static bool ComputeMathOpWithNearestNeighbor(	const CorePoints& corePoints,
 	}
 	}
 
-	outSF->computeMinAndMax();
+	outSF.computeMinAndMax();
 
 	if (progressCb)
 	{
@@ -586,11 +586,15 @@ bool PointFeature::prepare(	const CorePoints& corePoints,
 		{
 			// if the SF exists, it is not added to generatedScalarFields
 			statSF1 = PrepareSF(corePoints.cloud, resultSF1Name, generatedScalarFields, SFCollector::ALWAYS_KEEP);
-			if (generatedScalarFields->scalarFields.contains(statSF1)) // i.e. the SF is existing but was not present at the startup of the plugin
-				generatedScalarFields->setBehavior(statSF1, SFCollector::CAN_REMOVE);
+			if (generatedScalarFields->scalarFields.contains(statSF1.get())) // i.e. the SF is existing but was not present at the startup of the plugin
+			{
+				generatedScalarFields->setBehavior(statSF1.get(), SFCollector::CAN_REMOVE);
+			}
 		}
 		else
+		{
 			statSF1 = PrepareSF(corePoints.cloud, resultSF1Name, generatedScalarFields, SFCollector::CAN_REMOVE);
+		}
 		if (!statSF1)
 		{
 			error = QString("Failed to prepare scalar field for field '%1' @ scale %2").arg(field1->getName()).arg(scale);
@@ -606,9 +610,13 @@ bool PointFeature::prepare(	const CorePoints& corePoints,
 			assert(!statSF2);
 			sf2WasAlreadyExisting = CheckSFExistence(corePoints.cloud, resultSF2Name);
 			if (sf2WasAlreadyExisting)
+			{
 				statSF2 = PrepareSF(corePoints.cloud, resultSF2Name, generatedScalarFields, SFCollector::ALWAYS_KEEP);
+			}
 			else
+			{
 				statSF2 = PrepareSF(corePoints.cloud, resultSF2Name, generatedScalarFields, SFCollector::ALWAYS_REMOVE);
+			}
 			if (!statSF2)
 			{
 				error = QString("Failed to prepare scalar field for field '%1' @ scale %2").arg(field2->getName()).arg(scale);
@@ -625,20 +633,20 @@ bool PointFeature::prepare(	const CorePoints& corePoints,
 		//retrieve/create a SF to host the result
 		int sfIdx = corePoints.cloud->getScalarFieldIndexByName(resultSF1Name.toStdString());
 
-		CCCoreLib::ScalarField* resultSF = nullptr;
+		ccScalarField::Shared resultSF;
 		if (sfIdx >= 0)
 		{
 			//reuse the existing field
-			resultSF = corePoints.cloud->getScalarField(sfIdx);
+			resultSF = corePoints.cloud->getCCScalarField(sfIdx);
 		}
 		else
 		{
 			//copy the SF1 field
-			resultSF = new ccScalarField(resultSF1Name.toStdString());
+			resultSF.reset(new ccScalarField(resultSF1Name.toStdString()));
 			if (!resultSF->resizeSafe(corePoints.cloud->size()))
 			{
 				error = "Not enough memory";
-				resultSF->release();
+				resultSF.reset();
 				return false;
 			}
 
@@ -655,7 +663,7 @@ bool PointFeature::prepare(	const CorePoints& corePoints,
 			{
 				if (!ComputeMathOpWithNearestNeighbor(	corePoints,
 														*field1,
-														resultSF,
+														*resultSF,
 														*cloud2,
 														*field2,
 														op,
@@ -664,16 +672,15 @@ bool PointFeature::prepare(	const CorePoints& corePoints,
 					)
 				{
 					error = "Failed to perform the MATH operation (" + error + ")";
-					resultSF->release();
 					return false;
 				}
 			}
 
-			int newSFIdx = corePoints.cloud->addScalarField(static_cast<ccScalarField*>(resultSF));
+			int newSFIdx = corePoints.cloud->addScalarField(resultSF);
 			if (generatedScalarFields)
 			{
 				//track the generated scalar-field
-				generatedScalarFields->push(corePoints.cloud, resultSF, SFCollector::CAN_REMOVE);
+				generatedScalarFields->push(corePoints.cloud, resultSF.get(), SFCollector::CAN_REMOVE);
 			}
 
 			corePoints.cloud->setCurrentDisplayedScalarField(newSFIdx);
@@ -869,7 +876,7 @@ bool PointFeature::finish(const CorePoints& corePoints, QString& error)
 		//now perform the math operation
 		if (op != Feature::NO_OPERATION)
 		{
-			if (!PerformMathOp(statSF1, statSF2, op))
+			if (!PerformMathOp(*statSF1, *statSF2, op))
 			{
 				error = "Failed to perform the MATH operation";
 				success = false;

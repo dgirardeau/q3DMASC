@@ -61,10 +61,10 @@ namespace masc
 
 		static bool RandomSubset(ccPointCloud* cloud, float ratio, CCCoreLib::ReferenceCloud* inRatioSubset, CCCoreLib::ReferenceCloud* outRatioSubset);
 
-		static CCCoreLib::ScalarField* RetrieveSF(const ccPointCloud* cloud, const QString& sfName, bool caseSensitive = true);
+		static ccScalarField::Shared RetrieveSF(const ccPointCloud* cloud, const QString& sfName, bool caseSensitive = true);
 
 		//! Helper: returns the classification SF associated to a cloud (if any)
-		static CCCoreLib::ScalarField* GetClassificationSF(const ccPointCloud* cloud);
+		static ccScalarField::Shared GetClassificationSF(const ccPointCloud* cloud);
 	};
 
 }; //namespace masc

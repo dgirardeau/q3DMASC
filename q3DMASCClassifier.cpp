@@ -142,11 +142,11 @@ bool Classifier::classify(	const Feature::Source::Set& featureSources,
 	if (cvConfidenceIdx >= 0) // if the scalar field exists, delete it
 		cloud->deleteScalarField(cvConfidenceIdx);
 	cvConfidenceIdx = cloud->addScalarField("Classification_confidence");
-	ccScalarField* cvConfidenceSF = static_cast<ccScalarField*>(cloud->getScalarField(cvConfidenceIdx));
+	auto cvConfidenceSF = ccScalarField::FromCCCoreLibShared(cloud->getScalarField(cvConfidenceIdx));
 
 	//look for the classification field
-	CCCoreLib::ScalarField* classificationSF = Tools::GetClassificationSF(cloud);
-	ccScalarField* classifSFBackup = nullptr;
+	auto classificationSF = Tools::GetClassificationSF(cloud);
+	ccScalarField::Shared classifSFBackup;
 
 	if (classificationSF) //save classification field (if any) by renaming it "Classification_backup"
 	{
@@ -157,14 +157,13 @@ bool Classifier::classify(	const Feature::Source::Set& featureSources,
 			cloud->deleteScalarField(sfIdx);
 
 		classificationSF->setName("Classification_backup"); // rename the classification field
-		classifSFBackup = static_cast<ccScalarField*>(classificationSF);
+		classifSFBackup = classificationSF;
 	}
 
 	//create the classification SF
-	ccScalarField* _classificationSF = new ccScalarField(LAS_FIELD_NAMES[LAS_CLASSIFICATION]);
+	auto _classificationSF = std::make_shared<ccScalarField>(LAS_FIELD_NAMES[LAS_CLASSIFICATION]);
 	if (!_classificationSF->resizeSafe(cloud->size()))
 	{
-		_classificationSF->release();
 		errorMessage = QObject::tr("Not enough memory");
 		return false;
 	}
@@ -344,7 +343,7 @@ bool Classifier::evaluate(const Feature::Source::Set& featureSources,
 	}
 
 	//look for the classification field
-	CCCoreLib::ScalarField* classifSF = Tools::GetClassificationSF(testCloud);
+	auto classifSF = Tools::GetClassificationSF(testCloud);
 	if (!classifSF || classifSF->size() < testCloud->size())
 	{
 		assert(false);
@@ -352,8 +351,8 @@ bool Classifier::evaluate(const Feature::Source::Set& featureSources,
 		return false;
 	}
 
-	ccScalarField* outSF = nullptr;
-	ccScalarField* cvConfidenceSF = nullptr;
+	ccScalarField::Shared outSF;
+	ccScalarField::Shared cvConfidenceSF;
 
 	if (!outputSFName.isEmpty())
 	{
@@ -363,7 +362,7 @@ bool Classifier::evaluate(const Feature::Source::Set& featureSources,
 		else
 			ccLog::Print("add " + outputSFName + " to the TEST cloud");
 		outIdx = testCloud->addScalarField(outputSFName.toStdString());
-		outSF  = static_cast<ccScalarField*>(testCloud->getScalarField(outIdx));
+		outSF  = testCloud->getCCScalarField(outIdx);
 	}
 
 	if (outSF) // add a Classification_confidence value to the test cloud if needed
@@ -374,7 +373,7 @@ bool Classifier::evaluate(const Feature::Source::Set& featureSources,
 		else
 			ccLog::Print("add Classification_confidence to the TEST cloud");
 		cvConfidenceIdx = testCloud->addScalarField("Classification_confidence");
-		cvConfidenceSF = static_cast<ccScalarField*>(testCloud->getScalarField(cvConfidenceIdx));
+		cvConfidenceSF = testCloud->getCCScalarField(cvConfidenceIdx);
 	}
 
 	unsigned testSampleCount = (testSubset ? testSubset->size() : testCloud->size());
@@ -543,7 +542,7 @@ bool Classifier::train(	const ccPointCloud* cloud,
 	}
 
 	//look for the classification field
-	CCCoreLib::ScalarField* classifSF = Tools::GetClassificationSF(cloud);
+	auto classifSF = Tools::GetClassificationSF(cloud);
 	if (!classifSF || classifSF->size() < cloud->size())
 	{
 		assert(false);

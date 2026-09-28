@@ -1003,13 +1003,14 @@ bool Tools::LoadTrainingFile(	QString filename,
 	}
 }
 
-CCCoreLib::ScalarField* Tools::RetrieveSF(const ccPointCloud* cloud, const QString& sfName, bool caseSensitive/*=true*/)
+ccScalarField::Shared Tools::RetrieveSF(const ccPointCloud* cloud, const QString& sfName, bool caseSensitive/*=true*/)
 {
 	if (!cloud)
 	{
 		assert(false);
 		return nullptr;
 	}
+
 	int sfIdx = -1;
 	if (caseSensitive)
 	{
@@ -1030,12 +1031,9 @@ CCCoreLib::ScalarField* Tools::RetrieveSF(const ccPointCloud* cloud, const QStri
 
 	if (sfIdx >= 0)
 	{
-		return cloud->getScalarField(sfIdx);
+		return cloud->getCCScalarField(sfIdx);
 	}
-	else
-	{
-		return nullptr;
-	}
+	return nullptr;
 }
 
 struct FeaturesAndScales
@@ -1521,7 +1519,7 @@ bool Tools::RandomSubset(ccPointCloud* cloud, float ratio, CCCoreLib::ReferenceC
 	return true;
 }
 
-CCCoreLib::ScalarField* Tools::GetClassificationSF(const ccPointCloud* cloud)
+ccScalarField::Shared Tools::GetClassificationSF(const ccPointCloud* cloud)
 {
 	if (!cloud)
 	{
@@ -1535,5 +1533,5 @@ CCCoreLib::ScalarField* Tools::GetClassificationSF(const ccPointCloud* cloud)
 	{
 		return nullptr;
 	}
-	return cloud->getScalarField(classifSFIdx);
+	return cloud->getCCScalarField(classifSFIdx);
 }

@@ -37,7 +37,7 @@ bool Feature::CheckSFExistence(ccPointCloud* cloud, const QString& resultSFName)
 	return (sfIdx >= 0);
 }
 
-CCCoreLib::ScalarField* Feature::PrepareSF(	ccPointCloud* cloud,
+CCCoreLib::ScalarField::Shared Feature::PrepareSF(	ccPointCloud* cloud,
 											const QString& resultSFName,
 											SFCollector* generatedScalarFields/*=nullptr*/,
 											SFCollector::Behavior behavior/*=SFCollector::CAN_REMOVE*/ )
@@ -49,7 +49,7 @@ CCCoreLib::ScalarField* Feature::PrepareSF(	ccPointCloud* cloud,
 		return nullptr;
 	}
 
-	CCCoreLib::ScalarField* resultSF = nullptr;
+	CCCoreLib::ScalarField::Shared resultSF;
 	int sfIdx = cloud->getScalarFieldIndexByName(resultSFName.toStdString());
 	if (sfIdx >= 0)
 	{
@@ -59,11 +59,10 @@ CCCoreLib::ScalarField* Feature::PrepareSF(	ccPointCloud* cloud,
 	else
 	{
 		// ccLog::Warning("SF does not exist, create it: " + QString(resultSFName)  + ", SFCollector::Behavior " + QString::number(behavior));
-		ccScalarField* newSF = new ccScalarField(resultSFName.toStdString());
+		auto newSF = std::make_shared<ccScalarField>(resultSFName.toStdString());
 		if (!newSF->resizeSafe(cloud->size()))
 		{
 			ccLog::Warning("Not enough memory");
-			newSF->release();
 			return nullptr;
 		}
 		cloud->addScalarField(newSF);
@@ -71,7 +70,7 @@ CCCoreLib::ScalarField* Feature::PrepareSF(	ccPointCloud* cloud,
 		if (generatedScalarFields)
 		{
 			//track the generated scalar-field
-			generatedScalarFields->push(cloud, newSF, behavior);
+			generatedScalarFields->push(cloud, newSF.get(), behavior);
 		}
 
 		resultSF = newSF;
@@ -108,24 +107,23 @@ ScalarType Feature::PerformMathOp(double s1, double s2, Operation op)
 	return s;
 }
 
-bool Feature::PerformMathOp(CCCoreLib::ScalarField* sf1, const CCCoreLib::ScalarField* sf2, Feature::Operation op)
+bool Feature::PerformMathOp(CCCoreLib::ScalarField& sf1, const CCCoreLib::ScalarField& sf2, Feature::Operation op)
 {
-	if (!sf1 || !sf2 || sf1->size() != sf2->size() || op == Feature::NO_OPERATION)
+	if (sf1.size() != sf2.size() || op == Feature::NO_OPERATION)
 	{
 		//invalid input parameters
 		assert(false);
 		return false;
 	}
 
-	for (unsigned i = 0; i < sf1->size(); ++i)
+	for (unsigned i = 0; i < sf1.size(); ++i)
 	{
-		ScalarType s1 = sf1->getValue(i);
-		ScalarType s2 = sf2->getValue(i);
+		ScalarType s1 = sf1.getValue(i);
+		ScalarType s2 = sf2.getValue(i);
 		ScalarType s = PerformMathOp(s1, s2, op);
-		sf1->setValue(i, s);
+		sf1.setValue(i, s);
 	}
-	sf1->computeMinAndMax();
-
+	sf1.computeMinAndMax();
 	return true;
 }
 
