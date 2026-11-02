@@ -1,3 +1,5 @@
+#pragma once
+
 //##########################################################################
 //#                                                                        #
 //#                     CLOUDCOMPARE PLUGIN: q3DMASC                       #
@@ -15,8 +17,6 @@
 //#                                                                        #
 //##########################################################################
 
-#ifndef Q3DMASC_DISCLAIMER_DIALOG_HEADER
-#define Q3DMASC_DISCLAIMER_DIALOG_HEADER
 
 #include <ui_trainDisclaimerDlg.h>
 #include <ui_classifyDisclaimerDlg.h>
@@ -116,5 +116,3 @@ static bool ShowClassifyDisclaimer(ccMainAppInterface* app)
 
 	return s_classifyDisclaimerAccepted;
 }
-
-#endif //Q3DMASC_DISCLAIMER_DIALOG_HEADER
