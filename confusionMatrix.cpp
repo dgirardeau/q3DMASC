@@ -1,7 +1,7 @@
-#include "confusionmatrix.h"
+#include "confusionMatrix.h"
 
 // Ui
-#include <ui_confusionmatrix.h>
+#include <ui_confusionMatrix.h>
 
 // CCCoreLib
 #include <CCConst.h>

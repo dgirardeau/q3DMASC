@@ -17,7 +17,7 @@
 //#                                                                        #
 //##########################################################################
 
-#include "confusionmatrix.h"
+#include "confusionMatrix.h"
 
 // Ui
 #include <ui_Train3DMASCDialog.h>

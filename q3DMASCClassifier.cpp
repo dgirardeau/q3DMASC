@@ -17,7 +17,7 @@
 
 #include "q3DMASCClassifier.h"
 
-#include "confusionmatrix.h"
+#include "confusionMatrix.h"
 #include "q3DMASCTools.h"
 #include "qTrain3DMASCDialog.h"
 #include "ScalarFieldWrappers.h"
