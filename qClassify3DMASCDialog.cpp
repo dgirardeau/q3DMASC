@@ -36,7 +36,7 @@ static ccPointCloud* GetCloudFromCombo(QComboBox* comboBox, ccHObject* dbRoot)
 	if (!comboBox || !dbRoot)
 	{
 		assert(false);
-		return 0;
+		return nullptr;
 	}
 
 	//return the cloud currently selected in the combox box
@@ -44,20 +44,20 @@ static ccPointCloud* GetCloudFromCombo(QComboBox* comboBox, ccHObject* dbRoot)
 	if (index < 0)
 	{
 		assert(false);
-		return 0;
+		return nullptr;
 	}
 	unsigned uniqueID = comboBox->itemData(index).toUInt();
 	ccHObject* item = dbRoot->find(uniqueID);
 	if (!item || !item->isA(CC_TYPES::POINT_CLOUD))
 	{
 		assert(false);
-		return 0;
+		return nullptr;
 	}
 	return static_cast<ccPointCloud*>(item);
 }
 
 Classify3DMASCDialog::Classify3DMASCDialog(ccMainAppInterface* app, bool trainMode/*=false*/)
-	: QDialog(app ? app->getMainWindow() : 0)
+	: QDialog(app ? app->getMainWindow() : nullptr)
 	, Ui::Classify3DMASCDialog()
 	, m_app(app)
 {
@@ -73,10 +73,10 @@ Classify3DMASCDialog::Classify3DMASCDialog(ccMainAppInterface* app, bool trainMo
 		}
 
 		unsigned cloudCount = 0;
-		for (size_t i = 0; i < clouds.size(); ++i)
+		for (auto cloud : clouds)
 		{
-			QString name = clouds[i]->getName() + QString(" [%1]").arg(clouds[i]->getUniqueID());
-			QVariant uniqueID(clouds[i]->getUniqueID());
+			QString name = cloud->getName() + QString(" [%1]").arg(cloud->getUniqueID());
+			QVariant uniqueID(cloud->getUniqueID());
 			cloud1ComboBox->addItem(name, uniqueID);
 			cloud2ComboBox->addItem(name, uniqueID);
 			cloud3ComboBox->addItem(name, uniqueID);
@@ -216,12 +216,12 @@ void Classify3DMASCDialog::setCloudRoles(const QList<QString>& roles, QString& c
 	{
 		m_app->dbRootObject()->filterChildren(clouds, true, CC_TYPES::POINT_CLOUD);
 	}
-	for (size_t i = 0; i < clouds.size(); ++i)
+	for (auto cloud : clouds)
 	{
-		if (clouds[i]->isA(CC_TYPES::POINT_CLOUD)) //as filterChildren only tests 'isKindOf'
+		if (cloud->isA(CC_TYPES::POINT_CLOUD)) //as filterChildren only tests 'isKindOf'
 		{
-			QVariant uniqueID(clouds[i]->getUniqueID());
-			namesAndUniqueIds[clouds[i]->getName().toUpper()] = uniqueID;
+			QVariant uniqueID(cloud->getUniqueID());
+			namesAndUniqueIds[cloud->getName().toUpper()] = uniqueID;
 		}
 	}
 
@@ -240,7 +240,7 @@ void Classify3DMASCDialog::getClouds(QMap<QString, ccPointCloud*>& clouds) const
 		assert(false);
 		return;
 	}
-	
+
 	if (cloud1ComboBox->isEnabled())
 	{
 		clouds.insert(cloud1Label->text(), GetCloudFromCombo(cloud1ComboBox, m_app->dbRootObject()));

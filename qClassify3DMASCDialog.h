@@ -34,7 +34,7 @@ public:
 
 	//! Default constructor
 	Classify3DMASCDialog(ccMainAppInterface* app, bool trainMode = false);
-	~Classify3DMASCDialog();
+	~Classify3DMASCDialog() override;
 
 	//! read settings
 	void readSettings();

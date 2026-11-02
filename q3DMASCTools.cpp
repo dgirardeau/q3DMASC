@@ -51,7 +51,7 @@ using namespace masc;
 
 bool Tools::SaveClassifier(	QString filename,
 							const Feature::Set& features,
-							const QString corePointsRole,
+							const QString& corePointsRole,
 							const masc::Classifier& classifier,
 							QWidget* parent/*=nullptr*/)
 {
@@ -79,7 +79,7 @@ bool Tools::SaveClassifier(	QString filename,
 
 	//look for all clouds (labels)
 	QList<QString> cloudLabels;
-	for (Feature::Shared f : features)
+	for (const Feature::Shared& f : features)
 	{
 		if (f->cloud1 && !cloudLabels.contains(f->cloud1Label))
 			cloudLabels.push_back(f->cloud1Label);
@@ -104,7 +104,7 @@ bool Tools::SaveClassifier(	QString filename,
 	}
 
 	stream << "# Features" << Qt::endl;
-	for (Feature::Shared f : features)
+	for (const Feature::Shared& f : features)
 	{
 		stream << "feature: " << f->toString() << Qt::endl;
 	}
@@ -149,7 +149,7 @@ bool Tools::LoadClassifierCloudLabels(QString filename, QList<QString>& labels, 
 				return false;
 			}
 
-			QString label = tokens.front();
+			const QString& label = tokens.front();
 			if (labels.contains(label))
 			{
 				ccLog::Warning(QString("Malformed file: role '%1:' is already defined/used on line #%2").arg(label).arg(lineNumber));
@@ -660,7 +660,7 @@ static bool ReadCorePoints(const QString& command, const Tools::NamedClouds& clo
 				ccLog::Warning("Malformed file: missing token after 'SS' on line #" + QString::number(lineNumber));
 				return false;
 			}
-			QString options = tokens[2];
+			const QString& options = tokens[2];
 			if (options.startsWith('R'))
 			{
 				corePoints.selectionMethod = CorePoints::RANDOM;
@@ -708,8 +708,8 @@ static bool ReadCloud(const QString& command, Tools::NamedClouds& clouds, const 
 		if (error != CC_FERR_NO_ERROR || !object)
 		{
 			//error message already issued
-			if (object)
-				delete object;
+
+			delete object;
 			return false;
 		}
 		ccHObject::Container cloudsInFile;
@@ -720,7 +720,7 @@ static bool ReadCloud(const QString& command, Tools::NamedClouds& clouds, const 
 			delete object;
 			return false;
 		}
-		else if (cloudsInFile.size() > 1)
+		if (cloudsInFile.size() > 1)
 		{
 			ccLog::Warning("File contains more than one cloud, only the first one will be kept");
 		}
@@ -991,16 +991,14 @@ bool Tools::LoadTrainingFile(	QString filename,
 	{
 		return true;
 	}
-	else
+
+	if (!cloudsWereProvided)
 	{
-		if (!cloudsWereProvided)
-		{
-			//delete the already loaded clouds (if any)
-			for (NamedClouds::iterator it = loadedClouds.begin(); it != loadedClouds.end(); ++it)
-				delete it.value();
-		}
-		return false;
+		//delete the already loaded clouds (if any)
+		for (NamedClouds::iterator it = loadedClouds.begin(); it != loadedClouds.end(); ++it)
+			delete it.value();
 	}
+	return false;
 }
 
 ccScalarField::Shared Tools::RetrieveSF(const ccPointCloud* cloud, const QString& sfName, bool caseSensitive/*=true*/)

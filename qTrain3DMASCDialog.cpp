@@ -29,7 +29,7 @@
 #include <ccLog.h>
 
 //System
-#include <assert.h>
+#include <cassert>
 
 static const int FeatureImportanceColumn = 1;
 
@@ -61,8 +61,7 @@ Train3DMASCDialog::~Train3DMASCDialog()
 	closeTraceFile();
 	for (auto m : toDeleteLater)
 	{
-		if (m != nullptr)
-			delete m;
+		delete m;
 	}
 }
 
@@ -299,10 +298,8 @@ bool Train3DMASCDialog::openTraceFile()
 		m_traceStream << "run overallAccuracy\n";
 		return true;
 	}
-	else
-	{
-		return false;
-	}
+	return false;
+
 }
 
 bool Train3DMASCDialog::closeTraceFile()
@@ -350,16 +347,15 @@ QString Train3DMASCDialog::getTracePath()
 		QFileInfo fi(*m_traceFile);
 		return fi.absoluteDir().absolutePath();
 	}
-	else if (openTraceFile())
+	if (openTraceFile())
 	{
 		QFileInfo fi(*m_traceFile);
 		return fi.absoluteDir().absolutePath();
 	}
-	else
-		return QString();
+	return {};
 }
 
-int Train3DMASCDialog::getRun()
+int Train3DMASCDialog::getRun() const
 {
 	return run;
 }

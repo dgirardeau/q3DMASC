@@ -31,7 +31,7 @@ namespace masc
 	{
 	public:	//PointFeatureType
 
-		typedef QSharedPointer<PointFeature> Shared;
+		using Shared = QSharedPointer<PointFeature>;
 
 		enum PointFeatureType
 		{
@@ -108,35 +108,35 @@ namespace masc
 		{
 			if (token == "INT")
 				return Intensity;
-			else if (token == "X")
+			if (token == "X")
 				return X;
-			else if (token == "Y")
+			if (token == "Y")
 				return Y;
-			else if (token == "Z")
+			if (token == "Z")
 				return Z;
-			else if (token == "NBRET")
+			if (token == "NBRET")
 				return NbRet;
-			else if (token == "RETNB")
+			if (token == "RETNB")
 				return RetNb;
-			else if (token == "ECHORAT")
+			if (token == "ECHORAT")
 				return EchoRat;
-			else if (token == "R")
+			if (token == "R")
 				return R;
-			else if (token == "G")
+			if (token == "G")
 				return G;
-			else if (token == "B")
+			if (token == "B")
 				return B;
-			else if (token == "NIR")
+			if (token == "NIR")
 				return NIR;
-			else if (token == "NORMDIP")
+			if (token == "NORMDIP")
 				return Dip;
-			else if (token == "NORMDIPDIR")
+			if (token == "NORMDIPDIR")
 				return DipDir;
-			else if (token == "M3C2")
+			if (token == "M3C2")
 				return M3C2;
-			else if (token == "PCV")
+			if (token == "PCV")
 				return PCV;
-			else if (token.startsWith("SF"))
+			if (token.startsWith("SF"))
 				return SF;
 
 			return Invalid;
@@ -184,12 +184,12 @@ namespace masc
 		~PointFeature() override {}
 
 		//inherited from Feature
-		virtual Type getType() const override { return Type::PointFeature; }
-		virtual Feature::Shared clone() const override { return Feature::Shared(new PointFeature(*this)); }
-		virtual bool prepare(const CorePoints& corePoints, QString& error, CCCoreLib::GenericProgressCallback* progressCb = nullptr, SFCollector* generatedScalarFields = nullptr) override;
-		virtual bool finish(const CorePoints& corePoints, QString& error) override;
-		virtual bool checkValidity(QString corePointRole, QString &error) const override;
-		virtual QString toString() const override;
+		Type getType() const override { return Type::PointFeature; }
+		Feature::Shared clone() const override { return Feature::Shared(new PointFeature(*this)); }
+		bool prepare(const CorePoints& corePoints, QString& error, CCCoreLib::GenericProgressCallback* progressCb = nullptr, SFCollector* generatedScalarFields = nullptr) override;
+		bool finish(const CorePoints& corePoints, QString& error) override;
+		bool checkValidity(QString corePointRole, QString &error) const override;
+		QString toString() const override;
 
 		//! Compute the associated 'stat' on a set of points (and with a given field)
 		bool computeStat(const CCCoreLib::DgmOctree::NeighboursSet& pointsInNeighbourhood, const IScalarFieldWrapper::Shared& sourceField, double& outputValue) const;
@@ -197,7 +197,7 @@ namespace masc
 	protected: //methods
 
 		//! Returns the 'source' field from a given cloud
-		IScalarFieldWrapper::Shared retrieveField(ccPointCloud* cloud, QString& error);
+		IScalarFieldWrapper::Shared retrieveField(ccPointCloud* cloud, QString& error) const;
 
 	public:	//members
 

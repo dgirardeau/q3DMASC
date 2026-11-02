@@ -88,7 +88,7 @@ public:
 		, m_mode(mode)
 	{}
 
-	virtual double pointValue(unsigned index) const override
+	double pointValue(unsigned index) const override
 	{
 		const CCVector3& N = m_cloud->getPointNormal(index);
 		PointCoordinateType dip_deg, dipDir_deg;

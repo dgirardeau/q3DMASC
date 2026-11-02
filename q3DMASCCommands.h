@@ -29,6 +29,7 @@
 //Qt
 #include <QDialog>
 #include <QFileInfo>
+#include <memory>
 
 static const char COMMAND_3DMASC_CLASSIFY[] = "3DMASC_CLASSIFY";
 static const char COMMAND_3DMASC_KEEP_ATTRIBS[] = "KEEP_ATTRIBUTES";
@@ -39,7 +40,7 @@ struct Command3DMASCClassif : public ccCommandLineInterface::Command
 {
 	Command3DMASCClassif() : ccCommandLineInterface::Command("3DMASC Classify", COMMAND_3DMASC_CLASSIFY) {}
 
-	virtual bool process(ccCommandLineInterface& cmd) override
+	bool process(ccCommandLineInterface& cmd) override
 	{
 		cmd.print("[3DMASC]");
 
@@ -184,7 +185,7 @@ struct Command3DMASCClassif : public ccCommandLineInterface::Command
 			//	return cmd.error("Filenames were not specified for at least one role");
 			//}
 
-			for (QString label : cloudLabels)
+			for (const QString& label : cloudLabels)
 			{
 				if (!cloudPerRole.contains(label.toUpper()))
 				{
@@ -222,7 +223,7 @@ struct Command3DMASCClassif : public ccCommandLineInterface::Command
 			std::unique_ptr<ccProgressDialog> pDlg;
 			if (!cmd.silentMode())
 			{
-				pDlg.reset(new ccProgressDialog(true, cmd.widgetParent()));
+				pDlg = std::make_unique<ccProgressDialog>(true, cmd.widgetParent());
 				pDlg->setAutoClose(false); //we don't want the progress dialog to 'pop' for each feature
 			}
 

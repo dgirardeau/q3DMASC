@@ -90,11 +90,12 @@ constexpr const char* LAS_FIELD_NAMES[22] = {"X",
 #include <WeibullDistribution.h>
 
 //system
-#include <assert.h>
+#include <cassert>
 
 //Qt
 #include <QCoreApplication>
 #include <QMutex>
+#include <memory>
 
 static const char* s_echoRatioSFName = "EchoRat";
 static const char* s_NIRSFName = "NIR";
@@ -138,7 +139,7 @@ bool PointFeature::checkValidity(QString corePointRole, QString &error) const
 		error = "math operations require two clouds";
 		return false;
 	}
-	
+
 	switch (type)
 	{
 	case PointFeature::Intensity:
@@ -246,14 +247,14 @@ bool PointFeature::checkValidity(QString corePointRole, QString &error) const
 	return true;
 }
 
-IScalarFieldWrapper::Shared PointFeature::retrieveField(ccPointCloud* cloud, QString& error)
+IScalarFieldWrapper::Shared PointFeature::retrieveField(ccPointCloud* cloud, QString& error) const
 {
 	if (!cloud)
 	{
 		assert(false);
-		return IScalarFieldWrapper::Shared(nullptr);
+		return {nullptr};
 	}
-	
+
 	switch (type)
 	{
 	case PointFeature::Intensity:
@@ -392,7 +393,7 @@ static bool ComputeMathOpWithNearestNeighbor(	const CorePoints& corePoints,
 		error = "invalid input parameters";
 		return false;
 	}
-	
+
 	ccOctree::Shared octree = cloud2.getOctree();
 	if (!octree)
 	{
@@ -642,7 +643,7 @@ bool PointFeature::prepare(	const CorePoints& corePoints,
 		else
 		{
 			//copy the SF1 field
-			resultSF.reset(new ccScalarField(resultSF1Name.toStdString()));
+			resultSF = std::make_shared<ccScalarField>(resultSF1Name.toStdString());
 			if (!resultSF->resizeSafe(corePoints.cloud->size()))
 			{
 				error = "Not enough memory";

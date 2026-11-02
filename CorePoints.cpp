@@ -24,7 +24,7 @@
 #include <CloudSamplingTools.h>
 
 //system
-#include <assert.h>
+#include <cassert>
 
 using namespace masc;
 
@@ -41,7 +41,7 @@ bool CorePoints::prepare(CCCoreLib::GenericProgressCallback* progressCb/*=nullpt
 		//nothing to do
 		return true;
 	}
-	
+
 	//now we can compute the subsampled version
 	CCCoreLib::ReferenceCloud* ref = nullptr;
 	switch (selectionMethod)

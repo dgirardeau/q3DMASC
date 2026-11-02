@@ -65,12 +65,12 @@ namespace masc
 		{}
 
 		//inherited from Feature
-		virtual Type getType() const override { return Type::DualCloudFeature; }
-		virtual Feature::Shared clone() const override { return Feature::Shared(new DualCloudFeature(*this)); }
-		virtual bool prepare(const CorePoints& corePoints, QString& error,
+		Type getType() const override { return Type::DualCloudFeature; }
+		Feature::Shared clone() const override { return Feature::Shared(new DualCloudFeature(*this)); }
+		bool prepare(const CorePoints& corePoints, QString& error,
                              CCCoreLib::GenericProgressCallback* progressCb = nullptr, SFCollector* generatedScalarFields = nullptr) override;
-		virtual bool checkValidity(QString corePointRole, QString &error) const override;
-		virtual QString toString() const override;
+		bool checkValidity(QString corePointRole, QString &error) const override;
+		QString toString() const override;
 
 		//! Dual-cloud feature type
 		/** \warning different from the feature type

@@ -1,7 +1,6 @@
 #pragma once
 
 #include <QWidget>
-#include <set>
 
 #include <GenericDistribution.h>
 
