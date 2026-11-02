@@ -17,14 +17,9 @@
 
 #include "PointFeature.h"
 
-//Local
 #include "q3DMASCTools.h"
 
-#if defined(_OPENMP)
-#include <omp.h>
-#endif
-
-//qPDALIO
+// qPDALIO
 #ifdef PLUGIN_IO_QPDAL
 #include "../../../core/IO/qPDALIO/include/LASFields.h"
 #else
@@ -82,19 +77,23 @@ constexpr const char* LAS_FIELD_NAMES[22] = {"X",
 };
 #endif
 
-//qCC_db
+// CCCoreLib
+#include <WeibullDistribution.h>
+
+// qCC_db
 #include <ccPointCloud.h>
 #include <ccScalarField.h>
 
-//CCLib
-#include <WeibullDistribution.h>
-
-//system
-#include <assert.h>
-
-//Qt
+// Qt
 #include <QCoreApplication>
 #include <QMutex>
+
+// System
+#include <cassert>
+#include <memory>
+#if defined(_OPENMP)
+#include <omp.h>
+#endif
 
 static const char* s_echoRatioSFName = "EchoRat";
 static const char* s_NIRSFName = "NIR";
@@ -138,7 +137,7 @@ bool PointFeature::checkValidity(QString corePointRole, QString &error) const
 		error = "math operations require two clouds";
 		return false;
 	}
-	
+
 	switch (type)
 	{
 	case PointFeature::Intensity:
@@ -246,14 +245,14 @@ bool PointFeature::checkValidity(QString corePointRole, QString &error) const
 	return true;
 }
 
-IScalarFieldWrapper::Shared PointFeature::retrieveField(ccPointCloud* cloud, QString& error)
+IScalarFieldWrapper::Shared PointFeature::retrieveField(ccPointCloud* cloud, QString& error) const
 {
 	if (!cloud)
 	{
 		assert(false);
-		return IScalarFieldWrapper::Shared(nullptr);
+		return {nullptr};
 	}
-	
+
 	switch (type)
 	{
 	case PointFeature::Intensity:
@@ -392,7 +391,7 @@ static bool ComputeMathOpWithNearestNeighbor(	const CorePoints& corePoints,
 		error = "invalid input parameters";
 		return false;
 	}
-	
+
 	ccOctree::Shared octree = cloud2.getOctree();
 	if (!octree)
 	{
@@ -642,7 +641,7 @@ bool PointFeature::prepare(	const CorePoints& corePoints,
 		else
 		{
 			//copy the SF1 field
-			resultSF.reset(new ccScalarField(resultSF1Name.toStdString()));
+			resultSF = std::make_shared<ccScalarField>(resultSF1Name.toStdString());
 			if (!resultSF->resizeSafe(corePoints.cloud->size()))
 			{
 				error = "Not enough memory";

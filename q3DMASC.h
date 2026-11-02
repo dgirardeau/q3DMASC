@@ -17,10 +17,10 @@
 //#                                                                        #
 //##########################################################################
 
-//qCC
-#include <ccStdPluginInterface.h>
-
 #include "Parameters.h"
+
+// CCPluginStub
+#include <ccStdPluginInterface.h>
 
 //! 3DMASC plugin
 /** 3D Multi-cloud, multi-Attribute, multi-Scale, multi-Class classification
@@ -29,7 +29,7 @@ class q3DMASCPlugin : public QObject, public ccStdPluginInterface
 {
 	Q_OBJECT
 	Q_INTERFACES(ccPluginInterface ccStdPluginInterface)
-	
+
 	Q_PLUGIN_METADATA(IID "cccorp.cloudcompare.plugin.q3DMASC" FILE "info.json")
 
 public:

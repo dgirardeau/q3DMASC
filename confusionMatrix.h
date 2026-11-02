@@ -1,13 +1,16 @@
 #pragma once
 
-#include <QWidget>
-#include <set>
-
+// CCCoreLib
 #include <GenericDistribution.h>
 
+// CCPluginAPI
 #include <ccMainAppInterface.h>
 
+// OpenCV
 #include <opencv2/core/mat.hpp>
+
+// Qt
+#include <QWidget>
 
 namespace Ui {
 class ConfusionMatrix;

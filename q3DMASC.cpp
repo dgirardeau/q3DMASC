@@ -17,31 +17,30 @@
 
 #include "q3DMASC.h"
 
-//local
-#include "q3DMASCDisclaimerDialog.h"
 #include "q3DMASCClassifier.h"
+#include "q3DMASCCommands.h"
+#include "q3DMASCDisclaimerDialog.h"
 #include "q3DMASCTools.h"
 #include "qClassify3DMASCDialog.h"
 #include "qTrain3DMASCDialog.h"
-#include "q3DMASCCommands.h"
 
-//qCC_db
+// qCC_db
 #include <ccPointCloud.h>
 #include <ccProgressDialog.h>
 
-//Qt
-#include <QtGui>
-#include <QtCore>
+// Qt
 #include <QApplication>
 #include <QFileDialog>
 #include <QMessageBox>
 #include <QSettings>
+#include <QtCore>
+#include <QtGui>
 
 q3DMASCPlugin::q3DMASCPlugin(QObject* parent/*=0*/)
 	: QObject(parent)
 	, ccStdPluginInterface( ":/CC/plugin/q3DMASCPlugin/info.json" )
-	, m_classifyAction(0)
-	, m_trainAction(0)
+	, m_classifyAction(nullptr)
+	, m_trainAction(nullptr)
 {
 }
 
@@ -131,7 +130,7 @@ void q3DMASCPlugin::doClassifyAction()
 		m_app->dispToConsole("Invalid classifier file (no cloud label defined)", ccMainAppInterface::ERR_CONSOLE_MESSAGE);
 		return;
 	}
-	else if (cloudLabels.size() > 4 + (cloudLabels.contains("TEST") ? 1 : 0))
+	if (cloudLabels.size() > 4 + (cloudLabels.contains("TEST") ? 1 : 0))
 	{
 		m_app->dispToConsole("This classifier uses more than 4 clouds (the GUI version cannot handle it)", ccMainAppInterface::ERR_CONSOLE_MESSAGE);
 		return;
@@ -398,7 +397,7 @@ void q3DMASCPlugin::doTrainAction()
 	originalFeatures.reserve(features.size());
 	for (const masc::Feature::Shared& f : features)
 	{
-		originalFeatures.push_back(FeatureSelection(f));
+		originalFeatures.emplace_back(f);
 		trainDlg.addFeature(f->toString(), originalFeatures.back().importance, originalFeatures.back().selected);
 	}
 
@@ -412,7 +411,7 @@ void q3DMASCPlugin::doTrainAction()
 		originalFeaturesTest.reserve(featuresTest.size());
 		for (const masc::Feature::Shared& f : featuresTest)
 		{
-			originalFeaturesTest.push_back(FeatureSelection(f));
+			originalFeaturesTest.emplace_back(f);
 		}
 	}
 
@@ -484,19 +483,19 @@ void q3DMASCPlugin::doTrainAction()
 		//look for selected features
 		features.clear();
 		masc::Feature::Set toPrepare;
-		for (size_t i = 0; i < originalFeatures.size(); ++i)
+		for (auto& originalFeature : originalFeatures)
 		{
-			originalFeatures[i].selected = trainDlg.isFeatureSelected(originalFeatures[i].feature->toString());
+			originalFeature.selected = trainDlg.isFeatureSelected(originalFeature.feature->toString());
 
 			//if the feature is selected
-			if (originalFeatures[i].selected)
+			if (originalFeature.selected)
 			{
-				if (!originalFeatures[i].prepared)
+				if (!originalFeature.prepared)
 				{
 					//we should prepare it first!
-					toPrepare.push_back(originalFeatures[i].feature);
+					toPrepare.push_back(originalFeature.feature);
 				}
-				features.push_back(originalFeatures[i].feature);
+				features.push_back(originalFeature.feature);
 			}
 		}
 
@@ -677,20 +676,20 @@ void q3DMASCPlugin::doTrainAction()
 				//m_app->dispToConsole(QString("Var importance size = %1 x %2").arg(importanceMat.rows).arg(importanceMat.cols));
 				assert(static_cast<int>(features.size()) == importanceMat.rows);
 				int selectedFeatureIndex = 0;
-				for (size_t i = 0; i < originalFeatures.size(); ++i)
+				for (auto& originalFeature : originalFeatures)
 				{
-					if (originalFeatures[i].selected)
+					if (originalFeature.selected)
 					{
 						//m_app->dispToConsole(QString("Feature #%1 importance = %2").arg(i + 1).arg(importanceMat.at<float>(i, 0)));
 						assert(selectedFeatureIndex < importanceMat.rows);
-						originalFeatures[i].importance = importanceMat.at<float>(selectedFeatureIndex, 0);
+						originalFeature.importance = importanceMat.at<float>(selectedFeatureIndex, 0);
 						++selectedFeatureIndex;
 					}
 					else
 					{
-						originalFeatures[i].importance = std::numeric_limits<float>::quiet_NaN();
+						originalFeature.importance = std::numeric_limits<float>::quiet_NaN();
 					}
-					trainDlg.setFeatureImportance(originalFeatures[i].feature->toString(), originalFeatures[i].importance);
+					trainDlg.setFeatureImportance(originalFeature.feature->toString(), originalFeature.importance);
 				}
 
 				trainDlg.sortByFeatureImportance();
@@ -722,11 +721,11 @@ void q3DMASCPlugin::doTrainAction()
 						}
 						QTextStream stream(&file);
 						stream << "# feature importance" << Qt::endl;
-						for (size_t i = 0; i < originalFeatures.size(); ++i)
+						for (const auto& originalFeature : originalFeatures)
 						{
-							if (originalFeatures[i].selected)
+							if (originalFeature.selected)
 							{
-								stream << originalFeatures[i].feature->toString() << " " << originalFeatures[i].importance << Qt::endl;
+								stream << originalFeature.feature->toString() << " " << originalFeature.importance << Qt::endl;
 							}
 						}
 					}
@@ -741,10 +740,7 @@ void q3DMASCPlugin::doTrainAction()
 			{
 				saveTrainParameters(s_params);
 				//the dialog can be closed
-				if (trainDlg.keepAttributesCheckBox->isChecked())
-					s_keepAttributes = true;
-				else
-					s_keepAttributes = false;
+				s_keepAttributes = trainDlg.keepAttributesCheckBox->isChecked();
 				generatedScalarFields.releaseSFs(s_keepAttributes);
 				generatedScalarFieldsTest.releaseSFs(s_keepAttributes);
 				return;

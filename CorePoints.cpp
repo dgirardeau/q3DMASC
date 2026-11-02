@@ -17,14 +17,14 @@
 
 #include "CorePoints.h"
 
-//qCC_db
-#include <ccPointCloud.h>
-
-//CCLib
+// CCCoreLib
 #include <CloudSamplingTools.h>
 
-//system
-#include <assert.h>
+// qCC_db
+#include <ccPointCloud.h>
+
+// System
+#include <cassert>
 
 using namespace masc;
 
@@ -41,7 +41,7 @@ bool CorePoints::prepare(CCCoreLib::GenericProgressCallback* progressCb/*=nullpt
 		//nothing to do
 		return true;
 	}
-	
+
 	//now we can compute the subsampled version
 	CCCoreLib::ReferenceCloud* ref = nullptr;
 	switch (selectionMethod)

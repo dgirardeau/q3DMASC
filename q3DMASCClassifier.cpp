@@ -17,39 +17,37 @@
 
 #include "q3DMASCClassifier.h"
 
-//Local
-#include "ScalarFieldWrappers.h"
+#include "confusionMatrix.h"
 #include "q3DMASCTools.h"
+#include "qTrain3DMASCDialog.h"
+#include "ScalarFieldWrappers.h"
 
-//qCC_db
-#include <ccPointCloud.h>
-#include <ccScalarField.h>
-#include <ccProgressDialog.h>
-#include <ccLog.h>
-
-//qPDALIO
+// QPDALIO
 #include "../../../core/IO/qPDALIO/include/LASFields.h"
 
-//CCPluginAPI
+// qCC_db
+#include <ccLog.h>
+#include <ccPointCloud.h>
+#include <ccProgressDialog.h>
+#include <ccScalarField.h>
+
+// CCPluginAPI
 #include <ccMainAppInterface.h>
 
-//Qt
+// Qt
 #include <QCoreApplication>
+#include <QMessageBox>
 #include <QProgressDialog>
 #include <QtConcurrent>
-#include <QMessageBox>
 
-#include "qTrain3DMASCDialog.h"
-#include "confusionmatrix.h"
-
+// System
+#include <memory>
 #if defined(_OPENMP)
 #include <omp.h>
 #endif
-
 #if defined(CC_MAC_OS) || defined(CC_LINUX)
 #include <unistd.h>
 #endif
-
 #if defined(CC_WINDOWS)
 #include <Windows.h>
 #endif
@@ -82,7 +80,7 @@ static IScalarFieldWrapper::Shared GetSource(const Feature::Source& fs, const cc
 		else
 		{
 			ccLog::Warning(QObject::tr("Internal error: unknown scalar field '%1'").arg(fs.name));
-			return IScalarFieldWrapper::Shared(nullptr);
+			return {nullptr};
 		}
 	}
 	break;
@@ -201,7 +199,7 @@ bool Classifier::classify(	const Feature::Source::Set& featureSources,
 	std::unique_ptr<ccProgressDialog> pDlg;
 	if (parentWidget)
 	{
-		pDlg.reset(new ccProgressDialog(parentWidget));
+		pDlg = std::make_unique<ccProgressDialog>(parentWidget);
 		pDlg->setLabelText(QString("Classify (%1 points)").arg(sampleCount));
 		pDlg->show();
 		QCoreApplication::processEvents();
@@ -396,7 +394,7 @@ bool Classifier::evaluate(const Feature::Source::Set& featureSources,
 	std::unique_ptr<ccProgressDialog> pDlg;
 	if (parentWidget)
 	{
-		pDlg.reset(new ccProgressDialog(parentWidget));
+		pDlg = std::make_unique<ccProgressDialog>(parentWidget);
 		pDlg->setLabelText(QString("Evaluating the classifier on %1 points").arg(testSampleCount));
 		pDlg->show();
 		QCoreApplication::processEvents();
@@ -611,7 +609,7 @@ bool Classifier::train(	const ccPointCloud* cloud,
 	std::unique_ptr<QProgressDialog> pDlg;
 	if (parentWidget)
 	{
-		pDlg.reset(new QProgressDialog(parentWidget));
+		pDlg = std::make_unique<QProgressDialog>(parentWidget);
 		pDlg->setRange(0, 0); //infinite loop
 		pDlg->setLabelText("Training classifier");
 		pDlg->show();
@@ -746,7 +744,7 @@ bool Classifier::fromFile(QString filename, QWidget* parentWidget/*=nullptr*/)
 	std::unique_ptr<QProgressDialog> pDlg;
 	if (parentWidget)
 	{
-		pDlg.reset(new QProgressDialog(parentWidget));
+		pDlg = std::make_unique<QProgressDialog>(parentWidget);
 		pDlg->setRange(0, 0); //infinite loop
 		pDlg->setLabelText(QObject::tr("Loading classifier"));
 		pDlg->show();
@@ -775,7 +773,7 @@ bool Classifier::fromFile(QString filename, QWidget* parentWidget/*=nullptr*/)
 		ccLog::Error(QObject::tr("Loaded classifier is invalid"));
 		return false;
 	}
-	else if (!m_rtrees->isTrained())
+	if (!m_rtrees->isTrained())
 	{
 		ccLog::Warning(QObject::tr("Loaded classifier doesn't seem to be trained"));
 	}

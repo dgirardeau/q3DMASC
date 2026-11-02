@@ -1,3 +1,5 @@
+#pragma once
+
 //##########################################################################
 //#                                                                        #
 //#                     CLOUDCOMPARE PLUGIN: q3DMASC                       #
@@ -15,16 +17,15 @@
 //#                                                                        #
 //##########################################################################
 
-#ifndef Q3DMASC_DISCLAIMER_DIALOG_HEADER
-#define Q3DMASC_DISCLAIMER_DIALOG_HEADER
 
-#include <ui_trainDisclaimerDlg.h>
+// Ui
 #include <ui_classifyDisclaimerDlg.h>
+#include <ui_trainDisclaimerDlg.h>
 
-//qCC_plugins
+// CCPluginAPI
 #include <ccMainAppInterface.h>
 
-//Qt
+// Qt
 #include <QMainWindow>
 
 //! Dialog for displaying the 3DSMAC/UEB disclaimer
@@ -32,7 +33,7 @@ class TrainDisclaimerDialog : public QDialog, public Ui::TrainDisclaimerDialog
 {
 public:
 	//! Default constructor
-	TrainDisclaimerDialog(QWidget* parent = 0)
+	TrainDisclaimerDialog(QWidget* parent = nullptr)
 		: QDialog(parent)
 		, Ui::TrainDisclaimerDialog()
 	{
@@ -66,9 +67,9 @@ static bool ShowTrainDisclaimer(ccMainAppInterface* app)
 	if (!s_trainDisclaimerAccepted)
 	{
 		//if the user "cancels" it, then he refuses the diclaimer!
-		s_trainDisclaimerAccepted = TrainDisclaimerDialog(app ? app->getMainWindow() : 0).exec();
+		s_trainDisclaimerAccepted = TrainDisclaimerDialog(app ? app->getMainWindow() : nullptr).exec();
 	}
-	
+
 	return s_trainDisclaimerAccepted;
 }
 
@@ -77,7 +78,7 @@ class ClassifyDisclaimerDialog : public QDialog, public Ui::ClassifyDisclaimerDi
 {
 public:
 	//! Default constructor
-	ClassifyDisclaimerDialog(QWidget* parent = 0)
+	ClassifyDisclaimerDialog(QWidget* parent = nullptr)
 		: QDialog(parent)
 		, Ui::ClassifyDisclaimerDialog()
 	{
@@ -111,10 +112,8 @@ static bool ShowClassifyDisclaimer(ccMainAppInterface* app)
 	if (!s_classifyDisclaimerAccepted)
 	{
 		//if the user "cancels" it, then he refuses the diclaimer!
-		s_classifyDisclaimerAccepted = ClassifyDisclaimerDialog(app ? app->getMainWindow() : 0).exec();
+		s_classifyDisclaimerAccepted = ClassifyDisclaimerDialog(app ? app->getMainWindow() : nullptr).exec();
 	}
-	
+
 	return s_classifyDisclaimerAccepted;
 }
-
-#endif //Q3DMASC_DISCLAIMER_DIALOG_HEADER

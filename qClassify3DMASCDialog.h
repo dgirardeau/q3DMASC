@@ -17,10 +17,11 @@
 //#                                                                        #
 //##########################################################################
 
-//Qt
-#include <QDialog>
-
+// Ui
 #include <ui_Classify3DMASCDialog.h>
+
+// Qt
+#include <QDialog>
 
 class ccMainAppInterface;
 class ccPointCloud;
@@ -34,7 +35,7 @@ public:
 
 	//! Default constructor
 	Classify3DMASCDialog(ccMainAppInterface* app, bool trainMode = false);
-	~Classify3DMASCDialog();
+	~Classify3DMASCDialog() override;
 
 	//! read settings
 	void readSettings();

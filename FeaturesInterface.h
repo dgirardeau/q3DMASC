@@ -18,16 +18,15 @@
 //##########################################################################
 
 
-//Local
 #include "CorePoints.h"
 #include "ScalarFieldCollector.h"
 #include "ScalarFieldWrappers.h"
 
-//Qt
+// Qt
 #include <QString>
 
-//system
-#include <assert.h>
+// System
+#include <cassert>
 
 class ccPointCloud;
 
@@ -44,10 +43,10 @@ namespace masc
 	public: //shortcuts
 
 		//!Shared type
-		typedef QSharedPointer<Feature> Shared;
+		using Shared = QSharedPointer<Feature>;
 
 		//! Set of features
-		typedef std::vector<Shared> Set;
+		using Set = std::vector<Shared>;
 
 	public: //enumerators
 
@@ -91,7 +90,7 @@ namespace masc
 			default:
 				break;
 			};
-			return QString();
+			return {};
 		}
 
 		enum Operation
@@ -114,7 +113,7 @@ namespace masc
 			default:
 				break;
 			};
-			return QString();
+			return {};
 		}
 
 		//! Sources of values for this feature
@@ -138,7 +137,7 @@ namespace masc
 				: type(t)
 				, name(n)
 			{}
-			
+
 			Type type;
 			QString name;
 		};
@@ -236,9 +235,9 @@ namespace masc
 
 		ccPointCloud *cloud1, *cloud2;
 		QString cloud1Label, cloud2Label;
-	
+
 		Source source; //values source
-	
+
 		Stat stat; //only considered if a scale is defined
 		Operation op; //only considered if 2 clouds are defined
 

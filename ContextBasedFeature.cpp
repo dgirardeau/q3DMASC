@@ -17,15 +17,15 @@
 
 #include "ContextBasedFeature.h"
 
-//Local
 #include "q3DMASCTools.h"
 
-//qCC_db
+// qCC_db
 #include <ccScalarField.h>
 
-//Qt
+// Qt
 #include <QMutex>
 
+// System
 #if defined(_OPENMP)
 #include <omp.h>
 #endif

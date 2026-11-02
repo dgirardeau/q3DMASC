@@ -17,11 +17,11 @@
 
 #include "FeaturesInterface.h"
 
-//qCC_db
+// qCC_db
 #include <ccScalarField.h>
 
-//system
-#include <assert.h>
+// System
+#include <cassert>
 
 using namespace masc;
 
@@ -66,7 +66,7 @@ CCCoreLib::ScalarField::Shared Feature::PrepareSF(	ccPointCloud* cloud,
 			return nullptr;
 		}
 		cloud->addScalarField(newSF);
-		
+
 		if (generatedScalarFields)
 		{
 			//track the generated scalar-field
@@ -156,7 +156,7 @@ bool Feature::SaveSources(const Source::Set& sources, QString filename)
 		ccLog::Warning("Failed to open file for writing: " + filename);
 		return false;
 	}
-	
+
 	QTextStream stream(&file);
 	stream << "#Features_SF" << Qt::endl;
 	for (const Source& s : sources)
@@ -208,7 +208,7 @@ bool Feature::LoadSources(Source::Set& sources, QString filename)
 		}
 		src.type = static_cast<Feature::Source::Type>(sourceType);
 		src.name = tokens[1];
-		
+
 		sources.push_back(src);
 	}
 
@@ -228,7 +228,7 @@ bool Feature::ExtractSources(const Set& features, Source::Set& sources)
 		return false;
 	}
 
-	for (Feature::Shared f : features)
+	for (const Feature::Shared& f : features)
 	{
 		sources.push_back(f->source);
 	}

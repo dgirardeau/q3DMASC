@@ -17,18 +17,17 @@
 //#                                                                        #
 //##########################################################################
 
-//Local
-#include "Parameters.h"
 #include "FeaturesInterface.h"
+#include "Parameters.h"
 
-//Qt
-#include <QString>
-
-//CCLib
+// CCCoreLib
 #include <ReferenceCloud.h>
 
-//OpenCV
+// OpenCV
 #include <opencv2/ml.hpp>
+
+// Qt
+#include <QString>
 
 class QWidget;
 class ccMainAppInterface;

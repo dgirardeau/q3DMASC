@@ -17,19 +17,20 @@
 
 #include "qTrain3DMASCDialog.h"
 
-//Qt
-#include <QTableWidgetItem>
-#include <QMessageBox>
-#include <QFileDialog>
-#include <QSettings>
-#include <QTextStream>
-#include <QStandardPaths>
-#include <QDateTime>
-
+// qCC_db
 #include <ccLog.h>
 
-//System
-#include <assert.h>
+// Qt
+#include <QDateTime>
+#include <QFileDialog>
+#include <QMessageBox>
+#include <QSettings>
+#include <QStandardPaths>
+#include <QTableWidgetItem>
+#include <QTextStream>
+
+// System
+#include <cassert>
 
 static const int FeatureImportanceColumn = 1;
 
@@ -61,8 +62,7 @@ Train3DMASCDialog::~Train3DMASCDialog()
 	closeTraceFile();
 	for (auto m : toDeleteLater)
 	{
-		if (m != nullptr)
-			delete m;
+		delete m;
 	}
 }
 
@@ -299,10 +299,8 @@ bool Train3DMASCDialog::openTraceFile()
 		m_traceStream << "run overallAccuracy\n";
 		return true;
 	}
-	else
-	{
-		return false;
-	}
+	return false;
+
 }
 
 bool Train3DMASCDialog::closeTraceFile()
@@ -350,16 +348,15 @@ QString Train3DMASCDialog::getTracePath()
 		QFileInfo fi(*m_traceFile);
 		return fi.absoluteDir().absolutePath();
 	}
-	else if (openTraceFile())
+	if (openTraceFile())
 	{
 		QFileInfo fi(*m_traceFile);
 		return fi.absoluteDir().absolutePath();
 	}
-	else
-		return QString();
+	return {};
 }
 
-int Train3DMASCDialog::getRun()
+int Train3DMASCDialog::getRun() const
 {
 	return run;
 }

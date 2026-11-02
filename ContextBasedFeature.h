@@ -17,7 +17,6 @@
 //#                                                                        #
 //##########################################################################
 
-//Local
 #include "FeaturesInterface.h"
 
 namespace masc
@@ -27,7 +26,7 @@ namespace masc
 	{
 	public: //ContextBasedFeatureType
 
-		typedef QSharedPointer<ContextBasedFeature> Shared;
+		using Shared = QSharedPointer<ContextBasedFeature>;
 
 		enum ContextBasedFeatureType
 		{
@@ -58,7 +57,7 @@ namespace masc
 		{
 			if (token.startsWith("DZ"))
 				return DZ;
-			else if (token.startsWith("DH"))
+			if (token.startsWith("DH"))
 				return DH;
 
 			return Invalid;
@@ -80,12 +79,12 @@ namespace masc
 		}
 
 		//inherited from Feature
-		virtual Type getType() const override { return Type::ContextBasedFeature; }
-		virtual Feature::Shared clone() const override { return Feature::Shared(new ContextBasedFeature(*this)); }
-		virtual bool prepare(const CorePoints& corePoints, QString& error, CCCoreLib::GenericProgressCallback* progressCb = nullptr, SFCollector* generatedScalarFields = nullptr) override;
-		virtual bool finish(const CorePoints& corePoints, QString& error) override;
-		virtual bool checkValidity(QString corePointRole, QString &error) const override;
-		virtual QString toString() const override;
+		Type getType() const override { return Type::ContextBasedFeature; }
+		Feature::Shared clone() const override { return Feature::Shared(new ContextBasedFeature(*this)); }
+		bool prepare(const CorePoints& corePoints, QString& error, CCCoreLib::GenericProgressCallback* progressCb = nullptr, SFCollector* generatedScalarFields = nullptr) override;
+		bool finish(const CorePoints& corePoints, QString& error) override;
+		bool checkValidity(QString corePointRole, QString &error) const override;
+		QString toString() const override;
 
 		//! Compute the feature value on a set of points
 		bool computeValue(CCCoreLib::DgmOctree::NeighboursSet& pointsInNeighbourhood, const CCVector3& queryPoint, ScalarType& outputValue) const;

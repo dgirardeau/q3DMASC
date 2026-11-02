@@ -17,14 +17,12 @@
 //#                                                                        #
 //##########################################################################
 
-//Local
 #include "FeaturesInterface.h"
 #include "q3DMASCClassifier.h"
 
-//CCLib
+// CCCoreLib
 #include <GenericProgressCallback.h>
 
-//qCC_db
 class ccPointCloud;
 
 class QWidget;
@@ -36,7 +34,7 @@ namespace masc
 	{
 	public:
 
-		typedef QMap<QString, ccPointCloud* > NamedClouds;
+		using NamedClouds = QMap<QString, ccPointCloud* >;
 
 		static bool LoadTrainingFile(QString filename, Feature::Set& rawFeatures, std::vector<double>& scales, NamedClouds& loadedClouds, TrainParameters& parameters, CorePoints* corePoints = nullptr, QWidget* parent = nullptr);
 
@@ -54,7 +52,7 @@ namespace masc
 								TrainParameters* parameters = nullptr,
 								QWidget* parent = nullptr);
 
-		static bool SaveClassifier(QString filename, const Feature::Set& features, const QString corePointsRole, const masc::Classifier& classifier, QWidget* parent = nullptr);
+		static bool SaveClassifier(QString filename, const Feature::Set& features, const QString& corePointsRole, const masc::Classifier& classifier, QWidget* parent = nullptr);
 
 		static bool PrepareFeatures(const CorePoints& corePoints, Feature::Set& features, QString& error,
 									CCCoreLib::GenericProgressCallback* progressCb = nullptr, SFCollector* generatedScalarFields = nullptr);

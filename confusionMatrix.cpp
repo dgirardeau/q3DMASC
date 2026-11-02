@@ -1,20 +1,22 @@
-#include "confusionmatrix.h"
-#include "ui_confusionmatrix.h"
+#include "confusionMatrix.h"
 
+// Ui
+#include <ui_confusionMatrix.h>
+
+// CCCoreLib
 #include <CCConst.h>
 
-#include <iterator>
-#include <set>
-#include <algorithm>
+// qCC_db
+#include <ccLog.h>
 
+// Qt
 #include <QBrush>
 #include <QFile>
 #include <QTextStream>
-#include <iostream>
 
-#include <ccLog.h>
-
-#include <ccLog.h>
+// System
+#include <iterator>
+#include <set>
 
 static QColor GetColor(double value, double r1, double g1, double b1)
 {
@@ -33,14 +35,14 @@ static QColor GetColor(double value, double r1, double g1, double b1)
 	int g = static_cast<int>((g1 - g0) * value + g0);
 	int b = static_cast<int>((b1 - b0) * value + b0);
 //	ccLog::Warning("value " + QString::number(value) + " (" + QString::number(r) + ", " + QString::number(g) + ", " + QString::number(b) + ")");
-	return QColor(r, g, b);
+	return {r, g, b};
 }
 
 ConfusionMatrix::ConfusionMatrix(	const CCCoreLib::GenericDistribution::ScalarContainer& actual,
 									const CCCoreLib::GenericDistribution::ScalarContainer& predicted )
 	: m_ui(std::make_unique<Ui::ConfusionMatrix>())
 	, m_overallAccuracy(0.0f)
-	
+
 {
 	m_ui->setupUi(this);
 	this->setWindowFlag(Qt::WindowStaysOnTopHint);

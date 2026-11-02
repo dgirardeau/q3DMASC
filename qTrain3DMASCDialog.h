@@ -17,14 +17,15 @@
 //#                                                                        #
 //##########################################################################
 
-//Qt
+#include "confusionMatrix.h"
+
+// Ui
+#include <ui_Train3DMASCDialog.h>
+
+// Qt
 #include <QDialog>
 #include <QFile>
 #include <QTextStream>
-
-#include <ui_Train3DMASCDialog.h>
-
-#include "confusionmatrix.h"
 
 //! 3DMASC plugin 'train' dialog
 class Train3DMASCDialog : public QDialog, public Ui::Train3DMASCDialog
@@ -35,7 +36,7 @@ public:
 
 	//! Default constructor
 	Train3DMASCDialog(QWidget* parent = nullptr);
-	~Train3DMASCDialog();
+	~Train3DMASCDialog() override;
 
 	void readSettings();
 	void writeSettings();
@@ -56,18 +57,18 @@ public:
 	bool isFeatureSelected(QString featureName) const;
 	void setFeatureImportance(QString featureName, float importance);
 	void sortByFeatureImportance();
-	
+
 	inline bool shouldSaveClassifier() const { return saveRequested; }
 
-	void addConfusionMatrixAndSaveTraces(ConfusionMatrix* ptr);
-	void setInputFilePath(QString filename);
+	void addConfusionMatrixAndSaveTraces(ConfusionMatrix* confusionMatrix);
+	void setInputFilePath(QString filePath);
 	void setCheckBoxSaveTrace(bool state);
 	bool openTraceFile();
 	bool closeTraceFile();
 	void saveTraces(ConfusionMatrix *confusionMatrix);
 	bool getSaveTrace();
 	QString getTracePath();
-	int getRun();
+	int getRun() const;
 
 protected slots:
 
