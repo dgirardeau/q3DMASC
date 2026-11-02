@@ -17,14 +17,9 @@
 
 #include "PointFeature.h"
 
-//Local
 #include "q3DMASCTools.h"
 
-#if defined(_OPENMP)
-#include <omp.h>
-#endif
-
-//qPDALIO
+// qPDALIO
 #ifdef PLUGIN_IO_QPDAL
 #include "../../../core/IO/qPDALIO/include/LASFields.h"
 #else
@@ -82,20 +77,23 @@ constexpr const char* LAS_FIELD_NAMES[22] = {"X",
 };
 #endif
 
-//qCC_db
+// CCCoreLib
+#include <WeibullDistribution.h>
+
+// qCC_db
 #include <ccPointCloud.h>
 #include <ccScalarField.h>
 
-//CCLib
-#include <WeibullDistribution.h>
-
-//system
-#include <cassert>
-
-//Qt
+// Qt
 #include <QCoreApplication>
 #include <QMutex>
+
+// System
+#include <cassert>
 #include <memory>
+#if defined(_OPENMP)
+#include <omp.h>
+#endif
 
 static const char* s_echoRatioSFName = "EchoRat";
 static const char* s_NIRSFName = "NIR";

@@ -17,10 +17,10 @@
 
 #include "NeighborhoodFeature.h"
 
-//CCLib
+// CCCoreLib
 #include <DgmOctreeReferenceCloud.h>
-#include <Neighbourhood.h>
 #include <Jacobi.h>
+#include <Neighbourhood.h>
 
 using namespace masc;
 
@@ -114,7 +114,7 @@ bool NeighborhoodFeature::prepare(	const CorePoints& corePoints,
 
 		assert(!sf2);
 
-		sf2WasAlreadyExisting = CheckSFExistence(corePoints.cloud, resultSFName2);		
+		sf2WasAlreadyExisting = CheckSFExistence(corePoints.cloud, resultSFName2);
 		sf2 = PrepareSF(corePoints.cloud, resultSFName2, generatedScalarFields, sf2WasAlreadyExisting ? SFCollector::ALWAYS_KEEP : SFCollector::ALWAYS_REMOVE);
 
 		if (!sf2)

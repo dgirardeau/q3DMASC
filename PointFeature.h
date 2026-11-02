@@ -17,11 +17,10 @@
 //#                                                                        #
 //##########################################################################
 
-//Local
 #include "FeaturesInterface.h"
 #include "ScalarFieldWrappers.h"
 
-//Qt
+// Qt
 #include <QSharedPointer>
 
 namespace masc

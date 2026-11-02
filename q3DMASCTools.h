@@ -17,14 +17,12 @@
 //#                                                                        #
 //##########################################################################
 
-//Local
 #include "FeaturesInterface.h"
 #include "q3DMASCClassifier.h"
 
-//CCLib
+// CCCoreLib
 #include <GenericProgressCallback.h>
 
-//qCC_db
 class ccPointCloud;
 
 class QWidget;

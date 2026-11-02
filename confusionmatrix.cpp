@@ -1,16 +1,22 @@
 #include "confusionmatrix.h"
-#include "ui_confusionmatrix.h"
 
+// Ui
+#include <ui_confusionmatrix.h>
+
+// CCCoreLib
 #include <CCConst.h>
 
-#include <iterator>
-#include <set>
+// qCC_db
+#include <ccLog.h>
 
+// Qt
 #include <QBrush>
 #include <QFile>
 #include <QTextStream>
 
-#include <ccLog.h>
+// System
+#include <iterator>
+#include <set>
 
 static QColor GetColor(double value, double r1, double g1, double b1)
 {

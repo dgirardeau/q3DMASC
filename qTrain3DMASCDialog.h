@@ -17,14 +17,15 @@
 //#                                                                        #
 //##########################################################################
 
-//Qt
+#include "confusionmatrix.h"
+
+// Ui
+#include <ui_Train3DMASCDialog.h>
+
+// Qt
 #include <QDialog>
 #include <QFile>
 #include <QTextStream>
-
-#include <ui_Train3DMASCDialog.h>
-
-#include "confusionmatrix.h"
 
 //! 3DMASC plugin 'train' dialog
 class Train3DMASCDialog : public QDialog, public Ui::Train3DMASCDialog

@@ -18,15 +18,14 @@
 //##########################################################################
 
 
-//Local
 #include "CorePoints.h"
 #include "ScalarFieldCollector.h"
 #include "ScalarFieldWrappers.h"
 
-//Qt
+// Qt
 #include <QString>
 
-//system
+// System
 #include <cassert>
 
 class ccPointCloud;

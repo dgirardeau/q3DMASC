@@ -17,40 +17,37 @@
 
 #include "q3DMASCClassifier.h"
 
-//Local
-#include "ScalarFieldWrappers.h"
+#include "confusionmatrix.h"
 #include "q3DMASCTools.h"
+#include "qTrain3DMASCDialog.h"
+#include "ScalarFieldWrappers.h"
 
-//qCC_db
-#include <ccPointCloud.h>
-#include <ccScalarField.h>
-#include <ccProgressDialog.h>
-#include <ccLog.h>
-
-//qPDALIO
+// QPDALIO
 #include "../../../core/IO/qPDALIO/include/LASFields.h"
 
-//CCPluginAPI
+// qCC_db
+#include <ccLog.h>
+#include <ccPointCloud.h>
+#include <ccProgressDialog.h>
+#include <ccScalarField.h>
+
+// CCPluginAPI
 #include <ccMainAppInterface.h>
 
-//Qt
+// Qt
 #include <QCoreApplication>
+#include <QMessageBox>
 #include <QProgressDialog>
 #include <QtConcurrent>
-#include <QMessageBox>
+
+// System
 #include <memory>
-
-#include "qTrain3DMASCDialog.h"
-#include "confusionmatrix.h"
-
 #if defined(_OPENMP)
 #include <omp.h>
 #endif
-
 #if defined(CC_MAC_OS) || defined(CC_LINUX)
 #include <unistd.h>
 #endif
-
 #if defined(CC_WINDOWS)
 #include <Windows.h>
 #endif

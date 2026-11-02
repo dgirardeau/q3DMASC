@@ -17,18 +17,19 @@
 
 #include "qTrain3DMASCDialog.h"
 
-//Qt
-#include <QTableWidgetItem>
-#include <QMessageBox>
-#include <QFileDialog>
-#include <QSettings>
-#include <QTextStream>
-#include <QStandardPaths>
-#include <QDateTime>
-
+// qCC_db
 #include <ccLog.h>
 
-//System
+// Qt
+#include <QDateTime>
+#include <QFileDialog>
+#include <QMessageBox>
+#include <QSettings>
+#include <QStandardPaths>
+#include <QTableWidgetItem>
+#include <QTextStream>
+
+// System
 #include <cassert>
 
 static const int FeatureImportanceColumn = 1;

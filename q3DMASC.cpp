@@ -17,25 +17,24 @@
 
 #include "q3DMASC.h"
 
-//local
-#include "q3DMASCDisclaimerDialog.h"
 #include "q3DMASCClassifier.h"
+#include "q3DMASCCommands.h"
+#include "q3DMASCDisclaimerDialog.h"
 #include "q3DMASCTools.h"
 #include "qClassify3DMASCDialog.h"
 #include "qTrain3DMASCDialog.h"
-#include "q3DMASCCommands.h"
 
-//qCC_db
+// qCC_db
 #include <ccPointCloud.h>
 #include <ccProgressDialog.h>
 
-//Qt
-#include <QtGui>
-#include <QtCore>
+// Qt
 #include <QApplication>
 #include <QFileDialog>
 #include <QMessageBox>
 #include <QSettings>
+#include <QtCore>
+#include <QtGui>
 
 q3DMASCPlugin::q3DMASCPlugin(QObject* parent/*=0*/)
 	: QObject(parent)

@@ -17,13 +17,13 @@
 
 #include "ScalarFieldCollector.h"
 
-//qCC_db
-#include <ccPointCloud.h>
-
-//CCLib
+// CCCoreLib
 #include <ScalarField.h>
 
-//system
+// qCC_db
+#include <ccPointCloud.h>
+
+// System
 #include <cassert>
 
 void SFCollector::push(ccPointCloud* cloud, CCCoreLib::ScalarField* sf, Behavior behavior)

@@ -17,18 +17,17 @@
 
 #include "qClassify3DMASCDialog.h"
 
-//qCC_plugins
-#include <ccMainAppInterface.h>
-
-//qCC_db
+// qCC_db
 #include <ccPointCloud.h>
 
-//Qt
+// CCPluginAPI
+#include <ccMainAppInterface.h>
+
+// Qt
+#include <QComboBox>
 #include <QMainWindow>
 #include <QPushButton>
-#include <QComboBox>
 #include <QSettings>
-
 
 static ccPointCloud* GetCloudFromCombo(QComboBox* comboBox, ccHObject* dbRoot)
 {

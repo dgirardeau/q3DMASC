@@ -17,12 +17,13 @@
 //#                                                                        #
 //##########################################################################
 
-//qCC_db
-#include <ccPointCloud.h>
-//CCLib
+// CCCoreLib
 #include <ScalarField.h>
 
-//Qt
+// qCC_db
+#include <ccPointCloud.h>
+
+// Qt
 #include <QSharedPointer>
 
 class IScalarFieldWrapper

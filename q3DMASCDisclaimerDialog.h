@@ -18,13 +18,14 @@
 //##########################################################################
 
 
-#include <ui_trainDisclaimerDlg.h>
+// Ui
 #include <ui_classifyDisclaimerDlg.h>
+#include <ui_trainDisclaimerDlg.h>
 
-//qCC_plugins
+// CCPluginAPI
 #include <ccMainAppInterface.h>
 
-//Qt
+// Qt
 #include <QMainWindow>
 
 //! Dialog for displaying the 3DSMAC/UEB disclaimer

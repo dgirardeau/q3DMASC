@@ -17,36 +17,38 @@
 
 #include "q3DMASCTools.h"
 
-//Local
-#include "PointFeature.h"
-#include "NeighborhoodFeature.h"
-#include "DualCloudFeature.h"
 #include "ContextBasedFeature.h"
-#include "ccMainAppInterface.h"
+#include "DualCloudFeature.h"
+#include "NeighborhoodFeature.h"
+#include "PointFeature.h"
 
-//qCC_io
-#include <FileIOFilter.h>
-//qCC_db
-#include <ccScalarField.h>
-#include <ccPointCloud.h>
-
-//qPDALIO
+// qPDALIO
 #include "../../../core/IO/qPDALIO/include/LASFields.h"
 
-//Qt
-#include <QTextStream>
+// qCC_db
+#include <ccPointCloud.h>
+#include <ccScalarField.h>
+
+// CCPluginAPI
+#include <ccMainAppInterface.h>
+
+// qCC_io
+#include <FileIOFilter.h>
+
+// Qt
+#include <QCoreApplication>
+#include <QDir>
 #include <QFile>
 #include <QFileInfo>
-#include <QDir>
 #include <QMutex>
-#include <QCoreApplication>
+#include <QTextStream>
 
-//system
+// System
 #include <cassert>
-
 #if defined(_OPENMP)
 #include <omp.h>
 #endif
+
 using namespace masc;
 
 bool Tools::SaveClassifier(	QString filename,

@@ -17,18 +17,20 @@
 //#                                                                        #
 //##########################################################################
 
-//CloudCompare
-#include <ccCommandLineInterface.h>
-
-//Local
 #include "q3DMASCTools.h"
 
-//qCC_db
+// qCC_db
 #include <ccProgressDialog.h>
 
-//Qt
+// CCPluginAPI
+#include <ccCommandLineInterface.h>
+
+// Qt
+#include <QCoreApplication>
 #include <QDialog>
 #include <QFileInfo>
+
+// System
 #include <memory>
 
 static const char COMMAND_3DMASC_CLASSIFY[] = "3DMASC_CLASSIFY";

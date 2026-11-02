@@ -17,10 +17,11 @@
 //#                                                                        #
 //##########################################################################
 
-//Qt
-#include <QDialog>
-
+// Ui
 #include <ui_Classify3DMASCDialog.h>
+
+// Qt
+#include <QDialog>
 
 class ccMainAppInterface;
 class ccPointCloud;

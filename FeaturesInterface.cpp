@@ -17,10 +17,10 @@
 
 #include "FeaturesInterface.h"
 
-//qCC_db
+// qCC_db
 #include <ccScalarField.h>
 
-//system
+// System
 #include <cassert>
 
 using namespace masc;

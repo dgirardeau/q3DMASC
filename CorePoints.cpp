@@ -17,13 +17,13 @@
 
 #include "CorePoints.h"
 
-//qCC_db
-#include <ccPointCloud.h>
-
-//CCLib
+// CCCoreLib
 #include <CloudSamplingTools.h>
 
-//system
+// qCC_db
+#include <ccPointCloud.h>
+
+// System
 #include <cassert>
 
 using namespace masc;

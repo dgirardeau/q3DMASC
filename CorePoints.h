@@ -17,14 +17,14 @@
 //#                                                                        #
 //##########################################################################
 
-//qCC_db
+// CCCoreLib
+#include <GenericProgressCallback.h>
+#include <ReferenceCloud.h>
+
+// qCC_db
 #include <ccPointCloud.h>
 
-//CCLib
-#include <ReferenceCloud.h>
-#include <GenericProgressCallback.h>
-
-//Qt
+// Qt
 #include <QSharedPointer>
 
 namespace masc
