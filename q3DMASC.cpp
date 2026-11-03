@@ -25,6 +25,7 @@
 #include "qTrain3DMASCDialog.h"
 
 // qCC_db
+#include <ccFileUtils.h>
 #include <ccPointCloud.h>
 #include <ccProgressDialog.h>
 
@@ -105,7 +106,7 @@ void q3DMASCPlugin::doClassifyAction()
 	{
 		QSettings settings;
 		settings.beginGroup("3DMASC");
-		QString inputPath = settings.value("FilePath", QCoreApplication::applicationDirPath()).toString();
+		QString inputPath = settings.value("FilePath", ccFileUtils::defaultDocPath()).toString();
 		inputFilename = QFileDialog::getOpenFileName(m_app->getMainWindow(), "Load 3DMASC classifier file", inputPath, "*.txt");
 		if (inputFilename.isNull())
 		{
@@ -245,7 +246,7 @@ void q3DMASCPlugin::doTrainAction()
 	{
 		QSettings settings;
 		settings.beginGroup("3DMASC");
-		QString inputPath = settings.value("FilePath", QCoreApplication::applicationDirPath()).toString();
+		QString inputPath = settings.value("FilePath", ccFileUtils::defaultDocPath()).toString();
 		inputFilename = QFileDialog::getOpenFileName(m_app->getMainWindow(), "Load 3DMASC training file", inputPath, "*.txt");
 		if (inputFilename.isNull())
 		{
@@ -754,7 +755,7 @@ void q3DMASCPlugin::doTrainAction()
 				{
 					QSettings settings;
 					settings.beginGroup("3DMASC");
-					QString outputPath = settings.value("FilePath", QCoreApplication::applicationDirPath()).toString();
+					QString outputPath = settings.value("FilePath", ccFileUtils::defaultDocPath()).toString();
 					outputFilename = QFileDialog::getSaveFileName(m_app->getMainWindow(), "Save 3DMASC classifier", outputPath, "*.txt");
 					if (outputFilename.isNull())
 					{

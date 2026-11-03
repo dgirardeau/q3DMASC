@@ -18,6 +18,7 @@
 #include "qTrain3DMASCDialog.h"
 
 // qCC_db
+#include <ccFileUtils.h>
 #include <ccLog.h>
 
 // Qt
@@ -199,7 +200,7 @@ void Train3DMASCDialog::onExportResults(QString filePath/*=""*/)
 {
 	QSettings settings;
 	settings.beginGroup("3DMASC");
-	QString outputPath = settings.value("FilePath", QCoreApplication::applicationDirPath()).toString();
+	QString outputPath = settings.value("FilePath", ccFileUtils::defaultDocPath()).toString();
 	QString outputFilename = QFileDialog::getSaveFileName(this, "Export feature importance matrix", outputPath, "*.csv");
 	if (outputFilename.isNull())
 	{
